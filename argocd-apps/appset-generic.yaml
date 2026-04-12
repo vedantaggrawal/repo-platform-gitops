@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: generic-apps-onboarding
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/vedantaggrawal/repo-platform.git
+        revision: HEAD
+        directories:
+          - path: 'apps/*/*'
+  template:
+    metadata:
+      # Pattern matches: apps/APPNAME/ENVNAME
+      # path[1] is APPNAME, path.basename is ENVNAME
+      name: '{{path[1]}}-{{path.basename}}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/vedantaggrawal/repo-helm-chart.git
+          path: .
+          targetRevision: HEAD
+          helm:
+            valueFiles:
+              - $values/{{path}}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{path[1]}}-{{path.basename}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
