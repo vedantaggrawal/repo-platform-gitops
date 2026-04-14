@@ -22,7 +22,7 @@ spec:
                 - path: 'apps/*'
   template:
     metadata:
-      name: '{{ .cluster.env }}-{{ index .path.segments 1 }}'
+      name: '{{ .env }}-{{ index .path.segments 1 }}'
       annotations:
         argocd.argoproj.io/sync-wave: "0"
     spec:
@@ -30,21 +30,21 @@ spec:
       sources:
         - repoURL: https://github.com/vedantaggrawal/repo-helm-chart.git
           path: .
-          targetRevision: '{{ .cluster.helmChartRevision }}'
+          targetRevision: '{{ .helmChartRevision }}'
           helm:
             valueFiles:
-              - $values/apps/{{ index .path.segments 1 }}/{{ .cluster.env }}/values.yaml
+              - $values/apps/{{ index .path.segments 1 }}/{{ .env }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-app-gitops.git
           targetRevision: main
           ref: values
       destination:
-        server: '{{ .cluster.cluster }}'
+        server: '{{ .cluster }}'
         namespace: '{{ index .path.segments 1 }}'
   templatePatch: |
     spec:
       syncPolicy:
         automated:
-          prune: {{ .cluster.prune }}
+          prune: {{ .prune }}
           selfHeal: true
         syncOptions:
           - CreateNamespace=true

@@ -22,7 +22,7 @@ spec:
                 - path: 'platform-apps/*/config.yaml'
   template:
     metadata:
-      name: '{{ .cluster.env }}-{{ index .path.segments 1 }}'
+      name: '{{ .env }}-{{ index .path.segments 1 }}'
       annotations:
         argocd.argoproj.io/sync-wave: '{{ .syncWave }}'
     spec:
@@ -33,18 +33,18 @@ spec:
           targetRevision: '{{ .targetRevision }}'
           helm:
             valueFiles:
-              - $values/platform-apps/{{ index .path.segments 1 }}/{{ .cluster.env }}/values.yaml
+              - $values/platform-apps/{{ index .path.segments 1 }}/{{ .env }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
           targetRevision: HEAD
           ref: values
       destination:
-        server: '{{ .cluster.cluster }}'
+        server: '{{ .cluster }}'
         namespace: '{{ .namespace }}'
   templatePatch: |
     spec:
       syncPolicy:
         automated:
-          prune: {{ .cluster.prune }}
+          prune: {{ .prune }}
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
