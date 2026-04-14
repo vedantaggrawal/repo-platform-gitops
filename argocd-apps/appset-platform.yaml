@@ -14,6 +14,7 @@ spec:
               revision: HEAD
               files:
                 - path: 'clusters/*.yaml'
+              pathParamPrefix: cluster
           - git:
               repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
               revision: HEAD
