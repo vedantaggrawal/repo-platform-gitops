@@ -39,7 +39,7 @@ spec:
         namespace: '{{path[1]}}'
       syncPolicy:
         automated:
-          prune: {{prune}}
+          prune: '{{prune}}'
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
