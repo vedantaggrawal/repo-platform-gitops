@@ -1,4 +1,4 @@
+# Default values — overridden by bootstrap helm parameters
 env: dev
 cluster: https://kubernetes.default.svc
-helmChartRevision: HEAD
 prune: true

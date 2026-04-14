@@ -1,0 +1,4 @@
+apiVersion: v2
+name: platform-gitops-engine
+version: 1.0.0
+description: Helm chart generating ApplicationSets scoped to a specific environment via bootstrap parameters.

@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ .Values.env }}-platform-onboarding
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+        revision: HEAD
+        files:
+          - path: 'platform-apps/*/config.yaml'
+  template:
+    metadata:
+      name: '{{ .Values.env }}-{{ "{{path[1]}}" }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{ "{{syncWave}}" }}'
+    spec:
+      project: default
+      sources:
+        - chart: '{{ "{{chart}}" }}'
+          repoURL: '{{ "{{repoURL}}" }}'
+          targetRevision: '{{ "{{targetRevision}}" }}'
+          helm:
+            valueFiles:
+              - $values/platform-apps/{{ "{{path[1]}}" }}/{{ .Values.env }}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: {{ .Values.cluster }}
+        namespace: '{{ "{{namespace}}" }}'
+      syncPolicy:
+        automated:
+          prune: {{ .Values.prune }}
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 2m

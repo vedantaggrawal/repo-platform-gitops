@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: platform-root
+  name: platform-root-stg
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,8 +11,14 @@ spec:
     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
     targetRevision: HEAD
     path: argocd-apps
-    directory:
-      recurse: true
+    helm:
+      parameters:
+        - name: env
+          value: stg
+        - name: cluster
+          value: https://kubernetes.default.svc
+        - name: prune
+          value: "true"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
