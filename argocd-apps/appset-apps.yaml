@@ -4,6 +4,8 @@ metadata:
   name: apps-onboarding
   namespace: argocd
 spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
   generators:
     - matrix:
         generators:
@@ -12,6 +14,7 @@ spec:
               revision: HEAD
               files:
                 - path: 'clusters/*.yaml'
+              pathParamPrefix: cluster
           - git:
               repoURL: https://github.com/vedantaggrawal/repo-app-gitops.git
               revision: main
@@ -19,7 +22,7 @@ spec:
                 - path: 'apps/*'
   template:
     metadata:
-      name: '{{env}}-{{path[1]}}'
+      name: '{{ .cluster.env }}-{{ index .path.segments 1 }}'
       annotations:
         argocd.argoproj.io/sync-wave: "0"
     spec:
@@ -27,19 +30,21 @@ spec:
       sources:
         - repoURL: https://github.com/vedantaggrawal/repo-helm-chart.git
           path: .
-          targetRevision: '{{helmChartRevision}}'
+          targetRevision: '{{ .cluster.helmChartRevision }}'
           helm:
             valueFiles:
-              - $values/apps/{{path[1]}}/{{env}}/values.yaml
+              - $values/apps/{{ index .path.segments 1 }}/{{ .cluster.env }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-app-gitops.git
           targetRevision: main
           ref: values
       destination:
-        server: '{{cluster}}'
-        namespace: '{{path[1]}}'
+        server: '{{ .cluster.cluster }}'
+        namespace: '{{ index .path.segments 1 }}'
+  templatePatch: |
+    spec:
       syncPolicy:
         automated:
-          prune: true
+          prune: {{ .cluster.prune }}
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
