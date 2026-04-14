@@ -1,0 +1,5 @@
+chart: traefik
+repoURL: https://traefik.github.io/charts
+targetRevision: "28.*"
+namespace: traefik
+syncWave: "-1"
