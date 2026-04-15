@@ -1,0 +1,27 @@
+# Local kind cluster — minimal resource footprint
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    retention: 6h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+alertmanager:
+  alertmanagerSpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+
+grafana:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
