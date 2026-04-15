@@ -1,0 +1,23 @@
+controller:
+  # Bind directly to the host ports — kind maps host:10080->container:80, host:10443->container:443
+  hostPort:
+    enabled: true
+    ports:
+      http: 80
+      https: 443
+
+  # Schedule only on the control-plane node which has the kind port mappings
+  nodeSelector:
+    ingress-ready: "true"
+    kubernetes.io/os: linux
+
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+
+  service:
+    type: NodePort
