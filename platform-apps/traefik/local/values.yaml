@@ -1,3 +1,8 @@
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
 ports:
   web:
     # kind maps host:10080 -> container:80
