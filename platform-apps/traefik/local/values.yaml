@@ -25,4 +25,4 @@ tolerations:
     effect: NoSchedule
 
 service:
-  type: NodePort
+  type: ClusterIP
