@@ -26,3 +26,7 @@ tolerations:
 
 service:
   type: ClusterIP
+
+logs:
+  access:
+    enabled: true
