@@ -19,9 +19,9 @@ controller:
       operator: Exists
       effect: NoSchedule
 
+  # Disable admission webhook — avoids pre-install job conflicts with ArgoCD prune on local clusters
+  admissionWebhooks:
+    enabled: false
+
   service:
     type: NodePort
-
-# Disable admission webhook — avoids pre-install job conflicts with ArgoCD prune on local clusters
-admissionWebhooks:
-  enabled: false
