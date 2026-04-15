@@ -1,5 +1,0 @@
-chart: ingress-nginx
-repoURL: https://kubernetes.github.io/ingress-nginx
-targetRevision: "4.11.*"
-namespace: ingress-nginx
-syncWave: "-1"
