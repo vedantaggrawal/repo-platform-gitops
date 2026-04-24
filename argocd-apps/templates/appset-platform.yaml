@@ -10,6 +10,9 @@ spec:
         revision: HEAD
         files:
           - path: 'platform-apps/*/{{ .Values.env }}/config.yaml'
+      selector:
+        matchLabels:
+          enabled: "true"
   template:
     metadata:
       name: '{{ .Values.env }}-{{ "{{path[1]}}" }}'

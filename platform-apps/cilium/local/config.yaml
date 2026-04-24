@@ -1,0 +1,6 @@
+enabled: "true"
+chart: cilium
+repoURL: https://helm.cilium.io/
+targetRevision: "1.19.*"
+namespace: kube-system
+syncWave: "-3"

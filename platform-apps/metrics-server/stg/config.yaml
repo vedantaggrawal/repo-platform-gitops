@@ -1,3 +1,4 @@
+enabled: "true"
 chart: metrics-server
 repoURL: https://kubernetes-sigs.github.io/metrics-server/
 targetRevision: "3.11.*"

@@ -1,0 +1,90 @@
+# -- Cilium CNI for Kind with kube-proxy replacement --
+
+# Replace kube-proxy with eBPF datapath
+kubeProxyReplacement: true
+
+# Kind-critical: API server reachable by container name since kube-proxy is disabled
+k8sServiceHost: devops-local-control-plane
+k8sServicePort: 6443
+
+# IPAM
+ipam:
+  mode: kubernetes
+
+# Host networking features
+hostPort:
+  enabled: true
+externalIPs:
+  enabled: true
+nodePort:
+  enabled: true
+
+# Image pull policy for local dev
+image:
+  pullPolicy: IfNotPresent
+
+# Operator
+operator:
+  replicas: 1
+
+# -- Cilium Ingress Controller (replaces Traefik) --
+ingressController:
+  enabled: true
+  default: true
+  loadbalancerMode: shared
+  enforceHttps: true
+  hostNetwork:
+    enabled: true
+    sharedListenerPort: 80
+    nodes:
+      matchLabels:
+        ingress-ready: "true"
+
+# -- Hubble Observability --
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+    ingress:
+      enabled: true
+      className: cilium
+      hosts:
+        - local.hubble.internal
+      tls:
+        - hosts:
+            - local.hubble.internal
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    serviceMonitor:
+      enabled: false
+    dashboards:
+      enabled: false
+
+# -- Service Mesh (Gateway API + L7 + mTLS) --
+gatewayAPI:
+  enabled: true
+  hostNetwork:
+    enabled: true
+
+# L7 proxy is enabled by default, explicit for clarity
+l7Proxy: true
+
+# Mutual authentication (SPIFFE-based identity)
+authentication:
+  mutual:
+    spire:
+      enabled: false  # enable when SPIRE server is deployed
+
+# Prometheus ServiceMonitors require monitoring.coreos.com CRDs which are
+# installed later by kube-prometheus-stack via ArgoCD. Enable these after
+# the Prometheus operator is running.
+prometheus:
+  enabled: false
