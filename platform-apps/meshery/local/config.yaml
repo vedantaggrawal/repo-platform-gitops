@@ -1,0 +1,6 @@
+enabled: "true"
+chart: meshery
+repoURL: https://meshery.io/charts/
+targetRevision: "v1.0.*"
+namespace: meshery
+syncWave: "0"
