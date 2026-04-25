@@ -1,0 +1,25 @@
+replicaCount: 1
+
+image:
+  pullPolicy: IfNotPresent
+
+clusterRoleBinding:
+  create: true
+
+serviceAccount:
+  create: true
+
+ingress:
+  enabled: true
+  ingressClassName: cilium
+  annotations:
+    cert-manager.io/cluster-issuer: selfsigned
+  hosts:
+    - host: local.headlamp.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: headlamp-tls
+      hosts:
+        - local.headlamp.internal

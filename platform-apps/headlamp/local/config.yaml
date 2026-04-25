@@ -1,0 +1,6 @@
+enabled: "true"
+chart: headlamp
+repoURL: https://kubernetes-sigs.github.io/headlamp/
+targetRevision: "0.*"
+namespace: headlamp
+syncWave: "0"
