@@ -35,8 +35,7 @@ ingressController:
   enforceHttps: false
   hostNetwork:
     enabled: true
-    sharedListenerPort: 80
-    sharedTLSListenerPort: 443
+    sharedListenerPort: 443
     nodes:
       matchLabels:
         ingress-ready: "true"
