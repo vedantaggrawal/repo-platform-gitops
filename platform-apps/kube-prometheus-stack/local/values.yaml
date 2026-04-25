@@ -3,6 +3,9 @@ prometheus:
   prometheusSpec:
     replicas: 1
     retention: 6h
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
     resources:
       requests:
         cpu: 100m
