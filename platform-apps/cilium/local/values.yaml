@@ -32,10 +32,11 @@ ingressController:
   enabled: true
   default: true
   loadbalancerMode: shared
-  enforceHttps: true
+  enforceHttps: false
   hostNetwork:
     enabled: true
     sharedListenerPort: 80
+    sharedTLSListenerPort: 443
     nodes:
       matchLabels:
         ingress-ready: "true"
@@ -50,10 +51,13 @@ hubble:
     ingress:
       enabled: true
       className: cilium
+      annotations:
+        cert-manager.io/cluster-issuer: selfsigned
       hosts:
         - local.hubble.internal
       tls:
-        - hosts:
+        - secretName: hubble-ui-tls
+          hosts:
             - local.hubble.internal
   metrics:
     enabled:
