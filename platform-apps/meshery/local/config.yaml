@@ -1,4 +1,4 @@
-enabled: "true"
+enabled: "false"
 chart: meshery
 repoURL: https://meshery.io/charts/
 targetRevision: "v1.0.*"
