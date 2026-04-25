@@ -67,9 +67,12 @@ hubble:
       - icmp
       - http
     serviceMonitor:
-      enabled: false
+      enabled: true
     dashboards:
-      enabled: false
+      enabled: true
+      namespace: monitoring
+      annotations:
+        grafana_folder: Cilium
 
 # -- Service Mesh (Gateway API + L7 + mTLS) --
 gatewayAPI:
@@ -86,8 +89,20 @@ authentication:
     spire:
       enabled: false  # enable when SPIRE server is deployed
 
-# Prometheus ServiceMonitors require monitoring.coreos.com CRDs which are
-# installed later by kube-prometheus-stack via ArgoCD. Enable these after
-# the Prometheus operator is running.
+# Cilium agent and operator Prometheus metrics + ServiceMonitors
 prometheus:
-  enabled: false
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+operator:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+envoy:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true

@@ -25,3 +25,18 @@ grafana:
     requests:
       cpu: 50m
       memory: 64Mi
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+  ingress:
+    enabled: true
+    ingressClassName: cilium
+    annotations:
+      cert-manager.io/cluster-issuer: selfsigned
+    hosts:
+      - local.grafana.internal
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - local.grafana.internal
