@@ -1,4 +1,4 @@
-enabled: "true"
+enabled: "false"
 chart: cilium
 repoURL: https://helm.cilium.io/
 targetRevision: "1.19.*"
