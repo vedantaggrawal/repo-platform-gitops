@@ -10,11 +10,11 @@ prometheus:
     ruleSelectorNilUsesHelmValues: false
     resources:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 200m
+        memory: 1Gi
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 1000m
+        memory: 2Gi
 
 alertmanager:
   alertmanagerSpec:
@@ -22,7 +22,10 @@ alertmanager:
     resources:
       requests:
         cpu: 10m
-        memory: 32Mi
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
 
 grafana:
   replicas: 1
