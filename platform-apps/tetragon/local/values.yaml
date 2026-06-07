@@ -5,7 +5,7 @@ tetragon:
   enabled: true
   # Stream events as JSON to stdout for `kubectl logs` consumption.
   # Switch to gRPC export (port 54321) when wiring to Hubble/OTEL.
-  exportFilename: /var/run/cilium/tetragon/tetragon.log
+  exportFilename: tetragon.log
   exportFileMaxSizeMB: 50
   exportFileRotationInterval: 30m
   exportFileMaxBackups: 3
