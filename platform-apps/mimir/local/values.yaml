@@ -31,6 +31,15 @@ mimir:
       compactor_blocks_retention_period: 30d
       ingestion_rate: 100000
       ingestion_burst_size: 200000
+    # Single-replica ingester + store-gateway: drop the ring replication
+    # factor from the default 3, otherwise queries fail with
+    # "too many unhealthy instances in the ring".
+    ingester:
+      ring:
+        replication_factor: 1
+    store_gateway:
+      sharding_ring:
+        replication_factor: 1
 
 global:
   extraEnvFrom: []
