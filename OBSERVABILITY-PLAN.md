@@ -1,6 +1,6 @@
 # End-to-End Observability Plan: LGTM + Alloy + OpenTelemetry
 
-Status: **draft, awaiting approval**
+Status: **executed in `local` as of 2026-06-09; phase 8 = forward-looking checklist below**
 Scope: replace `kube-prometheus-stack` Prometheus storage with the Grafana LGTM stack (Loki / Grafana / Tempo / Mimir), use Alloy as the unified collector, accept OTLP from OpenTelemetry-instrumented apps. Run standalone in `local`; layout designed to scale to dev/stg/prod without restructuring.
 
 ## Goal
@@ -153,12 +153,48 @@ Each phase is independent in git. To rollback any phase:
 3. **Mimir Alertmanager vs. existing kube-prom Alertmanager?** Recommend keep kube-prom Alertmanager for now; route Mimir alerts to it via webhook. Avoid split-brain.
 4. **MinIO single-node**: acceptable for local. **For prod, replace with S3 entirely** — don't run MinIO in-cluster unless you actually want distributed MinIO with ≥4 nodes.
 
-## How to execute
+## Lessons learned during execution
 
-After approving this plan:
+The execution pass surfaced things the plan didn't predict — capture them here so the prod migration doesn't re-discover them:
+
+1. **`mimir-distributed` has no monolithic mode.** Both 5.x and 6.x ship microservices-only. We collapsed every component to `replicas: 1` and disabled rollout-operator / overrides-exporter / ruler / alertmanager. Pinned to `5.8.0` to avoid 6.x's default Kafka-backed ingest path. *For prod: switch component replicas individually (ingester >= 3, store-gateway >= 2, query-frontend behind a Service) instead of "go monolithic → go distributed".*
+
+2. **Ring replication factor 3 is the default — and fails with one replica.** Both Mimir and Loki returned `too many unhealthy instances in the ring` until set to 1:
+   - Mimir: `mimir.structuredConfig.ingester.ring.replication_factor: 1` AND `store_gateway.sharding_ring.replication_factor: 1`.
+   - Loki: `loki.commonConfig.replication_factor: 1`.
+   *For prod: bump these back to 3 (with ≥3 ingesters) and add an explicit override in values — never inherit chart default.*
+
+3. **Argo strips Helm post-install hooks.** MinIO chart's bucket-creation Job (`buckets:` value) does nothing under Argo — buckets were created by hand. *Fix: re-annotate the hook job to `argocd.argoproj.io/hook: PostSync` via a chart override, or add a separate Job under directory-sync.*
+
+4. **Tempo's Service didn't expose OTLP ports** even though receivers were configured. The chart only adds the Jaeger ports + `:3200` to its Service unless you supply `service.ports` or extra-ports. Apps push OTLP to Alloy on `:4317/:4318` instead — Alloy → Tempo internally. *For prod: if any app pushes OTLP directly to Tempo, add a `tempo.extraPorts` block or use the `tempo-distributed` chart which exposes them properly.*
+
+5. **Argo `ApplicationSet` git-file generator caches stalely.** New `platform-apps/*/local/config.yaml` files weren't picked up until the controller was restarted. *Workaround:* `kubectl patch applicationset ... '{"metadata":{"annotations":{"argocd.argoproj.io/application-set-refresh":"true"}}}'` plus `rollout restart deploy/argo-cd-argocd-applicationset-controller`. *For prod: shorten the AppSet `requeueAfterSeconds` or push a webhook-driven sync.*
+
+6. **`prometheus.enabled: false` in kube-prometheus-stack** keeps the Operator + CRDs + Alertmanager and only drops the Prometheus StatefulSet — exactly what we wanted. Alloy reads the same ServiceMonitor/PodMonitor CRs the Operator still manages. *For prod: same flip works; no need to migrate CRDs.*
+
+## Production-scope checklist (Phase 8)
+
+Final state to drive toward before this stack handles real traffic:
+
+- [ ] **Object store**: replace MinIO with cloud S3/GCS via IRSA / Workload Identity. Zero baked-in credentials. Lifecycle policies aligned with each component's retention (Mimir 30d / Loki 7d / Tempo 72h).
+- [ ] **Mimir**: switch from one-replica-per-component to `simple-scalable` minimum. Ingesters `>=3`, replication_factor 3, anti-affinity per zone. Add the Ruler back. Enable `compactor.sharding_ring.kvstore: memberlist`.
+- [ ] **Loki**: switch `deploymentMode: SingleBinary` → `SimpleScalable` (write/read/backend pools). Same chart, value-only change. Object-store config unchanged.
+- [ ] **Tempo**: switch from `tempo` chart (single-binary) to `tempo-distributed` (distributor / ingester / querier / compactor pools). Same backend config.
+- [ ] **Alloy**: scale `controller.replicas: 3` and enable `clustering.enabled: true` so scrape targets shard automatically. Add an `otelcol.processor.tail_sampling` block to bound Tempo write rate.
+- [ ] **Tenancy**: per-env `X-Scope-OrgID`. Datasources templated per tenant in Grafana provisioning.
+- [ ] **Auth**: mTLS between Alloy and backends (Cilium-issued certs or cert-manager). Bearer tokens at gateway nginx.
+- [ ] **Alerting**: pick **one** Alertmanager — keep kube-prom AM (current state) or switch to Mimir's bundled AM. Avoid split-brain. Route critical alerts to whatever your on-call system is.
+- [ ] **Network policy**: per-component CiliumNetworkPolicy scoping write/read paths. Lesson from the [[global-l7-visibility]] incident: never cluster-wide L7 — write per-app.
+- [ ] **Resource floors**: replace the `*resourcesSmall` anchor with realistic limits derived from `kubectl top` baselines.
+- [ ] **Backup**: object-store versioning + cross-region replication. Optionally Velero for any local PVCs that still hold WAL.
+- [ ] **Bucket creation**: Argo-native Job (PostSync hook) instead of relying on chart's stripped Helm hook.
+
+## How to execute (historical)
+
+This was run with:
 
 ```
 /loop execute the LGTM plan from OBSERVABILITY-PLAN.md, one phase per iteration, commit and verify each phase before moving on, stop and report on any phase that fails verification
 ```
 
-I'll do Phase 1 (MinIO) in the first iteration, schedule a wakeup, and continue through Phase 8. You can `/cancel-ralph` or interrupt at any iteration.
+Phase 1–7 landed across 9 iterations (some phases needed a fix-up commit — see lessons-learned above). Phase 8 is the forward-looking checklist; it's tracked here, not executed in a single commit.
