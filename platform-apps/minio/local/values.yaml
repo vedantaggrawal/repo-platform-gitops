@@ -13,28 +13,10 @@ persistence:
   storageClass: standard
   size: 30Gi
 
-# Buckets created by post-install Helm hook job using the mc client.
-# Policy 'none' = private (only authenticated). LGTM components auth with
-# the rootUser/rootPassword above.
-buckets:
-  - name: mimir-blocks
-    policy: none
-    purge: false
-  - name: mimir-ruler
-    policy: none
-    purge: false
-  - name: mimir-alertmanager
-    policy: none
-    purge: false
-  - name: loki-chunks
-    policy: none
-    purge: false
-  - name: loki-ruler
-    policy: none
-    purge: false
-  - name: tempo-blocks
-    policy: none
-    purge: false
+# Bucket creation moved to manifests/minio-init/local/buckets-job.yaml
+# (Argo Application local-minio-init). Argo strips the chart's
+# helm.sh/hook annotations so the chart's `buckets:` Job never ran.
+buckets: []
 
 resources:
   requests:

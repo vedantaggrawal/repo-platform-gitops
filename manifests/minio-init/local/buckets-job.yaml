@@ -1,0 +1,54 @@
+# Argo-driven replacement for the MinIO chart's Helm post-install hook.
+# Argo strips Helm hooks (helm.sh/hook is ignored unless renamed to
+# argocd.argoproj.io/hook), so the chart's `buckets:` Job never ran.
+# This Job is Argo-native: PostSync hook with hook-succeeded delete policy.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-create-lgtm-buckets
+  namespace: monitoring-storage
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: minio-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: quay.io/minio/mc:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MC_HOST_local
+              value: "http://lgtm-admin:lgtm-admin-local@local-minio.monitoring-storage.svc.cluster.local:9000"
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              # Wait for MinIO API (up to 60s).
+              for i in $(seq 1 30); do
+                if mc ls local >/dev/null 2>&1; then
+                  echo "MinIO reachable"; break
+                fi
+                echo "Waiting for MinIO..."; sleep 2
+              done
+              for bucket in mimir-blocks mimir-ruler mimir-alertmanager \
+                            loki-chunks loki-ruler tempo-blocks; do
+                mc mb --ignore-existing "local/$bucket"
+                echo "ensured: $bucket"
+              done
+              mc ls local
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
