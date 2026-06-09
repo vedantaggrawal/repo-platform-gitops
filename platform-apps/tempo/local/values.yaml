@@ -1,0 +1,50 @@
+# Tempo — trace store.
+# This chart is the single-binary 'tempo' (NOT 'tempo-distributed'):
+# 1 StatefulSet runs distributor + ingester + querier + compactor.
+# Prod path: switch to tempo-distributed chart with same backend config.
+
+replicas: 1
+
+tempo:
+  retention: 72h
+  multitenancyEnabled: false
+  metricsGenerator:
+    enabled: false
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: tempo-blocks
+        endpoint: local-minio.monitoring-storage.svc.cluster.local:9000
+        access_key: lgtm-admin
+        secret_key: lgtm-admin-local
+        insecure: true
+        forcepathstyle: true
+        region: us-east-1
+      wal:
+        path: /var/tempo/wal
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 768Mi
+
+persistence:
+  enabled: true
+  size: 2Gi
+  storageClassName: standard
+
+service:
+  type: ClusterIP
+
+serviceMonitor:
+  enabled: false

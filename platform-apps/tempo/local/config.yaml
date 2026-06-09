@@ -1,0 +1,6 @@
+enabled: "true"
+chart: tempo
+repoURL: https://grafana.github.io/helm-charts
+targetRevision: "1.24.4"
+namespace: monitoring
+syncWave: "-1"
