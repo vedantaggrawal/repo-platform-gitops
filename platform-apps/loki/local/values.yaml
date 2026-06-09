@@ -1,0 +1,115 @@
+# Loki — log store.
+# Local: SingleBinary mode (1 pod runs distributor+ingester+querier+frontend).
+# Prod: switch deploymentMode to SimpleScalable (3 pools) or Distributed.
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  schemaConfig:
+    configs:
+      - from: "2025-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  storage:
+    type: s3
+    bucketNames:
+      chunks: loki-chunks
+      ruler: loki-ruler
+    s3:
+      endpoint: local-minio.monitoring-storage.svc.cluster.local:9000
+      accessKeyId: lgtm-admin
+      secretAccessKey: lgtm-admin-local
+      s3ForcePathStyle: true
+      insecure: true
+      region: us-east-1
+  limits_config:
+    retention_period: 168h          # 7d
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_query_lookback: 168h
+    allow_structured_metadata: true
+    volume_enabled: true
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+  pattern_ingester:
+    enabled: false
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Disable everything that doesn't apply to SingleBinary.
+write: { replicas: 0 }
+read: { replicas: 0 }
+backend: { replicas: 0 }
+ingester: { replicas: 0 }
+distributor: { replicas: 0 }
+querier: { replicas: 0 }
+queryFrontend: { replicas: 0 }
+queryScheduler: { replicas: 0 }
+indexGateway: { replicas: 0 }
+compactor: { replicas: 0 }
+bloomGateway: { replicas: 0 }
+bloomPlanner: { replicas: 0 }
+bloomBuilder: { replicas: 0 }
+patternIngester: { replicas: 0 }
+ruler: { replicas: 0 }
+overridesExporter: { replicas: 0 }
+
+# Gateway in front of singleBinary for cleaner routing + future scale-out.
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Disable bundled MinIO, monitoring, canaries, tests, memcached.
+minio:
+  enabled: false
+test:
+  enabled: false
+lokiCanary:
+  enabled: false
+memcached:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+sidecar:
+  rules:
+    enabled: false
+  datasources:
+    enabled: false
+monitoring:
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  serviceMonitor:
+    enabled: false
+  dashboards:
+    enabled: false
+  rules:
+    enabled: false
