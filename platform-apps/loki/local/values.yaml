@@ -6,6 +6,9 @@ deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
+  # Single-replica SingleBinary: drop ring replication from default 3.
+  commonConfig:
+    replication_factor: 1
   schemaConfig:
     configs:
       - from: "2025-01-01"
