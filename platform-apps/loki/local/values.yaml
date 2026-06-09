@@ -6,6 +6,8 @@ deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
+  server:
+    log_format: json
   # Single-replica SingleBinary: drop ring replication from default 3.
   commonConfig:
     replication_factor: 1

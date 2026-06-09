@@ -5,6 +5,8 @@
 
 mimir:
   structuredConfig:
+    server:
+      log_format: json
     multitenancy_enabled: false
     common:
       storage:

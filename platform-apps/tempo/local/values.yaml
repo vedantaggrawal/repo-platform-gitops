@@ -8,6 +8,9 @@ replicas: 1
 tempo:
   retention: 72h
   multitenancyEnabled: false
+  server:
+    http_listen_port: 3200
+    log_format: json
   metricsGenerator:
     enabled: false
   storage:
