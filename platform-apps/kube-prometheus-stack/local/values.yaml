@@ -32,11 +32,63 @@ grafana:
   resources:
     requests:
       cpu: 50m
-      memory: 64Mi
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
   sidecar:
     dashboards:
       enabled: true
       searchNamespace: ALL
+    datasources:
+      enabled: true
+      searchNamespace: ALL
+      defaultDatasourceEnabled: false   # we provide Mimir as default below
+  # LGTM datasources: Mimir (metrics, default), Loki (logs), Tempo (traces).
+  # Cross-source jumps: Loki → Tempo via TraceID in log lines; Tempo →
+  # Loki via service.name; Tempo → Mimir for metrics on the same service.
+  additionalDataSources:
+    - name: Mimir
+      type: prometheus
+      uid: mimir
+      isDefault: true
+      access: proxy
+      url: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
+      jsonData:
+        httpHeaderName1: X-Scope-OrgID
+        timeInterval: 30s
+      secureJsonData:
+        httpHeaderValue1: anonymous
+    - name: Loki
+      type: loki
+      uid: loki
+      access: proxy
+      url: http://local-loki-gateway.monitoring.svc.cluster.local
+      jsonData:
+        derivedFields:
+          - name: TraceID
+            matcherRegex: '"trace_id":"(\w+)"'
+            url: '$${__value.raw}'
+            datasourceUid: tempo
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      access: proxy
+      url: http://local-tempo.monitoring.svc.cluster.local:3200
+      jsonData:
+        tracesToLogsV2:
+          datasourceUid: loki
+          spanStartTimeShift: '-5m'
+          spanEndTimeShift: '5m'
+          tags: [{ key: service.name, value: service_name }]
+          filterByTraceID: true
+        tracesToMetrics:
+          datasourceUid: mimir
+          tags: [{ key: service.name, value: service }]
+        serviceMap:
+          datasourceUid: mimir
+        nodeGraph:
+          enabled: true
   ingress:
     enabled: true
     ingressClassName: cilium
