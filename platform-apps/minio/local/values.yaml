@@ -1,0 +1,70 @@
+# MinIO — S3-compatible object store backing Mimir/Loki/Tempo.
+# Standalone mode locally; switch to mode: distributed (>=4 replicas) for prod.
+
+mode: standalone
+replicas: 1
+
+# Local dev credentials. PROD: pull from External Secrets Operator + Vault/SOPS.
+rootUser: lgtm-admin
+rootPassword: lgtm-admin-local
+
+persistence:
+  enabled: true
+  storageClass: standard
+  size: 30Gi
+
+# Buckets created by post-install Helm hook job using the mc client.
+# Policy 'none' = private (only authenticated). LGTM components auth with
+# the rootUser/rootPassword above.
+buckets:
+  - name: mimir-blocks
+    policy: none
+    purge: false
+  - name: mimir-ruler
+    policy: none
+    purge: false
+  - name: mimir-alertmanager
+    policy: none
+    purge: false
+  - name: loki-chunks
+    policy: none
+    purge: false
+  - name: loki-ruler
+    policy: none
+    purge: false
+  - name: tempo-blocks
+    policy: none
+    purge: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+service:
+  type: ClusterIP
+  port: 9000
+consoleService:
+  type: ClusterIP
+  port: 9001
+
+# Web console for poking around buckets; api ingress not exposed externally.
+consoleIngress:
+  enabled: true
+  ingressClassName: cilium
+  annotations:
+    cert-manager.io/cluster-issuer: selfsigned
+  hosts:
+    - local.minio.internal
+  tls:
+    - secretName: minio-console-tls
+      hosts:
+        - local.minio.internal
+
+# Disable the metrics scrape job until Alloy is in place (phase 5).
+metrics:
+  serviceMonitor:
+    enabled: false

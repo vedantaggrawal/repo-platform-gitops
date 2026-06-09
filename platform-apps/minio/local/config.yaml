@@ -1,0 +1,6 @@
+enabled: "true"
+chart: minio
+repoURL: https://charts.min.io/
+targetRevision: "5.*"
+namespace: monitoring-storage
+syncWave: "-3"
