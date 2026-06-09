@@ -1,8 +1,7 @@
 # Mimir — Prometheus-compatible TSDB.
-# Local: monolithic single-replica + S3 (MinIO). Prod: switch deploymentMode to
-# microservices-mode without touching mimir.structuredConfig.
-
-deploymentMode: monolithic-mode
+# Chart only ships microservices mode. For local we collapse each role
+# to a single replica with minimal resources; same chart scales out by
+# bumping replicas per component for prod (the structuredConfig is unchanged).
 
 mimir:
   structuredConfig:
@@ -28,64 +27,94 @@ mimir:
       backend: s3
       s3:
         bucket_name: mimir-alertmanager
-    compactor:
-      data_dir: /data
-      sharding_ring:
-        kvstore:
-          store: memberlist
     limits:
       compactor_blocks_retention_period: 30d
       ingestion_rate: 100000
       ingestion_burst_size: 200000
-    server:
-      grpc_server_max_recv_msg_size: 104857600
-      grpc_server_max_send_msg_size: 104857600
 
-monolithic:
+global:
+  extraEnvFrom: []
+
+# Resource floor used everywhere we don't override per-component.
+_resourcesSmall: &resourcesSmall
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+alertmanager:
+  enabled: false
+
+distributor:
   replicas: 1
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1500m
-      memory: 1500Mi
+  resources: *resourcesSmall
+
+ingester:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
   persistentVolume:
-    enabled: true
-    size: 10Gi
+    size: 5Gi
     storageClass: standard
-
-# Gateway in front of monolithic for Prometheus-compatible push/query routing.
-nginx:
-  enabled: true
-  replicas: 1
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 100m
+      memory: 256Mi
     limits:
-      cpu: 200m
-      memory: 128Mi
+      cpu: 1000m
+      memory: 768Mi
 
-# Disable all microservices-mode components (chart still renders empty templates).
-distributor: { replicas: 0 }
-ingester: { replicas: 0 }
-querier: { replicas: 0 }
-query_frontend: { replicas: 0 }
-query_scheduler: { replicas: 0 }
-store_gateway: { replicas: 0 }
-compactor: { replicas: 0 }
-ruler: { replicas: 0 }
-alertmanager: { enabled: false }
+querier:
+  replicas: 1
+  resources: *resourcesSmall
 
-# Disable bundled MinIO — we use platform-apps/minio.
+query_frontend:
+  replicas: 1
+  resources: *resourcesSmall
+
+query_scheduler:
+  replicas: 1
+  resources: *resourcesSmall
+
+store_gateway:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  persistentVolume:
+    size: 2Gi
+    storageClass: standard
+  resources: *resourcesSmall
+
+compactor:
+  replicas: 1
+  persistentVolume:
+    size: 2Gi
+    storageClass: standard
+  resources: *resourcesSmall
+
+ruler:
+  enabled: false
+
+overrides_exporter:
+  enabled: false
+
+gateway:
+  replicas: 1
+  resources: *resourcesSmall
+
+# HA helper — needed only when ingesters have ≥2 zones; we run one zone.
+rollout_operator:
+  enabled: false
+
+# Bundled MinIO/Memcached/metaMonitoring all disabled — we own those layers.
 minio:
   enabled: false
-
-# Disable bundled Grafana stack pieces — we have our own kube-prom Grafana.
-grafana-agent-operator:
+memcached:
   enabled: false
-
+memcachedExporter:
+  enabled: false
 metaMonitoring:
   serviceMonitor:
     enabled: false

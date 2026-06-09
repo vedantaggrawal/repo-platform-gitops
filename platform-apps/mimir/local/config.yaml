@@ -1,6 +1,6 @@
 enabled: "true"
 chart: mimir-distributed
 repoURL: https://grafana.github.io/helm-charts
-targetRevision: "6.0.*"
+targetRevision: "5.8.0"
 namespace: monitoring
 syncWave: "-1"
