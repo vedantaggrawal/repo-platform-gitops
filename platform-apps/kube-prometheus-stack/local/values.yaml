@@ -8,6 +8,7 @@ prometheus:
 alertmanager:
   alertmanagerSpec:
     replicas: 1
+    logFormat: json
     resources:
       requests:
         cpu: 10m
@@ -18,6 +19,13 @@ alertmanager:
 
 grafana:
   replicas: 1
+  # Console output as JSON so Loki's | json parser unpacks msg/level/logger.
+  grafana.ini:
+    log:
+      mode: console
+      level: info
+    log.console:
+      format: json
   resources:
     requests:
       cpu: 50m
