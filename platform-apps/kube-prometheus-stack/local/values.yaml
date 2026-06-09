@@ -1,20 +1,9 @@
-# Local kind cluster — minimal resource footprint
+# Local kind cluster — minimal resource footprint.
+# Prometheus StatefulSet disabled: Alloy now scrapes (via ServiceMonitor/PodMonitor
+# CRDs that the Operator still manages) and remote_writes to Mimir.
+# Operator + CRDs + Alertmanager remain so the rest of the stack is unaffected.
 prometheus:
-  prometheusSpec:
-    replicas: 1
-    retention: 6h
-    serviceMonitorSelectorNilUsesHelmValues: false
-    serviceMonitorSelector: {}
-    serviceMonitorNamespaceSelector: {}
-    podMonitorSelectorNilUsesHelmValues: false
-    ruleSelectorNilUsesHelmValues: false
-    resources:
-      requests:
-        cpu: 200m
-        memory: 1Gi
-      limits:
-        cpu: 1000m
-        memory: 2Gi
+  enabled: false
 
 alertmanager:
   alertmanagerSpec:
