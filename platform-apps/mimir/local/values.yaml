@@ -33,6 +33,9 @@ mimir:
       compactor_blocks_retention_period: 30d
       ingestion_rate: 100000
       ingestion_burst_size: 200000
+      # Default 150k was hitting after adding cilium SMs. 1.5M gives
+      # headroom for a small dev cluster; tune per-tenant in prod.
+      max_global_series_per_user: 1500000
     # Single-replica ingester + store-gateway: drop the ring replication
     # factor from the default 3, otherwise queries fail with
     # "too many unhealthy instances in the ring".

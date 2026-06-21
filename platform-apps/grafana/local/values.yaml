@@ -36,48 +36,53 @@ sidecar:
 # LGTM datasources: Mimir (metrics, default), Loki (logs), Tempo (traces).
 # Cross-source jumps: Loki → Tempo via TraceID in log lines; Tempo →
 # Loki via service.name; Tempo → Mimir for metrics on the same service.
-additionalDataSources:
-  - name: Mimir
-    type: prometheus
-    uid: mimir
-    isDefault: true
-    access: proxy
-    url: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
-    jsonData:
-      httpHeaderName1: X-Scope-OrgID
-      timeInterval: 30s
-    secureJsonData:
-      httpHeaderValue1: anonymous
-  - name: Loki
-    type: loki
-    uid: loki
-    access: proxy
-    url: http://local-loki-gateway.monitoring.svc.cluster.local
-    jsonData:
-      derivedFields:
-        - name: TraceID
-          matcherRegex: '"trace_id":"(\w+)"'
-          url: '$${__value.raw}'
-          datasourceUid: tempo
-  - name: Tempo
-    type: tempo
-    uid: tempo
-    access: proxy
-    url: http://local-tempo.monitoring.svc.cluster.local:3200
-    jsonData:
-      tracesToLogsV2:
-        datasourceUid: loki
-        spanStartTimeShift: '-5m'
-        spanEndTimeShift: '5m'
-        tags: [{ key: service.name, value: service_name }]
-        filterByTraceID: true
-      tracesToMetrics:
-        datasourceUid: mimir
-        tags: [{ key: service.name, value: service }]
-      serviceMap:
-        datasourceUid: mimir
-      nodeGraph:
-        enabled: true
+# Standalone grafana chart wants the provisioning-file format here (the
+# kube-prom-stack-only `additionalDataSources` key was silently ignored).
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Mimir
+        type: prometheus
+        uid: mimir
+        isDefault: true
+        access: proxy
+        url: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
+          timeInterval: 30s
+        secureJsonData:
+          httpHeaderValue1: anonymous
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://local-loki-gateway.monitoring.svc.cluster.local
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '"trace_id":"(\w+)"'
+              url: '$${__value.raw}'
+              datasourceUid: tempo
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://local-tempo.monitoring.svc.cluster.local:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: '-5m'
+            spanEndTimeShift: '5m'
+            tags: [{ key: service.name, value: service_name }]
+            filterByTraceID: true
+          tracesToMetrics:
+            datasourceUid: mimir
+            tags: [{ key: service.name, value: service }]
+          serviceMap:
+            datasourceUid: mimir
+          nodeGraph:
+            enabled: true
 
 ingress:
   enabled: true
