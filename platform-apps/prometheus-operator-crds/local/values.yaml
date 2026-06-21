@@ -1,0 +1,4 @@
+# Chart ships pure YAML — no Deployments, no Services, no controller pod.
+# Just the API definitions (ServiceMonitor, PodMonitor, Probe, PrometheusRule,
+# AlertmanagerConfig, ScrapeConfig) that Alloy's operator.servicemonitors
+# component reads to render scrape configs.

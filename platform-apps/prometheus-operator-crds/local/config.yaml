@@ -1,0 +1,8 @@
+enabled: "true"
+chart: prometheus-operator-crds
+repoURL: https://prometheus-community.github.io/helm-charts
+targetRevision: "16.*"
+namespace: monitoring
+# Earliest wave — Alloy + other charts (cilium, hubble, KSM, cert-manager)
+# install ServiceMonitor resources that need these CRDs present first.
+syncWave: "-5"
