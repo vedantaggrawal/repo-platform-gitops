@@ -14,7 +14,8 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-prometheusScrape: false   # we scrape via Alloy native, not via annotations
 prometheus:
   monitor:
-    enabled: false        # no ServiceMonitor — CRD is being removed
+    # ServiceMonitor: discovered by Alloy's prometheus.operator.servicemonitors
+    # block. CRDs come from the prometheus-operator-crds app (no controller).
+    enabled: true

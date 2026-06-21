@@ -1,0 +1,36 @@
+# Supplemental ClusterRole for Alloy. The chart's default ClusterRole grants
+# endpoints, pods, services, ingresses — enough for ServiceMonitor-based
+# discovery and pod log tailing. The explicit cluster-component scrapes
+# (apiserver/kubelet/cadvisor/coredns) also need:
+#   - nodes (list/watch) — for discovery.kubernetes role=node
+#   - nodes/metrics, nodes/proxy — kubelet + cadvisor scrape paths
+# Bound to the chart-created ServiceAccount monitoring/local-alloy.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: local-alloy-nodes
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+      - nodes/stats
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs:
+      - /metrics
+      - /metrics/cadvisor
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-alloy-nodes
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: local-alloy-nodes
+subjects:
+  - kind: ServiceAccount
+    name: local-alloy
+    namespace: monitoring
