@@ -56,7 +56,16 @@ _resourcesSmall: &resourcesSmall
     memory: 256Mi
 
 alertmanager:
-  enabled: false
+  # Replaces the kube-prom-stack-bundled Alertmanager. Mimir's tenant-aware
+  # Alertmanager reads config from S3 (mimir-alertmanager bucket, already
+  # created by the MinIO Job). Default empty config — add receivers + routes
+  # here when alerting is needed.
+  enabled: true
+  replicas: 1
+  persistentVolume:
+    size: 1Gi
+    storageClass: standard
+  resources: *resourcesSmall
 
 distributor:
   replicas: 1

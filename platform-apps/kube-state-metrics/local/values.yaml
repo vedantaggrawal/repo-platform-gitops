@@ -1,0 +1,20 @@
+# Default port :8080 named "http" — Alloy targets svc:8080 via explicit
+# discovery.kubernetes endpoints role + relabel filter.
+replicas: 1
+
+# JSON logs to keep Loki's | json clean.
+extraArgs:
+  - --logtostderr=true
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+prometheusScrape: false   # we scrape via Alloy native, not via annotations
+prometheus:
+  monitor:
+    enabled: false        # no ServiceMonitor — CRD is being removed

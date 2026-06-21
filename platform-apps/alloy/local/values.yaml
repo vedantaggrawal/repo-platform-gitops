@@ -16,13 +16,11 @@ alloy:
         format = "json"
       }
 
-      // ─── Metrics: Prometheus Operator CRDs + remote_write to Mimir ───
-      prometheus.operator.servicemonitors "default" {
-        forward_to = [prometheus.remote_write.mimir.receiver]
-      }
-      prometheus.operator.podmonitors "default" {
-        forward_to = [prometheus.remote_write.mimir.receiver]
-      }
+      // ─── Metrics: native kube discovery → remote_write to Mimir ───
+      // No prometheus-operator CRDs. Alloy watches the kube API directly;
+      // each prometheus.scrape sets a job label so existing PromQL
+      // (e.g. {job="kubelet"}) keeps working.
+
       prometheus.remote_write "mimir" {
         endpoint {
           url = "http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push"
@@ -32,6 +30,163 @@ alloy:
             "X-Scope-OrgID" = "anonymous",
           }
         }
+      }
+
+      // One shared endpoints watch + one nodes watch; per-target relabel
+      // rules below filter to a single (ns, svc, port_name) tuple each.
+      discovery.kubernetes "endpoints" {
+        role = "endpoints"
+      }
+      discovery.kubernetes "nodes" {
+        role = "node"
+      }
+
+      // kube-apiserver — default/kubernetes:https
+      discovery.relabel "apiserver" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "default;kubernetes;https"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "apiserver" {
+        job_name          = "apiserver"
+        targets           = discovery.relabel.apiserver.output
+        scheme            = "https"
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        tls_config {
+          ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          insecure_skip_verify = true
+        }
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // kubelet — every node :10250/metrics
+      prometheus.scrape "kubelet" {
+        job_name          = "kubelet"
+        targets           = discovery.kubernetes.nodes.targets
+        scheme            = "https"
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        tls_config {
+          ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          insecure_skip_verify = true
+        }
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // cadvisor — same auth, different metrics_path
+      prometheus.scrape "cadvisor" {
+        job_name          = "cadvisor"
+        targets           = discovery.kubernetes.nodes.targets
+        scheme            = "https"
+        metrics_path      = "/metrics/cadvisor"
+        bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+        tls_config {
+          ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          insecure_skip_verify = true
+        }
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // Pattern repeats for cluster services: filter, then scrape.
+      discovery.relabel "coredns" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "kube-system;kube-dns;metrics"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "coredns" {
+        job_name   = "coredns"
+        targets    = discovery.relabel.coredns.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      discovery.relabel "kube_state_metrics" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "monitoring;local-kube-state-metrics;http"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "kube_state_metrics" {
+        job_name   = "kube-state-metrics"
+        targets    = discovery.relabel.kube_state_metrics.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      discovery.relabel "node_exporter" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "monitoring;local-prometheus-node-exporter;metrics"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "node_exporter" {
+        job_name   = "node-exporter"
+        targets    = discovery.relabel.node_exporter.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      // Cilium metrics — port names from cilium chart 1.19.
+      discovery.relabel "cilium_agent" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "kube-system;cilium-agent;prometheus"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "cilium_agent" {
+        job_name   = "cilium-agent"
+        targets    = discovery.relabel.cilium_agent.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      discovery.relabel "cilium_envoy" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "kube-system;cilium-envoy;envoy-metrics"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "cilium_envoy" {
+        job_name   = "cilium-envoy"
+        targets    = discovery.relabel.cilium_envoy.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      discovery.relabel "cilium_operator" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "kube-system;cilium-operator;prometheus"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "cilium_operator" {
+        job_name   = "cilium-operator"
+        targets    = discovery.relabel.cilium_operator.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
+      }
+
+      discovery.relabel "hubble" {
+        targets = discovery.kubernetes.endpoints.targets
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+          regex         = "kube-system;hubble-metrics;hubble-metrics"
+          action        = "keep"
+        }
+      }
+      prometheus.scrape "hubble" {
+        job_name   = "hubble"
+        targets    = discovery.relabel.hubble.output
+        forward_to = [prometheus.remote_write.mimir.receiver]
       }
 
       // ─── Logs: pod stdout tail → Loki ───

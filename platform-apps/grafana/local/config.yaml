@@ -1,0 +1,7 @@
+enabled: "true"
+chart: grafana
+repoURL: https://grafana.github.io/helm-charts
+targetRevision: "8.*"
+namespace: monitoring
+# Same wave as before: comes up alongside other monitoring services.
+syncWave: "0"

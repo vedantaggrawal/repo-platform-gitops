@@ -1,4 +1,11 @@
-enabled: "true"
+# Decomposed into discrete apps (2026-06-21):
+#   - grafana (standalone chart)
+#   - kube-state-metrics, prometheus-node-exporter (standalone)
+#   - mimir.alertmanager.enabled=true (replaces bundled Alertmanager)
+#   - Alloy scrapes targets natively (no ServiceMonitor CRD)
+# ApplicationSet selector drops this app from rotation; Argo prunes
+# its resources (operator, CRDs, old grafana/alertmanager, dashboards).
+enabled: "false"
 chart: kube-prometheus-stack
 repoURL: https://prometheus-community.github.io/helm-charts
 targetRevision: "51.*"

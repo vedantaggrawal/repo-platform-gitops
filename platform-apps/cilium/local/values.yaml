@@ -67,7 +67,9 @@ hubble:
       - icmp:sourceContext=namespace;destinationContext=namespace;labelsContext=source_namespace,source_workload,destination_namespace,destination_workload
       - httpV2:exemplars=true;sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity;labelsContext=source_namespace,source_workload,destination_namespace,destination_workload
     serviceMonitor:
-      enabled: true
+      # CRD removed with kube-prom-stack decommission; Alloy scrapes hubble
+      # directly via discovery.kubernetes endpoints role.
+      enabled: false
     dashboards:
       enabled: true
       namespace: monitoring
@@ -89,20 +91,21 @@ authentication:
     spire:
       enabled: false  # enable when SPIRE server is deployed
 
-# Cilium agent and operator Prometheus metrics + ServiceMonitors
+# Cilium metrics endpoints stay exposed — Alloy scrapes them directly via
+# discovery.kubernetes endpoints role (no ServiceMonitor CRD post-decomp).
 prometheus:
   enabled: true
   serviceMonitor:
-    enabled: true
+    enabled: false
 
 operator:
   prometheus:
     enabled: true
     serviceMonitor:
-      enabled: true
+      enabled: false
 
 envoy:
   prometheus:
     enabled: true
     serviceMonitor:
-      enabled: true
+      enabled: false

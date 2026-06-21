@@ -1,0 +1,15 @@
+# Default DaemonSet on every node, hostPort :9100 named "metrics".
+# Alloy scrapes via discovery.kubernetes endpoints role + filter.
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 24Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# No ServiceMonitor — CRD is being removed; Alloy scrapes natively.
+prometheus:
+  monitor:
+    enabled: false
