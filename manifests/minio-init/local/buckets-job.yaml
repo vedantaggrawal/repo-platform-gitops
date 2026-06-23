@@ -33,7 +33,7 @@ spec:
             - |
               set -eu
               # Wait for MinIO API (up to 60s).
-              for i in $(seq 1 30); do
+              for i in $(seq 1 90); do
                 if mc ls local >/dev/null 2>&1; then
                   echo "MinIO reachable"; break
                 fi
