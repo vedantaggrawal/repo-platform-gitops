@@ -29,9 +29,12 @@ sidecar:
     enabled: true
     searchNamespace: ALL
   datasources:
-    enabled: true
-    searchNamespace: ALL
-    defaultDatasourceEnabled: false   # we provide Mimir as default below
+    # Datasources are provisioned statically below, so sidecar discovery is
+    # off. With searchNamespace: ALL it imported the dev kube-prometheus-stack
+    # `grafana_datasource=1` ConfigMap (Prometheus isDefault:true) from the
+    # shared monitoring namespace, colliding with our Mimir default and
+    # crashing Grafana ("Only one datasource per organization can be default").
+    enabled: false
 
 # LGTM datasources: Mimir (metrics, default), Loki (logs), Tempo (traces).
 # Cross-source jumps: Loki → Tempo via TraceID in log lines; Tempo →
