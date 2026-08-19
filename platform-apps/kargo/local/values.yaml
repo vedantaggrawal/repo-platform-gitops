@@ -1,8 +1,9 @@
 # Kargo — local dev environment.
 #
-# GitOps-first posture: no local admin account and no OIDC yet, so the API runs
-# without an interactive login — manage Kargo resources declaratively via
-# kubectl until an IdP (or admin account) is wired in.
+# Admin account login is enabled. The password hash + token signing key live in
+# the `kargo-admin-creds` Secret (created out-of-band in the kargo namespace, NOT
+# in git, since this values file is public) and are consumed via api.secret.name.
+# Rotate/recreate that Secret to change the admin password.
 #
 # The API is exposed through the Cilium ingress at
 # https://local.kargo.internal:30443 (kind maps container 443 -> host 30443).
@@ -11,7 +12,11 @@
 
 api:
   adminAccount:
-    enabled: false
+    enabled: true
+  # Existing Secret holding ADMIN_ACCOUNT_PASSWORD_HASH and
+  # ADMIN_ACCOUNT_TOKEN_SIGNING_KEY; keeps secret material out of this public repo.
+  secret:
+    name: kargo-admin-creds
 
   host: local.kargo.internal
   # JSON logs so Loki's `| json` parser unpacks fields cleanly, consistent with
@@ -27,6 +32,10 @@ api:
   ingress:
     enabled: true
     ingressClassName: cilium
+    # Cilium/Envoy does not treat ImplementationSpecific "/" as a wildcard, so
+    # only "/" matched and every /assets and /v1beta1 subpath 404'd (blank UI).
+    # Prefix makes "/" match all subpaths.
+    pathType: Prefix
     tls:
       enabled: true
       selfSignedCert: true
