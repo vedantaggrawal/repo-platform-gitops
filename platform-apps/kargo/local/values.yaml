@@ -1,0 +1,48 @@
+# Kargo — local dev environment.
+#
+# GitOps-first posture: no local admin account and no OIDC yet, so the API runs
+# without an interactive login — manage Kargo resources declaratively via
+# kubectl until an IdP (or admin account) is wired in.
+#
+# The API is exposed through the Cilium ingress at
+# https://local.kargo.internal:30443 (kind maps container 443 -> host 30443).
+# Kargo mints its own self-signed certs via cert-manager (CRDs already present),
+# matching how the rest of the platform handles local TLS.
+
+api:
+  adminAccount:
+    enabled: false
+
+  host: local.kargo.internal
+  # JSON logs so Loki's `| json` parser unpacks fields cleanly, consistent with
+  # the rest of the platform (argocd, cert-manager).
+  logFormat: JSON
+
+  # TLS terminates at the ingress; the API server speaks plain HTTP upstream but
+  # still advertises https URLs to clients.
+  tls:
+    enabled: false
+    terminatedUpstream: true
+
+  ingress:
+    enabled: true
+    ingressClassName: cilium
+    tls:
+      enabled: true
+      selfSignedCert: true
+      secretName: kargo-api-ingress-cert
+
+controller:
+  logFormat: JSON
+
+garbageCollector:
+  logFormat: JSON
+
+managementController:
+  logFormat: JSON
+
+webhooksServer:
+  logFormat: JSON
+
+externalWebhooksServer:
+  logFormat: JSON

@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-argocd-repos
+  namespace: argocd
+  annotations:
+    # Earlier than any platform app (kargo is wave 1) so the OCI repository
+    # registration exists before charts that depend on it are pulled.
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/argocd-repos/{{ .Values.env }}
+    directory:
+      recurse: true
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

@@ -1,0 +1,16 @@
+# Registers the public Kargo OCI Helm registry as an Argo CD repository.
+# Without enableOCI, Argo CD v2.10 treats the bare ghcr.io/... URL as a classic
+# HTTPS Helm repo and the chart pull fails. Public registry -> no credentials,
+# so this Secret is safe to keep in git.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kargo-charts-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: kargo-charts
+  type: helm
+  url: ghcr.io/akuity/kargo-charts
+  enableOCI: "true"
