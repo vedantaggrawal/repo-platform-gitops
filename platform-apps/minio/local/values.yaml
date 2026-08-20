@@ -20,10 +20,10 @@ buckets: []
 
 resources:
   requests:
-    cpu: 250m
-    memory: 768Mi
+    cpu: 200m
+    memory: 512Mi
   limits:
-    memory: 768Mi
+    memory: 512Mi
 
 service:
   type: ClusterIP

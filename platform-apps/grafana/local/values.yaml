@@ -11,9 +11,9 @@ grafana.ini:
 resources:
   requests:
     cpu: 200m
-    memory: 512Mi
+    memory: 384Mi
   limits:
-    memory: 512Mi
+    memory: 384Mi
 
 # ServiceAccount with Service access so Loki and Mimir resolve via DNS works
 # the same; no special perms needed for the standalone Grafana.
