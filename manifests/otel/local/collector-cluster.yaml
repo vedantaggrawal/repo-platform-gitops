@@ -24,10 +24,10 @@ spec:
   # can't OOM the node; memory_limiter (below) applies backpressure at 80%.
   resources:
     requests:
-      cpu: 500m
-      memory: 1.5Gi
+      cpu: 250m
+      memory: 512Mi
     limits:
-      memory: 1.5Gi
+      memory: 512Mi
   observability:
     metrics:
       enableMetrics: true
