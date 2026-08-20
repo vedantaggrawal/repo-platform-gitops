@@ -10,6 +10,9 @@ metadata:
 spec:
   mode: statefulset
   replicas: 1
+  # contrib distro — needed for the prometheus receiver + prometheusremotewrite
+  # exporter, which the operator-default opentelemetry-collector-k8s image omits.
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.158.0
   serviceAccount: otel-cluster
   observability:
     metrics:

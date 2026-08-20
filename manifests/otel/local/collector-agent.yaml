@@ -8,6 +8,10 @@ metadata:
   namespace: opentelemetry-operator
 spec:
   mode: daemonset
+  # contrib distro: the operator-default opentelemetry-collector-k8s image omits
+  # prometheusremotewrite (OTLP-only exporters); contrib bundles filelog,
+  # prometheus receiver, k8sattributes and prometheusremotewrite.
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.158.0
   serviceAccount: otel-agent
   # Run as root so filelog can read root-owned /var/log/pods/*/*/*.log.
   securityContext:
