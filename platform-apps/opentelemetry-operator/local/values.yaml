@@ -25,10 +25,9 @@ manager:
 
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 100m
+      memory: 256Mi
     limits:
-      cpu: 200m
       memory: 256Mi
 
 # Load-bearing: use cert-manager for the webhook cert (default, stated explicitly).

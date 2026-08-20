@@ -20,10 +20,9 @@ spec:
   # Bounded; memory_limiter (limit_percentage) works off this limit.
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 200m
+      memory: 512Mi
     limits:
-      cpu: 500m
       memory: 512Mi
   # Run as root so filelog can read root-owned /var/log/pods/*/*/*.log.
   securityContext:

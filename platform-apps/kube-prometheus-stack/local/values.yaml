@@ -11,10 +11,9 @@ alertmanager:
     logFormat: json
     resources:
       requests:
-        cpu: 10m
-        memory: 64Mi
+        cpu: 100m
+        memory: 128Mi
       limits:
-        cpu: 200m
         memory: 128Mi
 
 grafana:
@@ -28,10 +27,9 @@ grafana:
       format: json
   resources:
     requests:
-      cpu: 50m
-      memory: 256Mi
+      cpu: 200m
+      memory: 512Mi
     limits:
-      cpu: 500m
       memory: 512Mi
   sidecar:
     dashboards:

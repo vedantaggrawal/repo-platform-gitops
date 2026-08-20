@@ -4,8 +4,6 @@
 kubeProxyReplacement: true
 
 # Kind-critical: API server reachable by container name since kube-proxy is disabled
-k8sServiceHost: devops-local-control-plane
-k8sServicePort: 6443
 
 # IPAM
 ipam:
