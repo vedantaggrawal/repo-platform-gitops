@@ -80,6 +80,8 @@ overridesExporter: { replicas: 0 }
 gateway:
   enabled: true
   replicas: 1
+  deploymentStrategy:
+    type: Recreate
   resources:
     requests:
       cpu: 100m
