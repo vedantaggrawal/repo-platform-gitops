@@ -20,6 +20,15 @@ spec:
   # informers can't reach the API and hang. Network policy is managed separately.
   networkPolicy:
     enabled: false
+  # Bounded so scraping cadvisor (high-cardinality) + remote_write buffering
+  # can't OOM the node; memory_limiter (below) applies backpressure at 80%.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 192Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
   observability:
     metrics:
       enableMetrics: true
@@ -88,6 +97,10 @@ spec:
                   regex: kube-system;kube-dns;metrics
                   action: keep
     processors:
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
       batch: {}
     exporters:
       prometheusremotewrite/mimir:
@@ -101,5 +114,5 @@ spec:
       pipelines:
         metrics:
           receivers: [prometheus]
-          processors: [batch]
+          processors: [memory_limiter, batch]
           exporters: [prometheusremotewrite/mimir]

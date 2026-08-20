@@ -17,6 +17,14 @@ spec:
   # egress to the apiserver host). Network policy is managed separately.
   networkPolicy:
     enabled: false
+  # Bounded; memory_limiter (limit_percentage) works off this limit.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
   # Run as root so filelog can read root-owned /var/log/pods/*/*/*.log.
   securityContext:
     runAsUser: 0
