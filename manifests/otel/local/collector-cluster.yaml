@@ -1,0 +1,96 @@
+# otel-cluster — StatefulSet + Target Allocator. Replaces Alloy pipelines 1
+# (ServiceMonitor/PodMonitor scrape), 2 (apiserver/kubelet/cadvisor/coredns),
+# and 5 (remote_write to Mimir). The TA discovers the same SM/PM objects Alloy
+# watched and shards them across the collector's prometheus receiver.
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-cluster
+  namespace: opentelemetry-operator
+spec:
+  mode: statefulset
+  replicas: 1
+  serviceAccount: otel-cluster
+  observability:
+    metrics:
+      enableMetrics: true
+  targetAllocator:
+    enabled: true
+    serviceAccount: otel-cluster-ta
+    # Empty selectors = discover every ServiceMonitor/PodMonitor in the cluster
+    # (cilium, hubble, kube-state-metrics, cert-manager, the otel collectors, …).
+    prometheusCR:
+      enabled: true
+      serviceMonitorSelector: {}
+      podMonitorSelector: {}
+  config:
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            # Cluster-component scrapes ported verbatim from Alloy. The Target
+            # Allocator merges these with the SM/PM-derived jobs.
+            - job_name: apiserver
+              kubernetes_sd_configs:
+                - role: endpoints
+              scheme: https
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: true
+              relabel_configs:
+                - source_labels:
+                    - __meta_kubernetes_namespace
+                    - __meta_kubernetes_service_name
+                    - __meta_kubernetes_endpoint_port_name
+                  regex: default;kubernetes;https
+                  action: keep
+            - job_name: kubelet
+              kubernetes_sd_configs:
+                - role: node
+              scheme: https
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: true
+              relabel_configs:
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+            - job_name: cadvisor
+              kubernetes_sd_configs:
+                - role: node
+              scheme: https
+              metrics_path: /metrics/cadvisor
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                insecure_skip_verify: true
+              relabel_configs:
+                - action: labelmap
+                  regex: __meta_kubernetes_node_label_(.+)
+            - job_name: coredns
+              kubernetes_sd_configs:
+                - role: endpoints
+              relabel_configs:
+                - source_labels:
+                    - __meta_kubernetes_namespace
+                    - __meta_kubernetes_service_name
+                    - __meta_kubernetes_endpoint_port_name
+                  regex: kube-system;kube-dns;metrics
+                  action: keep
+    processors:
+      batch: {}
+    exporters:
+      prometheusremotewrite/mimir:
+        endpoint: http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push
+        headers:
+          X-Scope-OrgID: anonymous
+    service:
+      telemetry:
+        logs:
+          encoding: json
+      pipelines:
+        metrics:
+          receivers: [prometheus]
+          processors: [batch]
+          exporters: [prometheusremotewrite/mimir]

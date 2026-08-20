@@ -1,0 +1,35 @@
+# Instrumentation — the "automatic" layer. Workloads opt in with the annotation
+#   instrumentation.opentelemetry.io/inject-<lang>: "opentelemetry-operator/default"
+# and the operator injects the OTel SDK + OTLP env at admission (no code change).
+# One CR here, referenced cross-namespace by name, keeps it reusable everywhere.
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: default
+  namespace: opentelemetry-operator
+spec:
+  # Default (gRPC 4317) target = the node-local agent Service.
+  exporter:
+    endpoint: http://otel-agent-collector.opentelemetry-operator.svc.cluster.local:4317
+  propagators:
+    - tracecontext
+    - baggage
+    - b3
+  # Local dev: sample everything. Lower in prod.
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1.0"
+  # Python, .NET and Go auto-instrumentation default to http/proto and must target
+  # the 4318 HTTP port instead of the 4317 gRPC endpoint above.
+  python:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-agent-collector.opentelemetry-operator.svc.cluster.local:4318
+  dotnet:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-agent-collector.opentelemetry-operator.svc.cluster.local:4318
+  go:
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://otel-agent-collector.opentelemetry-operator.svc.cluster.local:4318

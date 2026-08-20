@@ -1,0 +1,112 @@
+# otel-agent — per-node DaemonSet. Replaces Alloy pipelines 3 (pod-log tail) and
+# 4 (OTLP receiver). Tails /var/log/pods and receives OTLP on 4317/4318, then
+# fans out: logs -> Loki (native OTLP), traces -> Tempo, OTLP metrics -> Mimir.
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-agent
+  namespace: opentelemetry-operator
+spec:
+  mode: daemonset
+  serviceAccount: otel-agent
+  # Run as root so filelog can read root-owned /var/log/pods/*/*/*.log.
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+  # Tolerate all taints so control-plane pod logs are collected too.
+  tolerations:
+    - operator: Exists
+  # Expose the agent's own :8888 telemetry as a ServiceMonitor (metrics only, no
+  # dashboards) so the collector is self-observed via the Target Allocator.
+  observability:
+    metrics:
+      enableMetrics: true
+  volumes:
+    - name: varlogpods
+      hostPath:
+        path: /var/log/pods
+  volumeMounts:
+    - name: varlogpods
+      mountPath: /var/log/pods
+      readOnly: true
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      filelog:
+        include:
+          - /var/log/pods/*/*/*.log
+        # Don't tail our own logs (feedback loop).
+        exclude:
+          - /var/log/pods/opentelemetry-operator_otel-agent*/*/*.log
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        operators:
+          # Auto-detects containerd/CRI/docker format and extracts k8s.* resource
+          # attributes (namespace/pod/container/uid) from the file path.
+          - id: container-parser
+            type: container
+    processors:
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.container.name
+            - k8s.node.name
+            - k8s.deployment.name
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+          - sources:
+              - from: connection
+      batch: {}
+    exporters:
+      # Logs -> Loki 3.x native OTLP endpoint (posts to /otlp/v1/logs). Loki
+      # promotes k8s.* resource attrs to stream labels (k8s_namespace_name, …).
+      otlphttp/loki:
+        endpoint: http://local-loki-gateway.monitoring.svc.cluster.local/otlp
+        headers:
+          X-Scope-OrgID: anonymous
+      # Traces -> Tempo (native OTLP).
+      otlp/tempo:
+        endpoint: local-tempo.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
+      # OTLP app metrics -> Mimir (Prometheus remote_write).
+      prometheusremotewrite/mimir:
+        endpoint: http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push
+        headers:
+          X-Scope-OrgID: anonymous
+        resource_to_telemetry_conversion:
+          enabled: true
+    service:
+      telemetry:
+        logs:
+          encoding: json
+      pipelines:
+        logs:
+          receivers: [filelog, otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [otlphttp/loki]
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [otlp/tempo]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [prometheusremotewrite/mimir]

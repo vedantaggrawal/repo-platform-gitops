@@ -1,0 +1,115 @@
+# Service accounts + RBAC for the OTel collectors, replacing manifests/alloy-rbac.
+# Three SAs, least-privilege per role:
+#   otel-agent      — DaemonSet; k8sattributes enrichment (read pods/namespaces/…)
+#   otel-cluster    — StatefulSet collector; authenticates the kubelet/cadvisor/
+#                     apiserver/coredns scrapes with its SA token
+#   otel-cluster-ta — Target Allocator; discovers ServiceMonitors/PodMonitors + SD
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-agent
+  namespace: opentelemetry-operator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-cluster
+  namespace: opentelemetry-operator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-cluster-ta
+  namespace: opentelemetry-operator
+---
+# Agent: k8sattributes processor enrichment of OTLP + filelog telemetry.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-agent
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-agent
+subjects:
+  - kind: ServiceAccount
+    name: otel-agent
+    namespace: opentelemetry-operator
+---
+# Cluster collector: same node-scrape surface Alloy had (manifests/alloy-rbac).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-cluster
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - nodes/proxy
+      - nodes/stats
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs:
+      - /metrics
+      - /metrics/cadvisor
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-cluster
+subjects:
+  - kind: ServiceAccount
+    name: otel-cluster
+    namespace: opentelemetry-operator
+---
+# Target Allocator: read Prometheus CRs + run service discovery for their targets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-cluster-ta
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "endpoints", "services", "pods", "nodes", "nodes/metrics"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "podmonitors", "probes", "scrapeconfigs"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-cluster-ta
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-cluster-ta
+subjects:
+  - kind: ServiceAccount
+    name: otel-cluster-ta
+    namespace: opentelemetry-operator
