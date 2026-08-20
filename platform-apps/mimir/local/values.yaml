@@ -83,9 +83,9 @@ ingester:
   resources:
     requests:
       cpu: 250m
-      memory: 1.2Gi
+      memory: 1280Mi
     limits:
-      memory: 1.2Gi
+      memory: 1280Mi
 
 querier:
   replicas: 1

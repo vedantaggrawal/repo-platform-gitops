@@ -54,9 +54,9 @@ singleBinary:
   resources:
     requests:
       cpu: 250m
-      memory: 1Gi
+      memory: 1024Mi
     limits:
-      memory: 1Gi
+      memory: 1024Mi
 
 # Disable everything that doesn't apply to SingleBinary.
 write: { replicas: 0 }
