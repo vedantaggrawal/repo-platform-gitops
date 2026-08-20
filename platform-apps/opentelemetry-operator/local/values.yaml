@@ -14,6 +14,15 @@ manager:
   extraArgs:
     - --zap-encoder=json
 
+  # Disable operator- AND operand-generated NetworkPolicies. The operand NP for
+  # the Target Allocator allows apiserver egress only via an ipBlock to the node
+  # IP:6443, which Cilium (kube-proxy-replacement) treats as the `host` entity and
+  # an ipBlock cannot match — so the TA's informers can't reach the API and
+  # crashloop. Network policy is managed separately in this cluster.
+  featureGatesMap:
+    operator.networkpolicy: false
+    operand.networkpolicy: false
+
   resources:
     requests:
       cpu: 50m
