@@ -35,10 +35,10 @@ tempo:
           endpoint: 0.0.0.0:4318
   resources:
     requests:
-      cpu: 250m
-      memory: 768Mi
+      cpu: 500m
+      memory: 1.5Gi
     limits:
-      memory: 768Mi
+      memory: 1.5Gi
 
 persistence:
   enabled: true

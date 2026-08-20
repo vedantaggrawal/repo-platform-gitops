@@ -53,10 +53,10 @@ singleBinary:
     storageClass: standard
   resources:
     requests:
-      cpu: 250m
-      memory: 1Gi
+      cpu: 500m
+      memory: 2Gi
     limits:
-      memory: 1Gi
+      memory: 2Gi
 
 # Disable everything that doesn't apply to SingleBinary.
 write: { replicas: 0 }
@@ -84,10 +84,10 @@ gateway:
     type: Recreate
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 200m
+      memory: 256Mi
     limits:
-      memory: 128Mi
+      memory: 256Mi
 
 # Disable bundled MinIO, monitoring, canaries, tests, memcached.
 minio:
