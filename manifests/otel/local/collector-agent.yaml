@@ -13,6 +13,10 @@ spec:
   # prometheus receiver, k8sattributes and prometheusremotewrite.
   image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.158.0
   serviceAccount: otel-agent
+  # Disable the operator-generated NetworkPolicy (Cilium-incompatible ipBlock
+  # egress to the apiserver host). Network policy is managed separately.
+  networkPolicy:
+    enabled: false
   # Run as root so filelog can read root-owned /var/log/pods/*/*/*.log.
   securityContext:
     runAsUser: 0

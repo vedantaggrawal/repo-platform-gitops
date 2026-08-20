@@ -14,6 +14,12 @@ spec:
   # exporter, which the operator-default opentelemetry-collector-k8s image omits.
   image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.158.0
   serviceAccount: otel-cluster
+  # Disable the operator-generated NetworkPolicy: its egress rule is an ipBlock to
+  # the apiserver node IP (172.18.0.2:6443), which Cilium treats as the special
+  # `host` entity and an ipBlock cannot match — so the Target Allocator's
+  # informers can't reach the API and hang. Network policy is managed separately.
+  networkPolicy:
+    enabled: false
   observability:
     metrics:
       enableMetrics: true
