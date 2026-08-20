@@ -129,6 +129,14 @@ New/changed files in `repo-platform-gitops`:
 5. **Demo annotation:** add `instrumentation.opentelemetry.io/inject-<lang>: "true"` to the
    `devops-test-webserver` pod template (in `repo-app-gitops`, its owning repo) — flagged as a
    follow-up commit in that repo, not this one.
+6. **Collector self-monitoring (net-new vs Alloy).** Each collector exposes internal metrics on
+   `:8888` (`otelcol_*`, e.g. `otelcol_receiver_refused_spans`, `otelcol_exporter_queue_size`).
+   Enable `spec.observability.metrics.enableMetrics: true` on both `OpenTelemetryCollector` CRs
+   (the operator then emits a matching `ServiceMonitor`, auto-discovered by the Target Allocator)
+   → Mimir. Ship the **official** OTel Collector dashboards as `grafana_dashboard=1` ConfigMaps
+   under `manifests/otel/local/dashboards/`: Grafana.com **18309** ("OpenTelemetry Collector Data
+   Flow", from the OTel demo) and **15983** ("OpenTelemetry Collector"). Alloy ran unobserved;
+   this closes that gap.
 
 ### Ordering / sync waves
 `cert-manager (-2)` → `opentelemetry-operator (-1)` → operator Deployment + webhook Healthy →
@@ -138,12 +146,17 @@ where both may run — acceptable (double-writes are idempotent to Mimir/Loki/Te
 
 ## Trade-offs & risks
 
-- **Log label shape changes.** Alloy's `loki.source.kubernetes` set Loki index labels
-  `namespace/pod/container/node`. The OTel path sends OTLP; Loki maps resource attributes to
-  **structured metadata**, and only a small set become stream labels. LogQL like
-  `{namespace="x"}` may need to become `{service_name="x"} | k8s_namespace_name="x"` or Loki
-  `otlp_config` label hints. **Mitigation:** set Loki `limits_config.otlp_config` to promote
-  `k8s.namespace.name`,`k8s.pod.name`,`k8s.container.name` to stream labels, preserving current queries.
+- **Log label *names* change — verified low-impact.** Alloy set Loki stream labels
+  `namespace/pod/container/node`. Under OTLP, Loki 3.x **already promotes**
+  `k8s.namespace.name`, `k8s.pod.name`, `k8s.container.name`, `service.name` (and other k8s.*
+  attrs) to stream labels **by default** (`distributor.otlp_config.default_resource_attributes_as_index_labels`,
+  which ships ~18 attrs incl. these); everything else becomes structured metadata. So indexing
+  is **not** lost — the change is the label *name* (`namespace` → `k8s_namespace_name`).
+  **Dashboard impact: none.** The Grafana sidecar loads 34 dashboards (kube-prometheus-stack,
+  Hubble, pgbouncer) — all metrics-based; **zero** query Loki (verified against the live
+  `grafana_dashboard=1` ConfigMaps). Only ad-hoc LogQL habits change. **Optional (not on the
+  critical path):** override `limits_config.otlp_config` to alias `k8s_namespace_name`→`namespace`
+  etc. if identical explore syntax is wanted. Loki's 15-index-label cap applies if customizing.
 - **`loki` exporter is removed** from current collector builds — using `otlphttp` to Loki's
   native endpoint is the only supported path (already assumed above).
 - **Target Allocator is another moving part** (extra StatefulSet + RBAC). Failure mode is
@@ -160,10 +173,13 @@ where both may run — acceptable (double-writes are idempotent to Mimir/Loki/Te
 2. `otel-agent` DaemonSet on both nodes; `otel-cluster` StatefulSet + TA pods Ready.
 3. Mimir has fresh samples for `apiserver`, `kubelet`, `cadvisor`, `coredns` jobs and for a
    chart ServiceMonitor target (e.g. cert-manager) — query Grafana Explore/Mimir.
-4. Loki shows pod logs with promoted `k8s_namespace_name` label; a known LogQL query returns rows.
+4. Loki shows pod logs with the default-promoted `k8s_namespace_name`/`k8s_pod_name`/
+   `k8s_container_name` stream labels; `{k8s_namespace_name="monitoring"}` returns rows.
 5. Annotate `devops-test-webserver`; confirm the operator injected an init container + OTEL env,
    and Tempo shows a trace for a request to it (TraceQL by `service.name`).
-6. Alloy Deployment/DaemonSet gone; no scrape/log gaps in Grafana across the cutover.
+6. Collector `:8888` metrics land in Mimir and dashboards 18309/15983 render (receiver/exporter
+   rates, queue sizes) — the collectors are self-observed.
+7. Alloy Deployment/DaemonSet gone; no scrape/log gaps in Grafana across the cutover.
 
 ## Rollback
 
