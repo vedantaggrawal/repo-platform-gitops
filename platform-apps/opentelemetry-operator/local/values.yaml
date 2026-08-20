@@ -1,0 +1,28 @@
+# OpenTelemetry Operator — manages the collectors + auto-instrumentation that
+# replace Alloy as the unified telemetry collector.
+#
+# - Admission webhook certs are issued by cert-manager (already installed).
+# - Default collector image is opentelemetry-collector-k8s, which bundles the
+#   contrib components this migration needs (filelog, k8sattributes,
+#   prometheusremotewrite) — no override required.
+# - The chart installs the OpenTelemetryCollector / Instrumentation / TargetAllocator
+#   CRDs (crds.create defaults true); the collector CRs live in manifests/otel/local.
+
+manager:
+  # JSON logs so Loki's `| json` parser unpacks fields, matching the rest of the
+  # platform (argocd, cert-manager, alloy).
+  extraArgs:
+    - --zap-encoder=json
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Load-bearing: use cert-manager for the webhook cert (default, stated explicitly).
+admissionWebhooks:
+  certManager:
+    enabled: true

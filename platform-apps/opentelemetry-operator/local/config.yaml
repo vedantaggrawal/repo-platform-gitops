@@ -1,0 +1,9 @@
+enabled: "true"
+chart: opentelemetry-operator
+repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+targetRevision: "0.122.*"
+namespace: opentelemetry-operator
+# After cert-manager (-2): the operator's admission webhook cert is issued by
+# cert-manager, and its CRDs must exist before the collector/Instrumentation
+# manifests (app-otel, sync-wave 2) apply.
+syncWave: "-1"
