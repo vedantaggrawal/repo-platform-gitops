@@ -1,0 +1,8 @@
+enabled: "true"
+chart: keycloakx
+repoURL: https://codecentric.github.io/helm-charts
+targetRevision: "7.*"
+namespace: keycloak
+# After cert-manager (-2): the ingress requests a cert from the `selfsigned`
+# ClusterIssuer, so cert-manager and its CRDs must be up first. Same wave as Kargo.
+syncWave: "1"

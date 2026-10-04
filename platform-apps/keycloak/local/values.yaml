@@ -1,0 +1,95 @@
+# Keycloak (codecentric keycloakx chart) — local dev environment.
+#
+# Runs in DEV MODE (`start-dev`) with the embedded H2 database: ephemeral, no
+# external DB, relaxed hostname checks. Data is LOST on pod restart — this is a
+# local auth lab, not a persistent IdP. For a prod-like setup, drop start-dev
+# and point `database:` at a real Postgres.
+#
+# The admin bootstrap credentials live in the `keycloak-admin-creds` Secret
+# (created out-of-band in the keycloak namespace, NOT in git, since this values
+# file is public), consumed below via extraEnv secretKeyRef. Create it before
+# the first sync:
+#
+#   kubectl create ns keycloak
+#   kubectl -n keycloak create secret generic keycloak-admin-creds \
+#     --from-literal=username=admin --from-literal=password=<pick-one>
+#
+# The console is exposed through the Cilium ingress at
+# https://local.keycloak.internal:30443 (kind maps container 443 -> host 30443).
+# cert-manager mints a self-signed cert via the `selfsigned` ClusterIssuer,
+# matching how the rest of the platform handles local TLS.
+
+replicas: 1
+
+# Dev mode: embedded H2, HTTP enabled, hostname checks relaxed. Overrides the
+# chart's default `kc.sh start` (which would demand a DB + strict hostname).
+command:
+  - "/opt/keycloak/bin/kc.sh"
+args:
+  - "start-dev"
+
+# Modern Keycloak serves at root; cleaner than the chart's legacy /auth default.
+http:
+  relativePath: "/"
+
+# TLS terminates at the Cilium ingress (Envoy), which emits X-Forwarded-* headers
+# — so `xforwarded`, not the chart default `forwarded`. This drives KC_PROXY_HEADERS
+# and (via proxy.http.enabled, already true by default) KC_HTTP_ENABLED so Keycloak
+# builds correct https:// redirect URLs. (The legacy KC_PROXY var is removed in 26.)
+proxy:
+  mode: xforwarded
+
+# start-dev forces a local cache. Suppress the chart's default ispn/jdbc-ping stack
+# (`custom` = no automatic cache config) — jdbc-ping needs a DB we don't have here.
+cache:
+  stack: custom
+
+extraEnv: |
+  # Keycloak 26 bootstrap admin vars (the legacy KEYCLOAK_ADMIN_* are deprecated).
+  - name: KC_BOOTSTRAP_ADMIN_USERNAME
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin-creds
+        key: username
+  - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin-creds
+        key: password
+  # JSON logs so Loki's `| json` parser unpacks fields cleanly, consistent with
+  # the rest of the platform (grafana, kargo, argocd, cert-manager).
+  - name: KC_LOG_CONSOLE_OUTPUT
+    value: "json"
+
+# JVM auth server — give it headroom. Memory limit only (no CPU limit), matching
+# the platform convention of guaranteeing requests but not throttling CPU.
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
+
+ingress:
+  enabled: true
+  ingressClassName: cilium
+  annotations:
+    cert-manager.io/cluster-issuer: selfsigned
+  rules:
+    - host: local.keycloak.internal
+      # Cilium/Envoy needs Prefix for "/" to match all subpaths (/admin, /realms,
+      # /resources); ImplementationSpecific only matched "/" and 404'd the rest.
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: keycloak-tls
+      hosts:
+        - local.keycloak.internal
+
+# Expose /metrics; Alloy scrapes via explicit prometheus.scrape like the rest of
+# the platform, so the chart's ServiceMonitor stays off.
+metrics:
+  enabled: true
+serviceMonitor:
+  enabled: false
