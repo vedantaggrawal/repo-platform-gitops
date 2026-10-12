@@ -1,0 +1,49 @@
+# Argo CD Image Updater — watches the registries behind the repo-app-gitops apps and
+# commits new image tags back to git (write-back method: git), so Argo CD syncs them
+# normally. Keeps git authoritative and avoids fighting selfHeal on every app.
+#
+# Runs in DIRECT KUBERNETES MODE: it reads Application CRs straight from the cluster
+# API, so no Argo CD API server token/account is needed.
+#
+# Per-app targeting lives in repo-app-gitops (annotations on each Application); see
+# the plan. Write-back pushes to repo-app-gitops using an out-of-band Secret created
+# in the argocd namespace (NOT in git):
+#   kubectl -n argocd create secret generic argocd-image-updater-git \
+#     --from-literal=username=<git-user> --from-literal=password=<PAT-with-repo-write>
+
+image:
+  # Pin to the chart's appVersion rather than drifting with latest.
+  tag: "v1.3.0"
+
+# Read Application CRs via the Kubernetes API instead of the Argo CD API (no token).
+extraArgs:
+  - "--applications-api=kubernetes"
+
+config:
+  log.level: info
+  # Identity used for write-back commits to repo-app-gitops.
+  git.user: argocd-image-updater
+  git.email: argocd-image-updater@codaxy.local
+  git.commit-message-template: |
+    build: automatic update of {{ .AppName }}
+
+    {{ range .AppChanges -}}
+    updates image {{ .Image }} tag '{{ .OldTag }}' to '{{ .NewTag }}'
+    {{ end -}}
+  # Private registries would be listed here with credential refs; public
+  # Docker Hub / ghcr need no entry.
+  registries: []
+
+# Expose /metrics; Alloy scrapes via explicit prometheus.scrape like the rest of
+# the platform, so the chart ServiceMonitor stays off.
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
