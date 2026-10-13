@@ -76,6 +76,9 @@ spec:
               - set(attributes["env"], body["metadata"]["namespace"])
               - set(attributes["configmap"], body["metadata"]["name"])
               - set(attributes["app"], body["metadata"]["labels"]["app"])
+              # service.namespace is indexed by Loki -> enumerable service_namespace
+              # label that drives the dashboard's dynamic $app row-repeat.
+              - set(resource.attributes["service.namespace"], body["metadata"]["labels"]["app"])
               # Generic: parse + flatten the whole config tree to dotted keys; every
               # leaf becomes an attribute. Works for ANY schema, captures new keys as
               # config grows — no per-path list to maintain.
