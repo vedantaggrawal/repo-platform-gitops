@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-config-drift
+  namespace: argocd
+  annotations:
+    # After the OTel collector app (sync-wave 2): needs the OpenTelemetry Operator +
+    # CRDs present to reconcile the config-drift OpenTelemetryCollector.
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/config-drift/{{ .Values.env }}
+    directory:
+      recurse: true
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: opentelemetry-operator
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

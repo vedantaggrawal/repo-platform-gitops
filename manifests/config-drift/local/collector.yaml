@@ -1,0 +1,100 @@
+# Config-drift collector — scans ConfigMaps labelled config-drift/track=true across
+# ALL namespaces (opt-in by label), parses the nested JSON config generically
+# (flatten → one attribute per leaf, no per-schema list), tags env/app/cluster, and
+# ships to Loki. Grafana compares values side-by-side per app across envs.
+#
+# NOTE (prod): Loki indexes only a fixed set of resource attributes as stream labels;
+# everything here except service.name/k8s.namespace.name is structured metadata. Pin
+# Loki's limits_config.otlp_config to make the label/metadata split deterministic and
+# to keep high-cardinality values (URLs, client ids) OUT of the index.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-configdrift
+  namespace: opentelemetry-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-configdrift-configmaps
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-configdrift-configmaps
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-configdrift-configmaps
+subjects:
+  - kind: ServiceAccount
+    name: otel-configdrift
+    namespace: opentelemetry-operator
+---
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-configdrift
+  namespace: opentelemetry-operator
+spec:
+  mode: deployment
+  replicas: 1
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.158.0
+  serviceAccount: otel-configdrift
+  networkPolicy:
+    enabled: false
+  config:
+    receivers:
+      k8sobjects:
+        objects:
+          - name: configmaps
+            mode: pull
+            interval: 60s
+            # Opt-in by label, all namespaces: any tracked ConfigMap in any namespace
+            # is discovered with no config change.
+            label_selector: config-drift/track=true
+    processors:
+      resource/cluster:
+        attributes:
+          - key: cluster
+            value: local
+            action: upsert
+          # service.name is indexed by Loki -> stable namespace-agnostic selector
+          # {service_name="config-drift"} for the dashboard.
+          - key: service.name
+            value: config-drift
+            action: upsert
+      transform/configdrift:
+        error_mode: ignore
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["env"], body["metadata"]["namespace"])
+              - set(attributes["configmap"], body["metadata"]["name"])
+              - set(attributes["app"], body["metadata"]["labels"]["app"])
+              # Generic: parse + flatten the whole config tree to dotted keys; every
+              # leaf becomes an attribute. Works for ANY schema, captures new keys as
+              # config grows — no per-path list to maintain.
+              - set(cache["cfg"], ParseJSON(body["data"]["appsettings.json"]))
+              - flatten(cache["cfg"])
+              - delete_matching_keys(cache["cfg"], "^(Logging|AllowedHosts)")
+              - merge_maps(attributes, cache["cfg"], "upsert")
+      batch: {}
+    exporters:
+      otlphttp/loki:
+        endpoint: http://local-loki-gateway.monitoring.svc.cluster.local/otlp
+        headers:
+          X-Scope-OrgID: anonymous
+    service:
+      telemetry:
+        logs:
+          encoding: json
+      pipelines:
+        logs:
+          receivers: [k8sobjects]
+          processors: [resource/cluster, transform/configdrift, batch]
+          exporters: [otlphttp/loki]
