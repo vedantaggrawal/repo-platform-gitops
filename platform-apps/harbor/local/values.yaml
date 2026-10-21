@@ -1,0 +1,170 @@
+# Harbor (goharbor/harbor chart) — local dev environment.
+#
+# Internal Postgres + Redis, filesystem blob storage on `standard` PVCs. For a
+# prod-like setup, point database/redis at external instances and
+# persistence.imageChartStorage at S3 (MinIO is already in-cluster).
+#
+# Every secret the chart would otherwise generate at render time (randAlphaNum /
+# genCA / htpasswd) is supplied from ONE out-of-band Secret, `harbor-secrets`.
+# The chart relies on Helm `lookup` to keep those stable across upgrades; Argo CD
+# renders with `helm template` (no lookup), so without this every refresh would
+# mint new secrets -> permanent OutOfSync + core/jobservice/registry restarts.
+# Not in git since this values file is public. Create it before the first sync:
+#
+#   kubectl create ns harbor
+#   openssl req -x509 -newkey rsa:4096 -nodes -days 3650 -subj "/CN=harbor-token-ca" \
+#     -keyout /tmp/harbor-token.key -out /tmp/harbor-token.crt
+#   kubectl -n harbor create secret generic harbor-secrets \
+#     --from-literal=HARBOR_ADMIN_PASSWORD=<pick-one> \
+#     --from-literal=secretKey=$(openssl rand -hex 8) \
+#     --from-literal=secret=$(openssl rand -hex 8) \
+#     --from-literal=CSRF_KEY=$(openssl rand -hex 16) \
+#     --from-literal=JOBSERVICE_SECRET=$(openssl rand -hex 8) \
+#     --from-literal=REGISTRY_HTTP_SECRET=$(openssl rand -hex 8) \
+#     --from-literal=REGISTRY_PASSWD=<registry-pw> \
+#     --from-literal=REGISTRY_HTPASSWD="$(htpasswd -nbB harbor_registry_user <registry-pw>)" \
+#     --from-file=tls.key=/tmp/harbor-token.key \
+#     --from-file=tls.crt=/tmp/harbor-token.crt
+#
+# (secretKey/secret/JOBSERVICE_SECRET/REGISTRY_HTTP_SECRET must be exactly 16
+# chars, CSRF_KEY exactly 32 — hence hex 8 / hex 16.)
+#
+# UI + registry are exposed through the Cilium ingress at
+# https://local.harbor.internal:30443 (kind maps container 443 -> host 30443).
+# cert-manager mints a self-signed cert via the `selfsigned` ClusterIssuer.
+# `docker login` against it needs the host in Docker's insecure-registries (or
+# the cert trusted), since the cert is self-signed.
+
+externalURL: https://local.harbor.internal:30443
+
+expose:
+  type: ingress
+  tls:
+    enabled: true
+    # cert-manager owns the cert; `auto` would genCA on every render (drift).
+    certSource: secret
+    secret:
+      secretName: harbor-tls
+  ingress:
+    className: cilium
+    hosts:
+      core: local.harbor.internal
+    annotations:
+      cert-manager.io/cluster-issuer: selfsigned
+      # Drop the chart's nginx-specific defaults; meaningless on Cilium.
+      ingress.kubernetes.io/ssl-redirect: null
+      ingress.kubernetes.io/proxy-body-size: null
+      nginx.ingress.kubernetes.io/ssl-redirect: null
+      nginx.ingress.kubernetes.io/proxy-body-size: null
+
+# --- Secrets: all from harbor-secrets (see header) ---
+existingSecretAdminPassword: harbor-secrets
+existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+existingSecretSecretKey: harbor-secrets
+core:
+  existingSecret: harbor-secrets
+  existingXsrfSecret: harbor-secrets
+  existingXsrfSecretKey: CSRF_KEY
+  # Token-signing keypair (tls.key/tls.crt); unset -> genCA per render.
+  secretName: harbor-secrets
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+jobservice:
+  existingSecret: harbor-secrets
+  existingSecretKey: JOBSERVICE_SECRET
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+registry:
+  existingSecret: harbor-secrets
+  existingSecretKey: REGISTRY_HTTP_SECRET
+  credentials:
+    username: harbor_registry_user
+    existingSecret: harbor-secrets
+  registry:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+  controller:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+portal:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+trivy:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+database:
+  type: internal
+  internal:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+
+redis:
+  type: internal
+  internal:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+persistence:
+  enabled: true
+  # Chart default "keep" leaves PVCs behind on uninstall; fine for a lab.
+  resourcePolicy: "keep"
+  persistentVolumeClaim:
+    registry:
+      storageClass: standard
+      size: 20Gi
+    jobservice:
+      jobLog:
+        storageClass: standard
+        size: 1Gi
+    database:
+      storageClass: standard
+      size: 2Gi
+    redis:
+      storageClass: standard
+      size: 1Gi
+    trivy:
+      storageClass: standard
+      size: 5Gi
+
+# Expose /metrics (core/registry/jobservice/exporter on :8001); Alloy scrapes via
+# explicit prometheus.scrape like the rest of the platform, so ServiceMonitor off.
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
