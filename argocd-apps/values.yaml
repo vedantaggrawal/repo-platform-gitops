@@ -2,3 +2,9 @@
 env: dev
 cluster: https://kubernetes.default.svc
 prune: true
+
+# Envs that have raw manifests in this repo (manifests/<name>/<env>/,
+# network-policies/<env>/). The app-*.yaml Applications render only for these
+# envs; elsewhere they would point at a missing path (ComparisonError).
+rawManifestEnvs:
+  - local
