@@ -1,1 +1,20 @@
 # Dev-specific overrides for kube-prometheus-stack
+
+# kind: kube-scheduler, kube-controller-manager and etcd listen on 127.0.0.1
+# inside the control-plane container, and Cilium replaces kube-proxy, so these
+# targets can never be scraped. Their monitors only produced permanent
+# TargetDown/*Down alerts. Disabling a component also drops its rules.
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+defaultRules:
+  disabled:
+    # kind nodes have no NTP sync (node_timex_sync_status is always 0).
+    NodeClockNotSynchronising: true
+    NodeClockSkewDetected: true
