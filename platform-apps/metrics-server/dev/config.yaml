@@ -1,4 +1,8 @@
-enabled: "true"
+# Disabled: on kind-local-01 the dev and local roots share one cluster, and the
+# chart's fixed-name APIService v1beta1.metrics.k8s.io and ClusterRole
+# system:metrics-server-aggregated-reader were claimed by both apps (ownership
+# flapped every sync). local-metrics-server is the sole owner.
+enabled: "false"
 chart: metrics-server
 repoURL: https://kubernetes-sigs.github.io/metrics-server/
 targetRevision: "3.11.*"
