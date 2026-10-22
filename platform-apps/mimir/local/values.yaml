@@ -71,7 +71,14 @@ alertmanager:
 
 distributor:
   replicas: 1
-  resources: *resourcesSmall
+  # Own block, not *resourcesSmall: at 128Mi the distributor OOMKilled under
+  # remote_write load from Alloy/OTel, so every push failed.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
 
 ingester:
   replicas: 1
@@ -80,12 +87,15 @@ ingester:
   persistentVolume:
     size: 5Gi
     storageClass: standard
+  # WAL replay on startup needs far more than steady state: at 1280Mi the
+  # ingester OOMKilled ~26% into replay and never became Ready, so Mimir
+  # ingested nothing. request == limit so the scheduler reserves it.
   resources:
     requests:
       cpu: 250m
-      memory: 1280Mi
+      memory: 4096Mi
     limits:
-      memory: 1280Mi
+      memory: 4096Mi
 
 querier:
   replicas: 1
