@@ -1,4 +1,7 @@
-enabled: "true"
+# Disabled: nothing uses it (no ImageUpdater resources or image-updater
+# annotations anywhere), and the --applications-api flag in values.yaml is
+# rejected by this image, so it crashlooped. Fix values.yaml before re-enabling.
+enabled: "false"
 chart: argocd-image-updater
 repoURL: https://argoproj.github.io/argo-helm
 targetRevision: "1.3.*"
