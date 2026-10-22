@@ -82,6 +82,12 @@ gateway:
   replicas: 1
   deploymentStrategy:
     type: Recreate
+  # Server-side apply can't switch the live Deployment to Recreate: the
+  # apiserver-defaulted rollingUpdate block has no field owner, so it is never
+  # removed and validation rejects Recreate + rollingUpdate. Replace=true makes
+  # Argo CD replace this one object (takes precedence over ServerSideApply).
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
   resources:
     requests:
       cpu: 200m
