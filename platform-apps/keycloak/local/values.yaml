@@ -1,9 +1,9 @@
 # Keycloak (codecentric keycloakx chart) — local dev environment.
 #
-# Runs in DEV MODE (`start-dev`) with the embedded H2 database: ephemeral, no
-# external DB, relaxed hostname checks. Data is LOST on pod restart — this is a
-# local auth lab, not a persistent IdP. For a prod-like setup, drop start-dev
-# and point `database:` at a real Postgres.
+# Runs in production mode (`start`) on a CloudNativePG Postgres cluster
+# (manifests/keycloak-db; the operator generates the credentials), so realms, clients and
+# users survive pod restarts. (start-dev's embedded H2 lost everything on every
+# restart, which made it unusable as the platform's OIDC provider.)
 #
 # The admin bootstrap credentials live in the `keycloak-admin-creds` Secret
 # (created out-of-band in the keycloak namespace, NOT in git, since this values
@@ -21,12 +21,24 @@
 
 replicas: 1
 
-# Dev mode: embedded H2, HTTP enabled, hostname checks relaxed. Overrides the
-# chart's default `kc.sh start` (which would demand a DB + strict hostname).
 command:
   - "/opt/keycloak/bin/kc.sh"
 args:
-  - "start-dev"
+  - "start"
+
+database:
+  vendor: postgres
+  hostname: keycloak-db-rw
+  port: 5432
+  database: keycloak
+  username: keycloak
+  existingSecret: keycloak-db-app
+  existingSecretKey: password
+
+# Wait for Postgres before starting Keycloak (no ordering between the
+# keycloak-db app and this one).
+dbchecker:
+  enabled: true
 
 # Modern Keycloak serves at root; cleaner than the chart's legacy /auth default.
 http:
@@ -39,8 +51,8 @@ http:
 proxy:
   mode: xforwarded
 
-# start-dev forces a local cache. Suppress the chart's default ispn/jdbc-ping stack
-# (`custom` = no automatic cache config) — jdbc-ping needs a DB we don't have here.
+# Single replica: local cache. `custom` suppresses the chart's ispn/jdbc-ping
+# cluster stack; KC_CACHE=local below selects the local cache explicitly.
 cache:
   stack: custom
 
@@ -60,6 +72,14 @@ extraEnv: |
   # the rest of the platform (grafana, kargo, argocd, cert-manager).
   - name: KC_LOG_CONSOLE_OUTPUT
     value: "json"
+  - name: KC_CACHE
+    value: "local"
+  # Pin the public URL *including the external port*. kind maps host 30443 ->
+  # container 443, but Envoy forwards X-Forwarded-Port: 443, so Keycloak otherwise
+  # builds issuer/redirect URLs without :30443 and the admin console's OIDC calls
+  # hit :443 (unmapped) and hang. A full-URL KC_HOSTNAME overrides that.
+  - name: KC_HOSTNAME
+    value: "https://local.keycloak.internal:30443"
 
 # JVM auth server — give it headroom. Memory limit only (no CPU limit), matching
 # the platform convention of guaranteeing requests but not throttling CPU.

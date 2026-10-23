@@ -1,0 +1,36 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-keycloak-db
+  namespace: argocd
+  annotations:
+    # Keycloak's database. The keycloak app comes from the platform ApplicationSet,
+    # so waves don't order the two; Keycloak's dbchecker init container waits for
+    # this database instead.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/keycloak-db/{{ .Values.env }}
+    directory:
+      recurse: true
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: keycloak
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
