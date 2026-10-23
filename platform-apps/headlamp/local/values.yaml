@@ -62,3 +62,22 @@ volumeMounts:
 # Bump to restart Headlamp after headlamp-oidc changes (env is read at start only).
 podAnnotations:
   oidc-generation: "1"
+
+# Kubernetes RBAC for OIDC users (apiserver claim prefix `oidc:`). Inert until the
+# apiserver accepts Keycloak tokens. Admins only: platform-viewers is the realm's
+# default group and GitHub login auto-creates users, so binding `view` to it
+# would open read access to any GitHub account.
+extraManifests:
+  - |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: oidc-platform-admins
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: cluster-admin
+    subjects:
+      - apiGroup: rbac.authorization.k8s.io
+        kind: Group
+        name: "oidc:platform-admins"
