@@ -1,0 +1,42 @@
+# Grafana's local admin (break-glass; normal login is Keycloak SSO). ESO
+# generates the password once (refreshPolicy CreatedOnce) and owns Secret
+# grafana-admin. Lives in this non-ServerSideApply app because ESO custom
+# resources in the SSA platform apps crash Argo CD 2.10's diff.
+# Read it with:
+#   kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  length: 32
+  digits: 6
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: grafana-admin
+    creationPolicy: Owner
+    template:
+      data:
+        admin-user: admin
+        admin-password: "{{ .password }}"
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: grafana-admin
