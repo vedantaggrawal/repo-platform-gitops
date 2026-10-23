@@ -58,6 +58,39 @@ consoleIngress:
       hosts:
         - local.minio.internal
 
+# Console login through Keycloak (realm `platform`, confidential client `minio`).
+# The `policy` claim carries MinIO policy names: Keycloak gives members of
+# platform-admins the minio client role `consoleAdmin`. Other users get no policy
+# claim, so MinIO refuses them (readonly would expose every bucket, including the
+# observability data). Break-glass: the root user (Secret minio-root).
+# The issuer URL resolves in-cluster through the CoreDNS rewrite to the
+# keycloak-issuer Service. If discovery fails, MinIO logs a warning and starts
+# without OpenID; S3 and the root login are unaffected.
+oidc:
+  enabled: true
+  configUrl: https://local.keycloak.internal:30443/realms/platform/.well-known/openid-configuration
+  clientId: minio
+  # From OpenBao via manifests/minio-init (ExternalSecret minio-oidc). The pod
+  # does not start until this Secret exists.
+  existingClientSecretName: minio-oidc
+  existingClientSecretKey: client_secret
+  claimName: policy
+  scopes: "openid,profile,email"
+  redirectUri: https://local.minio.internal:30443/oauth_callback
+  displayName: Keycloak
+
+# Trust platform-ca for the issuer. MinIO loads every certificate in
+# <certsPath>/CAs at start. Optional: MinIO starts even without the ConfigMap.
+extraVolumes:
+  - name: platform-ca
+    configMap:
+      name: platform-ca-bundle
+      optional: true
+extraVolumeMounts:
+  - name: platform-ca
+    mountPath: /etc/minio/certs/CAs
+    readOnly: true
+
 # Disable the metrics scrape job until Alloy is in place (phase 5).
 metrics:
   serviceMonitor:

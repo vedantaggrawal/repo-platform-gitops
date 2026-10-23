@@ -39,6 +39,10 @@ extraEnv:
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_ID, optional: true } }
   - name: GITHUB_CLIENT_SECRET
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } }
+  # Generated client secret (manifests/keycloak-secrets/local/minio.yaml). Not
+  # optional: the Job waits for it rather than importing a placeholder.
+  - name: MINIO_CLIENT_SECRET
+    valueFrom: { secretKeyRef: { name: minio-oidc, key: MINIO_CLIENT_SECRET } }
 
 # One retry if Keycloak isn't ready yet.
 backoffLimit: 2
@@ -64,8 +68,17 @@ config:
       displayName: Platform
       registrationAllowed: false
       loginWithEmailAllowed: false
+      # Client roles named after MinIO policies; MinIO reads them from the
+      # `policy` claim.
+      roles:
+        client:
+          minio:
+            - name: consoleAdmin
       groups:
         - name: platform-admins
+          clientRoles:
+            minio:
+              - consoleAdmin
         - name: platform-viewers
       defaultGroups:
         - /platform-viewers
@@ -126,3 +139,35 @@ config:
             - profile
             - email
             - groups
+        # MinIO console: confidential client (MinIO's OpenID flow needs a secret).
+        # Mapper: the minio client roles of the user -> claim `policy` (list of
+        # MinIO policy names).
+        - clientId: minio
+          name: MinIO
+          enabled: true
+          publicClient: false
+          clientAuthenticatorType: client-secret
+          secret: $(env:MINIO_CLIENT_SECRET)
+          standardFlowEnabled: true
+          directAccessGrantsEnabled: false
+          redirectUris:
+            - https://local.minio.internal:30443/oauth_callback
+          defaultClientScopes:
+            - basic
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - email
+          protocolMappers:
+            - name: minio-policy
+              protocol: openid-connect
+              protocolMapper: oidc-usermodel-client-role-mapper
+              config:
+                usermodel.clientRoleMapping.clientId: minio
+                claim.name: policy
+                jsonType.label: String
+                multivalued: "true"
+                id.token.claim: "true"
+                access.token.claim: "true"
+                userinfo.token.claim: "true"

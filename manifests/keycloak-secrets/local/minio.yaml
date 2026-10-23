@@ -1,0 +1,61 @@
+# Confidential client `minio` (MinIO console login). The secret is generated once
+# and stored in OpenBao at secret/platform/keycloak/clients/minio; config-cli reads
+# it from the Secret below, MinIO from the copy in manifests/minio-init.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: minio-oidc-seed
+  namespace: keycloak
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: minio-oidc-seed
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: keycloak-client-secret
+---
+# IfNotExists: a re-created seed never overwrites the value in OpenBao.
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: minio-oidc
+  namespace: keycloak
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - kind: ClusterSecretStore
+      name: openbao
+  selector:
+    secret:
+      name: minio-oidc-seed
+  data:
+    - match:
+        secretKey: password
+        remoteRef:
+          remoteKey: platform/keycloak/clients/minio
+          property: client_secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: minio-oidc
+  namespace: keycloak
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: minio-oidc
+    creationPolicy: Owner
+  data:
+    - secretKey: MINIO_CLIENT_SECRET
+      remoteRef:
+        key: platform/keycloak/clients/minio
+        property: client_secret
