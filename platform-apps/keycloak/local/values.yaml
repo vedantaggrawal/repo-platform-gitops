@@ -94,7 +94,8 @@ ingress:
   enabled: true
   ingressClassName: cilium
   annotations:
-    cert-manager.io/cluster-issuer: selfsigned
+    cert-manager.io/cluster-issuer: platform-ca
+    cert-manager.io/usages: "digital signature,key encipherment,server auth"
   rules:
     - host: local.keycloak.internal
       # Cilium/Envoy needs Prefix for "/" to match all subpaths (/admin, /realms,

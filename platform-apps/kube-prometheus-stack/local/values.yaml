@@ -88,7 +88,8 @@ grafana:
     enabled: true
     ingressClassName: cilium
     annotations:
-      cert-manager.io/cluster-issuer: selfsigned
+      cert-manager.io/cluster-issuer: platform-ca
+      cert-manager.io/usages: "digital signature,key encipherment,server auth"
     hosts:
       - local.grafana.internal
     tls:

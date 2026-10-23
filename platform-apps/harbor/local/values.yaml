@@ -50,7 +50,8 @@ expose:
     hosts:
       core: local.harbor.internal
     annotations:
-      cert-manager.io/cluster-issuer: selfsigned
+      cert-manager.io/cluster-issuer: platform-ca
+      cert-manager.io/usages: "digital signature,key encipherment,server auth"
       # Drop the chart's nginx-specific defaults; meaningless on Cilium.
       ingress.kubernetes.io/ssl-redirect: null
       ingress.kubernetes.io/proxy-body-size: null

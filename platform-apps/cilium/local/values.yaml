@@ -49,7 +49,8 @@ hubble:
       enabled: true
       className: cilium
       annotations:
-        cert-manager.io/cluster-issuer: selfsigned
+        cert-manager.io/cluster-issuer: platform-ca
+        cert-manager.io/usages: "digital signature,key encipherment,server auth"
       hosts:
         - local.hubble.internal
       tls:
