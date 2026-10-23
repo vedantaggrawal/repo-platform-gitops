@@ -25,7 +25,7 @@ spec:
     # No ServerSideApply: Argo CD 2.10.2's server-side diff fails on some CRDs
     # here (CNPG, ESO), and one small CR doesn't need it.
     retry:
-      limit: 5
+      limit: 10
       backoff:
         duration: 10s
         factor: 2
