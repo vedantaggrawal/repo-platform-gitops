@@ -39,6 +39,10 @@ extraEnv:
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_ID, optional: true } }
   - name: GITHUB_CLIENT_SECRET
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } }
+  # Generated client secrets (manifests/keycloak-secrets). Not optional: the Job
+  # waits for the Secret rather than importing a placeholder secret.
+  - name: HEADLAMP_CLIENT_SECRET
+    valueFrom: { secretKeyRef: { name: headlamp-oidc, key: HEADLAMP_CLIENT_SECRET } }
 
 # One retry if Keycloak isn't ready yet.
 backoffLimit: 2
@@ -118,6 +122,31 @@ config:
           attributes:
             pkce.code.challenge.method: S256
             post.logout.redirect.uris: https://local.grafana.internal:30443/*
+          defaultClientScopes:
+            - basic
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - email
+            - groups
+        # Confidential client; its secret is generated into OpenBao
+        # (manifests/keycloak-secrets/local/headlamp.yaml). Headlamp forwards the
+        # ID token (aud=headlamp) to the Kubernetes API.
+        - clientId: headlamp
+          name: Headlamp
+          enabled: true
+          publicClient: false
+          clientAuthenticatorType: client-secret
+          secret: $(env:HEADLAMP_CLIENT_SECRET)
+          standardFlowEnabled: true
+          directAccessGrantsEnabled: false
+          redirectUris:
+            - https://local.headlamp.internal:30443/oidc-callback
+          webOrigins:
+            - https://local.headlamp.internal:30443
+          attributes:
+            post.logout.redirect.uris: https://local.headlamp.internal:30443/*
           defaultClientScopes:
             - basic
             - web-origins

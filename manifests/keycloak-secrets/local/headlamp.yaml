@@ -1,0 +1,91 @@
+# Headlamp's OIDC client secret: generated once, stored in OpenBao at
+# secret/platform/keycloak/clients/headlamp (client_secret), delivered to
+# keycloak-config-cli (headlamp-oidc in keycloak) and to Headlamp (headlamp-oidc
+# in headlamp, the env the chart's externalSecret option reads).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: headlamp-oidc-seed
+  namespace: keycloak
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: headlamp-oidc-seed
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: keycloak-client-secret
+---
+# IfNotExists: OpenBao stays the source of truth; a re-created seed never
+# overwrites it.
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: headlamp-oidc
+  namespace: keycloak
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - kind: ClusterSecretStore
+      name: openbao
+  selector:
+    secret:
+      name: headlamp-oidc-seed
+  data:
+    - match:
+        secretKey: password
+        remoteRef:
+          remoteKey: platform/keycloak/clients/headlamp
+          property: client_secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: headlamp-oidc
+  namespace: keycloak
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: headlamp-oidc
+    creationPolicy: Owner
+  data:
+    - secretKey: HEADLAMP_CLIENT_SECRET
+      remoteRef:
+        key: platform/keycloak/clients/headlamp
+        property: client_secret
+---
+# Headlamp reads these as env (config.oidc.externalSecret) and passes them as
+# -oidc-* flags. Env is read at start only: restart Headlamp after a change.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: headlamp-oidc
+  namespace: headlamp
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: headlamp-oidc
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        OIDC_CLIENT_ID: headlamp
+        OIDC_CLIENT_SECRET: "{{ .client_secret }}"
+        OIDC_ISSUER_URL: https://local.keycloak.internal:30443/realms/platform
+        OIDC_SCOPES: openid,profile,email,groups
+  data:
+    - secretKey: client_secret
+      remoteRef:
+        key: platform/keycloak/clients/headlamp
+        property: client_secret

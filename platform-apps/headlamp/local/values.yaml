@@ -24,3 +24,41 @@ ingress:
     - secretName: headlamp-tls
       hosts:
         - local.headlamp.internal
+
+# SSO via the Keycloak `platform` realm (confidential client `headlamp`). The
+# client id/secret, issuer and scopes come from Secret headlamp-oidc, rendered by
+# External Secrets (manifests/keycloak-secrets/local/headlamp.yaml). The backend
+# reaches the public issuer URL through the cluster DNS rewrite and trusts the
+# platform CA. Headlamp sends the user's ID token to the Kubernetes API, so the
+# apiserver must accept Keycloak tokens (structured authentication config) and
+# RBAC must bind the `oidc:` groups; until then OIDC users get 401.
+# Break-glass: open /c/main/token and paste a ServiceAccount token
+# (kubectl -n headlamp create token local-headlamp).
+config:
+  oidc:
+    secret:
+      create: false
+    externalSecret:
+      enabled: true
+      name: headlamp-oidc
+  extraArgs:
+    - "-oidc-ca-file=/etc/platform-ca/ca.crt"
+
+env:
+  # Behind the ingress: pin the external URL including the kind host port.
+  - name: OIDC_CALLBACK_URL
+    value: https://local.headlamp.internal:30443/oidc-callback
+
+# platform-ca-bundle (key ca.crt) is written to every namespace by trust-manager.
+volumes:
+  - name: platform-ca
+    configMap:
+      name: platform-ca-bundle
+volumeMounts:
+  - name: platform-ca
+    mountPath: /etc/platform-ca
+    readOnly: true
+
+# Bump to restart Headlamp after headlamp-oidc changes (env is read at start only).
+podAnnotations:
+  oidc-generation: "1"
