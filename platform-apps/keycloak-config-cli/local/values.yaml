@@ -74,7 +74,7 @@ config:
           config:
             clientId: $(env:GITHUB_CLIENT_ID:-unset)
             clientSecret: $(env:GITHUB_CLIENT_SECRET:-unset)
-            syncMode: IMPORT
+            syncMode: FORCE
             defaultScope: read:user user:email
       users:
         - username: vedantaggrawal
