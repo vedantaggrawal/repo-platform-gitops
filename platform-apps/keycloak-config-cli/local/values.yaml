@@ -122,3 +122,33 @@ config:
             - profile
             - email
             - groups
+        # Kargo UI + CLI: public client with PKCE (Kargo never holds a secret).
+        # The CLI listens on a random localhost port; Keycloak ignores the port of
+        # http loopback redirect URIs (RFC 8252).
+        - clientId: kargo
+          name: Kargo
+          enabled: true
+          publicClient: true
+          standardFlowEnabled: true
+          directAccessGrantsEnabled: false
+          redirectUris:
+            - https://local.kargo.internal:30443/login
+            - http://localhost/auth/callback
+          webOrigins:
+            - https://local.kargo.internal:30443
+          attributes:
+            pkce.code.challenge.method: S256
+            post.logout.redirect.uris: https://local.kargo.internal:30443/*
+          defaultClientScopes:
+            - basic
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - email
+            - groups
+          # Kargo (UI and CLI) asks for offline_access whenever discovery lists it.
+          # Setting defaultClientScopes drops the realm's built-in optional scopes,
+          # so without this Keycloak answers invalid_scope.
+          optionalClientScopes:
+            - offline_access

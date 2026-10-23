@@ -1,9 +1,13 @@
 # Kargo — local dev environment.
 #
-# Admin account login is enabled. The password hash + token signing key live in
-# the `kargo-admin-creds` Secret (created out-of-band in the kargo namespace, NOT
-# in git, since this values file is public) and are consumed via api.secret.name.
-# Rotate/recreate that Secret to change the admin password.
+# Login is through Keycloak (realm `platform`, public client `kargo`, PKCE S256;
+# no client secret). Members of platform-admins are Kargo admins, members of
+# platform-viewers get read-only access.
+#
+# Break-glass: the admin account stays enabled. The password hash + token signing
+# key live in the `kargo-admin-creds` Secret (created out-of-band in the kargo
+# namespace, NOT in git, since this values file is public) and are consumed via
+# api.secret.name. Rotate/recreate that Secret to change the admin password.
 #
 # The API is exposed through the Cilium ingress at
 # https://local.kargo.internal:30443 (kind maps container 443 -> host 30443).
@@ -17,6 +21,34 @@ api:
   # ADMIN_ACCOUNT_TOKEN_SIGNING_KEY; keeps secret material out of this public repo.
   secret:
     name: kargo-admin-creds
+
+  # platform-ca root: ConfigMap platform-ca-bundle (key ca.crt), which
+  # trust-manager provides in every namespace. The chart's parse-cabundle init
+  # container adds it to the API server's system trust store.
+  cabundle:
+    configMapName: platform-ca-bundle
+
+  oidc:
+    enabled: true
+    # Same URL everywhere: browsers, the CLI and the API server, which fetches
+    # discovery + JWKS from it. In-cluster it resolves through the CoreDNS rewrite
+    # to the keycloak-issuer Service (manifests/keycloak-issuer), and the API
+    # server trusts its platform-ca certificate through cabundle above.
+    issuerURL: https://local.keycloak.internal:30443/realms/platform
+    clientID: kargo
+    # Default; requests the realm's `groups` scope (claim `groups`, plain names).
+    additionalScopes:
+      - groups
+    # Users who log in through GitHub may have no email; this claim is always set.
+    usernameClaim: preferred_username
+    admins:
+      claims:
+        groups:
+          - platform-admins
+    viewers:
+      claims:
+        groups:
+          - platform-viewers
 
   host: local.kargo.internal
   # JSON logs so Loki's `| json` parser unpacks fields cleanly, consistent with
