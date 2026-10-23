@@ -4,16 +4,17 @@
 # endpoints are the nodes' Cilium Envoy listener (:443, hostNetwork), which
 # serves local.keycloak.internal with the platform-ca certificate. OIDC clients
 # resolve the hostname to it with:
-#   hostAliases: [{ip: 10.96.200.10, hostnames: [local.keycloak.internal]}]
+#   hostAliases: [{ip: 10.96.0.200, hostnames: [local.keycloak.internal]}]
 # and trust platform-ca via the platform-ca-bundle ConfigMap below.
-# Node IPs are kind's (172.18.0.2/.3); re-check them after a cluster recreate.
+# The endpoint is the ingress-ready node's IP (kind control-plane 172.18.0.2);
+# re-check it after a cluster recreate (the self-test below catches it).
 apiVersion: v1
 kind: Service
 metadata:
   name: keycloak-issuer
   namespace: keycloak
 spec:
-  clusterIP: 10.96.200.10
+  clusterIP: 10.96.0.200
   ports:
     - name: https
       port: 30443
@@ -33,8 +34,8 @@ ports:
     port: 443
     protocol: TCP
 endpoints:
+  # Only nodes labelled ingress-ready=true run the Envoy listener (control-plane).
   - addresses: ["172.18.0.2"]
-  - addresses: ["172.18.0.3"]
 ---
 # Public root certificate of the platform CA (not secret). Copy or mount where
 # OIDC clients need to trust the issuer.
@@ -68,12 +69,12 @@ metadata:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
-  backoffLimit: 2
+  backoffLimit: 0
   template:
     spec:
       restartPolicy: Never
       hostAliases:
-        - ip: 10.96.200.10
+        - ip: 10.96.0.200
           hostnames: ["local.keycloak.internal"]
       containers:
         - name: check
@@ -81,9 +82,11 @@ spec:
           command: ["/bin/sh", "-ec"]
           args:
             - |
-              out=$(curl -sS --cacert /ca/ca.crt https://local.keycloak.internal:30443/realms/platform/.well-known/openid-configuration)
-              echo "$out" | grep -q '"issuer":"https://local.keycloak.internal:30443/realms/platform"' || { echo "unexpected discovery: $out" | head -c 300; exit 1; }
-              echo "issuer reachable in-cluster"
+              for i in $(seq 1 10); do
+                out=$(curl -sS --max-time 5 --cacert /ca/ca.crt https://local.keycloak.internal:30443/realms/platform/.well-known/openid-configuration)
+                echo "$out" | grep -q '"issuer":"https://local.keycloak.internal:30443/realms/platform"' || { echo "attempt $i failed: $(echo "$out" | head -c 200)"; exit 1; }
+              done
+              echo "issuer reachable in-cluster (10/10)"
           volumeMounts:
             - name: ca
               mountPath: /ca
