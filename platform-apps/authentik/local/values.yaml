@@ -1,8 +1,8 @@
 # Authentik: the platform's identity provider. Own users and groups, 2FA,
 # GitLab login, OpenID Connect for apps, forward-auth for apps without a login.
-# Everything it manages (groups, apps, the GitLab source) is declared as
-# blueprints in manifests/authentik/local/blueprints, which Authentik applies
-# and keeps applied. Secrets come from that directory too, never from the chart.
+# What it manages (groups, apps, GitLab login) is declared as blueprints in
+# manifests/authentik/local, applied when a blueprint file is added or changes.
+# Secrets come from that directory too, never from the chart.
 
 global:
   # Secrets as env: these take precedence over the empty values the chart puts
@@ -15,12 +15,6 @@ global:
     # First start only: creates the `akadmin` break-glass user with this password.
     - name: AUTHENTIK_BOOTSTRAP_PASSWORD
       valueFrom: { secretKeyRef: { name: authentik-keys, key: bootstrap_password } }
-    # GitLab login (blueprints/gitlab.yaml reads these). Optional: until the
-    # OAuth app's credentials are in OpenBao, the GitLab button doesn't work.
-    - name: GITLAB_CLIENT_ID
-      valueFrom: { secretKeyRef: { name: authentik-gitlab, key: client_id, optional: true } }
-    - name: GITLAB_CLIENT_SECRET
-      valueFrom: { secretKeyRef: { name: authentik-gitlab, key: client_secret, optional: true } }
 
 authentik:
   error_reporting:
@@ -30,11 +24,28 @@ authentik:
     host: authentik-db-rw
     name: authentik
     user: authentik
+    sslmode: require   # CNPG serves TLS by default
 
 blueprints:
   configMaps: [authentik-blueprints]
 
+worker:
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1Gi }
+  # GitLab login blueprint, rendered with its credentials by External Secrets.
+  # Optional: until the credentials are in OpenBao there's no GitLab button.
+  # A credential change changes the file, so the blueprint is applied again.
+  volumes:
+    - name: blueprint-gitlab
+      secret: { secretName: authentik-blueprint-gitlab, optional: true }
+  volumeMounts:
+    - { name: blueprint-gitlab, mountPath: /blueprints/mounted/gitlab, readOnly: true }
+
 server:
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1Gi }
   ingress:
     enabled: true
     ingressClassName: cilium

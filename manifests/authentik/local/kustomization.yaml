@@ -5,9 +5,9 @@ resources:
   - database.yaml
   - secrets.yaml
 # Blueprints: plain files, mounted by the chart (blueprints.configMaps) and
-# applied by Authentik's worker on change and periodically.
+# applied by Authentik's worker when a file is added or its content changes.
 configMapGenerator:
   - name: authentik-blueprints
-    files: [blueprints/apps.yaml, blueprints/gitlab.yaml]
+    files: [blueprints/apps.yaml]
     options:
       disableNameSuffixHash: true   # the chart mounts it by this exact name
