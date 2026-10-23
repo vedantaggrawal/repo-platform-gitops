@@ -2,17 +2,18 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ .Values.env }}-platform-ingress
+  name: {{ .Values.env }}-cluster-dns
   namespace: argocd
   annotations:
-    # In-cluster route + DNS for the platform's public *.internal hosts.
+    # Cluster DNS (CoreDNS Corefile): resolves the platform's public
+    # local.*.internal hosts for pods.
     argocd.argoproj.io/sync-wave: "2"
 spec:
   project: default
   source:
     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
     targetRevision: HEAD
-    path: manifests/platform-ingress/{{ .Values.env }}
+    path: manifests/cluster-dns/{{ .Values.env }}
   destination:
     server: {{ .Values.cluster }}
     namespace: kube-system

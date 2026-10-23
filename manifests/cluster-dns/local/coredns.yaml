@@ -1,0 +1,47 @@
+# kind's stock Corefile (CoreDNS v1.11.1, created by kubeadm) plus one block:
+# pods resolve local.<app>.internal to the Docker Desktop host (192.168.65.254),
+# where kind publishes the ingress on :30443 — the same URL browsers use, so
+# OIDC clients can reach the identity provider at its public issuer URL.
+# IPv4 only: the host's IPv6 address isn't reachable from the cluster, so AAAA
+# gets an empty answer. Anchored regex: search-path expansions and other names
+# fall through untouched. `reload` applies changes without a restart and keeps
+# the running config if a new one is invalid.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        template IN A internal {
+           match ^local\.[a-z0-9-]+\.internal\.$
+           answer "{{ .Name }} 30 IN A 192.168.65.254"
+           fallthrough
+        }
+        template IN AAAA internal {
+           match ^local\.[a-z0-9-]+\.internal\.$
+           rcode NOERROR
+           fallthrough
+        }
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
