@@ -1,0 +1,37 @@
+# Where the Barman Cloud plugin stores keycloak-db base backups and WAL: MinIO
+# bucket keycloak-db-backups, as the least-privilege user `cnpg` (Secret from
+# OpenBao, backup-s3-externalsecret.yaml). Same failure domain as the cluster: this
+# protects against deleting the database, not against losing the node/disk.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: keycloak-db-backups
+  namespace: keycloak
+  annotations:
+    # The CRD comes from the barman-cloud-plugin app.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Recovery window: keep what's needed to restore any point in the last 7
+  # days; the plugin sidecar prunes older base backups and WAL.
+  retentionPolicy: "7d"
+  configuration:
+    destinationPath: s3://keycloak-db-backups/
+    endpointURL: http://local-minio.monitoring-storage.svc.cluster.local:9000
+    s3Credentials:
+      accessKeyId:
+        name: keycloak-db-backup-s3
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: keycloak-db-backup-s3
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 256Mi

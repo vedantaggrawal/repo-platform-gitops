@@ -1,0 +1,45 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-barman-cloud-plugin
+  namespace: argocd
+  annotations:
+    # CloudNativePG Barman Cloud plugin (backups of keycloak-db to MinIO). Ships
+    # the ObjectStore CRD that keycloak-db (wave 0) uses; that app retries until
+    # it exists. A chart bump changes the injected sidecar and so restarts the
+    # single keycloak-db instance (brief Keycloak outage): bump deliberately.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    chart: plugin-barman-cloud
+    repoURL: https://cloudnative-pg.github.io/charts
+    targetRevision: "0.8.1"
+    helm:
+      valuesObject:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+  destination:
+    server: {{ .Values.cluster }}
+    # Must be the CloudNativePG operator's namespace. Needs cert-manager.
+    namespace: cnpg-system
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      # No ServerSideApply: the chart ships cert-manager custom resources, and
+      # Argo CD 2.10.2's server-side diff panics on CRs it can't resolve.
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}

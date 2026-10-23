@@ -1,0 +1,19 @@
+# Daily base backup of keycloak-db (02:00 UTC; six fields, seconds first). WAL is
+# archived continuously, so restores can target any point in the retention window.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: keycloak-db-daily
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  schedule: "0 0 2 * * *"
+  # First backup as soon as this is created.
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: keycloak-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
