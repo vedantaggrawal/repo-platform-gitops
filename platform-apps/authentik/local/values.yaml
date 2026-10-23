@@ -1,0 +1,61 @@
+# Authentik: the platform's identity provider. Own users and groups, 2FA,
+# GitLab login, OpenID Connect for apps, forward-auth for apps without a login.
+# What it manages (groups, apps, GitLab login) is declared as blueprints in
+# manifests/authentik/local, applied when a blueprint file is added or changes.
+# Secrets come from that directory too, never from the chart.
+
+global:
+  # Secrets as env: these take precedence over the empty values the chart puts
+  # in its own config Secret (loaded with envFrom).
+  env:
+    - name: AUTHENTIK_SECRET_KEY
+      valueFrom: { secretKeyRef: { name: authentik-keys, key: secret_key } }
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      valueFrom: { secretKeyRef: { name: authentik-db-app, key: password } }
+    # First start only: creates the `akadmin` break-glass user with this password.
+    - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+      valueFrom: { secretKeyRef: { name: authentik-keys, key: bootstrap_password } }
+
+authentik:
+  error_reporting:
+    enabled: false
+  postgresql:
+    # CNPG cluster in manifests/authentik/local/database.yaml.
+    host: authentik-db-rw
+    name: authentik
+    user: authentik
+    sslmode: require   # CNPG serves TLS by default
+
+blueprints:
+  configMaps: [authentik-blueprints]
+
+worker:
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1Gi }
+  # GitLab login blueprint, rendered with its credentials by External Secrets.
+  # Optional: until the credentials are in OpenBao there's no GitLab button.
+  # A credential change changes the file, so the blueprint is applied again.
+  volumes:
+    - name: blueprint-gitlab
+      secret: { secretName: authentik-blueprint-gitlab, optional: true }
+  volumeMounts:
+    - { name: blueprint-gitlab, mountPath: /blueprints/mounted/gitlab, readOnly: true }
+
+server:
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1Gi }
+  ingress:
+    enabled: true
+    ingressClassName: cilium
+    annotations:
+      cert-manager.io/cluster-issuer: platform-ca
+      cert-manager.io/usages: "digital signature,key encipherment,server auth"
+    hosts: [local.authentik.internal]
+    tls:
+      - secretName: authentik-tls
+        hosts: [local.authentik.internal]
+
+postgresql:
+  enabled: false
