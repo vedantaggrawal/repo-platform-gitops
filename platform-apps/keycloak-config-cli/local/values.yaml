@@ -39,6 +39,10 @@ extraEnv:
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_ID, optional: true } }
   - name: GITHUB_CLIENT_SECRET
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } }
+  # Generated (manifests/keycloak-secrets/local/oauth2-proxy.yaml). Not optional:
+  # the Job waits for the Secret rather than importing a placeholder secret.
+  - name: OAUTH2_PROXY_CLIENT_SECRET
+    valueFrom: { secretKeyRef: { name: oauth2-proxy-oidc, key: OAUTH2_PROXY_CLIENT_SECRET } }
 
 # One retry if Keycloak isn't ready yet.
 backoffLimit: 2
@@ -118,6 +122,40 @@ config:
           attributes:
             pkce.code.challenge.method: S256
             post.logout.redirect.uris: https://local.grafana.internal:30443/*
+          defaultClientScopes:
+            - basic
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - email
+            - groups
+        # oauth2-proxy in front of UIs without their own login (one redirect
+        # URI per protected host). Access requires group platform-admins.
+        - clientId: oauth2-proxy
+          name: oauth2-proxy
+          enabled: true
+          publicClient: false
+          clientAuthenticatorType: client-secret
+          secret: $(env:OAUTH2_PROXY_CLIENT_SECRET)
+          standardFlowEnabled: true
+          directAccessGrantsEnabled: false
+          redirectUris:
+            - https://local.alertmanager.internal:30443/oauth2/callback
+            - https://local.prometheus.internal:30443/oauth2/callback
+          attributes:
+            pkce.code.challenge.method: S256
+          protocolMappers:
+            # oauth2-proxy's keycloak-oidc provider checks the access token's aud.
+            - name: oauth2-proxy-audience
+              protocol: openid-connect
+              protocolMapper: oidc-audience-mapper
+              config:
+                included.client.audience: oauth2-proxy
+                access.token.claim: "true"
+                id.token.claim: "false"
+          # oauth2-proxy requests exactly "openid email profile groups" (its
+          # extraArgs.scope); a scope outside these is rejected (invalid_scope).
           defaultClientScopes:
             - basic
             - web-origins

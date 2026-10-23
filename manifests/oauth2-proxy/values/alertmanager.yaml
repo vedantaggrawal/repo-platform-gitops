@@ -1,0 +1,14 @@
+# Alertmanager of the dev kube-prometheus-stack (the one receiving alerts today).
+config:
+  upstreams: ["http://dev-kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093"]
+
+extraArgs:
+  redirect-url: https://local.alertmanager.internal:30443/oauth2/callback
+
+ingress:
+  hosts:
+    - local.alertmanager.internal
+  tls:
+    - secretName: oauth2-proxy-alertmanager-tls
+      hosts:
+        - local.alertmanager.internal

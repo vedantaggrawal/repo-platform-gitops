@@ -1,0 +1,116 @@
+# oauth2-proxy: confidential Keycloak client secret + cookie secret, both
+# generated once and kept in OpenBao. config-cli reads the client secret from the
+# keycloak-ns copy below; oauth2-proxy reads both via manifests/oauth2-proxy.
+#   secret/platform/keycloak/clients/oauth2-proxy  client_secret
+#   secret/platform/oauth2-proxy/cookie            cookie_secret
+# Cookie secret: 32 alphanumeric chars = 32 bytes, an AES-256 key as oauth2-proxy
+# requires (16/24/32 bytes), so it has its own generator.
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: oauth2-proxy-cookie-secret
+  namespace: keycloak
+spec:
+  length: 32
+  digits: 8
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: oauth2-proxy-oidc-seed
+  namespace: keycloak
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: oauth2-proxy-oidc-seed
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: keycloak-client-secret
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: oauth2-proxy-oidc
+  namespace: keycloak
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - kind: ClusterSecretStore
+      name: openbao
+  selector:
+    secret:
+      name: oauth2-proxy-oidc-seed
+  data:
+    - match:
+        secretKey: password
+        remoteRef:
+          remoteKey: platform/keycloak/clients/oauth2-proxy
+          property: client_secret
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: oauth2-proxy-cookie-seed
+  namespace: keycloak
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: oauth2-proxy-cookie-seed
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: oauth2-proxy-cookie-secret
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: oauth2-proxy-cookie
+  namespace: keycloak
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - kind: ClusterSecretStore
+      name: openbao
+  selector:
+    secret:
+      name: oauth2-proxy-cookie-seed
+  data:
+    - match:
+        secretKey: password
+        remoteRef:
+          remoteKey: platform/oauth2-proxy/cookie
+          property: cookie_secret
+---
+# For keycloak-config-cli (env OAUTH2_PROXY_CLIENT_SECRET).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: oauth2-proxy-oidc
+  namespace: keycloak
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: oauth2-proxy-oidc
+    creationPolicy: Owner
+  data:
+    - secretKey: OAUTH2_PROXY_CLIENT_SECRET
+      remoteRef:
+        key: platform/keycloak/clients/oauth2-proxy
+        property: client_secret

@@ -1,0 +1,59 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-oauth2-proxy
+  namespace: argocd
+  annotations:
+    # Keycloak SSO in front of UIs without their own login. One release of the
+    # chart per UI (host), sharing the oauth2-proxy Keycloak client and the
+    # ExternalSecret in manifests/oauth2-proxy (its credentials come from
+    # keycloak-secrets, wave 2).
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  sources:
+    - repoURL: https://oauth2-proxy.github.io/manifests
+      chart: oauth2-proxy
+      targetRevision: 10.7.1
+      helm:
+        releaseName: oauth2-proxy-alertmanager
+        valueFiles:
+          - $values/manifests/oauth2-proxy/values/common.yaml
+          - $values/manifests/oauth2-proxy/values/alertmanager.yaml
+    - repoURL: https://oauth2-proxy.github.io/manifests
+      chart: oauth2-proxy
+      targetRevision: 10.7.1
+      helm:
+        releaseName: oauth2-proxy-prometheus
+        valueFiles:
+          - $values/manifests/oauth2-proxy/values/common.yaml
+          - $values/manifests/oauth2-proxy/values/prometheus.yaml
+    - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+      targetRevision: HEAD
+      ref: values
+    - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+      targetRevision: HEAD
+      path: manifests/oauth2-proxy/{{ .Values.env }}
+      directory:
+        recurse: true
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: oauth2-proxy
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The ExternalSecret CRD comes from the external-secrets app.
+      - SkipDryRunOnMissingResource=true
+      # No ServerSideApply: the ExternalSecret makes Argo CD 2.10.2's
+      # structured-merge diff panic (see app-keycloak-secrets.yaml).
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}

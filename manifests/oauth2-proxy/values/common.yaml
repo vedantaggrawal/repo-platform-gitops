@@ -1,0 +1,51 @@
+# Shared by every oauth2-proxy release (one per protected UI; per-UI files set
+# the host and upstream). oauth2-proxy routes upstreams by path only, and these
+# UIs serve from /, so each host gets its own release. They share one Keycloak
+# client (oauth2-proxy) and one Secret.
+config:
+  existingSecret: oauth2-proxy
+  emailDomains: ["*"]
+
+extraArgs:
+  provider: keycloak-oidc
+  # The browser-facing issuer URL. In-cluster DNS resolves local.*.internal to
+  # the ingress (CoreDNS rewrite); pods trust its platform-ca certificate.
+  oidc-issuer-url: https://local.keycloak.internal:30443/realms/platform
+  provider-ca-file: /etc/platform-ca/ca.crt
+  code-challenge-method: S256
+  # Pinned to the client's default scopes in Keycloak (no offline_access: the
+  # client has no optional scopes, Keycloak would answer invalid_scope).
+  scope: openid email profile groups
+  # Authorization is by group. GitHub-brokered users have no verified email
+  # (trustEmail: false), and may have none at all.
+  allowed-group: platform-admins
+  insecure-oidc-allow-unverified-email: true
+  oidc-email-claim: preferred_username
+  skip-provider-button: true
+  cookie-secure: true
+  reverse-proxy: true
+
+extraVolumes:
+  - name: platform-ca
+    configMap:
+      name: platform-ca-bundle
+extraVolumeMounts:
+  - name: platform-ca
+    mountPath: /etc/platform-ca
+    readOnly: true
+
+ingress:
+  enabled: true
+  className: cilium
+  path: /
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: platform-ca
+    cert-manager.io/usages: "digital signature,key encipherment,server auth"
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 64Mi

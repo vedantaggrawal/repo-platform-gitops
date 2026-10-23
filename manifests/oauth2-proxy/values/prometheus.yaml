@@ -1,0 +1,14 @@
+# Prometheus of the dev kube-prometheus-stack (evaluates the alerting rules today).
+config:
+  upstreams: ["http://dev-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"]
+
+extraArgs:
+  redirect-url: https://local.prometheus.internal:30443/oauth2/callback
+
+ingress:
+  hosts:
+    - local.prometheus.internal
+  tls:
+    - secretName: oauth2-proxy-prometheus-tls
+      hosts:
+        - local.prometheus.internal

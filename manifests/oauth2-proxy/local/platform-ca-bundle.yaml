@@ -1,0 +1,20 @@
+# Copy of keycloak/platform-ca-bundle (public platform root CA) so oauth2-proxy
+# trusts the Keycloak issuer certificate.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-ca-bundle
+  namespace: oauth2-proxy
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIBgTCCASagAwIBAgIQB/8YJdb3OtmidL634o3oSzAKBggqhkjOPQQDAjAgMR4w
+    HAYDVQQDExVldmUgcGxhdGZvcm0gbG9jYWwgQ0EwHhcNMjYxMDIzMDIyMzU0WhcN
+    MzYxMDIwMDIyMzU0WjAgMR4wHAYDVQQDExVldmUgcGxhdGZvcm0gbG9jYWwgQ0Ew
+    WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARsYgvcYWnsUeKQe5rjxeX/kcerwJTx
+    WzP73sQ1SZmeDAyUnC/oyWwRq6vHhCdBEQ0meUc2vKMUAl1uoBtu7mXwo0IwQDAO
+    BgNVHQ8BAf8EBAMCAqQwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUmxRxF9ub
+    yE1im8onzF7IscaXrbIwCgYIKoZIzj0EAwIDSQAwRgIhAL5Q2azSZFfSWTBhHaNI
+    XiPQAIIXfsb73q3hEDZ3yBdNAiEAxDvRCRque6UrexgZG+MKEwM/Cobm/rztNM2D
+    mL/58NE=
+    -----END CERTIFICATE-----
