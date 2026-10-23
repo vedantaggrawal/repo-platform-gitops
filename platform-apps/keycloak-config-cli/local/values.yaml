@@ -25,7 +25,7 @@ env:
   KEYCLOAK_USER: "admin"
   # Wait for Keycloak to answer before importing (Job may start before KC is ready).
   KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
-  KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: "120s"
+  KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: "300s"
   # Resolve $(env:...) placeholders in the realm files from the container env.
   IMPORT_VARSUBSTITUTION_ENABLED: "true"
   IMPORT_FILES_LOCATIONS: "/config/*"
@@ -52,6 +52,10 @@ config:
   platform:
     inline:
       realm: platform
+      # Bump to force a re-import (e.g. after Keycloak's database was rebuilt): it
+      # changes the rendered realm Secret, so the app syncs and the import re-runs.
+      attributes:
+        importGeneration: "2"
       enabled: true
       displayName: Platform
       registrationAllowed: false

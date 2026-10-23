@@ -113,3 +113,8 @@ metrics:
   enabled: true
 serviceMonitor:
   enabled: false
+
+# Bump to restart Keycloak after the keycloak-db credentials change (e.g. the
+# CNPG Cluster was recreated): env from secretKeyRef is only read at start.
+podAnnotations:
+  db-credentials-generation: "2"
