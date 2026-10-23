@@ -2,29 +2,25 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ .Values.env }}-keycloak-issuer
+  name: {{ .Values.env }}-platform-ingress
   namespace: argocd
   annotations:
-    # In-cluster route to the Keycloak issuer URL for OIDC clients.
+    # In-cluster route + DNS for the platform's public *.internal hosts.
     argocd.argoproj.io/sync-wave: "2"
 spec:
   project: default
   source:
     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
     targetRevision: HEAD
-    path: manifests/keycloak-issuer/{{ .Values.env }}
-    directory:
-      recurse: true
+    path: manifests/platform-ingress/{{ .Values.env }}
   destination:
     server: {{ .Values.cluster }}
-    namespace: keycloak
+    namespace: kube-system
   syncPolicy:
     automated:
-      prune: {{ .Values.prune }}
+      # Never prune: the CoreDNS ConfigMap is cluster DNS (also annotated Delete=false,Prune=false).
+      prune: false
       selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
     retry:
       limit: 5
       backoff:

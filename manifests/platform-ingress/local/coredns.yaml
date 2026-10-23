@@ -1,0 +1,36 @@
+# kind's stock Corefile (CoreDNS v1.11.1, created by kubeadm) plus one rewrite:
+# local.<app>.internal resolves to the platform-ingress Service (route.yaml).
+# The regex is anchored, so search-path expansions such as
+# local.<app>.internal.<ns>.svc.cluster.local are untouched; `answer auto`
+# rewrites the response back to the queried name. `reload` applies changes
+# without a restart and keeps the running config if a new one is invalid.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        rewrite name regex ^local\.[a-z0-9-]+\.internal\.$ platform-ingress.kube-system.svc.cluster.local. answer auto
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }
