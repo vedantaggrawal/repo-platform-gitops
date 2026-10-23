@@ -4,6 +4,14 @@
 mode: standalone
 replicas: 1
 
+# Recreate: the RWO data volume can't be shared by a surge pod. Server-side
+# apply can't drop the live rollingUpdate block (no field owner), so Argo CD
+# replaces this Deployment instead (same as the loki gateway).
+deploymentUpdate:
+  type: Recreate
+additionalAnnotations:
+  argocd.argoproj.io/sync-options: Replace=true
+
 # Local dev credentials. PROD: pull from External Secrets Operator + Vault/SOPS.
 rootUser: lgtm-admin
 rootPassword: lgtm-admin-local
