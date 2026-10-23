@@ -1,0 +1,40 @@
+# kind's stock Corefile (CoreDNS v1.11.1, created by kubeadm) plus one rewrite:
+# pods resolve local.<app>.internal to the keycloak-issuer Service
+# (10.96.0.200:30443 -> Cilium Envoy :443 on the ingress node), which serves
+# every *.internal ingress host via SNI. OIDC clients can then use the public
+# issuer URL https://local.keycloak.internal:30443 without hostAliases.
+# The regex is anchored, so search-path expansions such as
+# local.keycloak.internal.<ns>.svc.cluster.local are untouched; `answer auto`
+# rewrites the response back to the queried name.
+# `reload` picks up changes without restarting CoreDNS; an invalid Corefile
+# is rejected on reload and the running config is kept.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        rewrite name regex ^local\.[a-z0-9-]+\.internal\.$ keycloak-issuer.keycloak.svc.cluster.local. answer auto
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }

@@ -1,0 +1,16 @@
+# trust-manager — copies the platform CA into a ConfigMap in every namespace.
+# https://cert-manager.io/docs/trust/trust-manager/
+
+app:
+  trust:
+    # Bundle sources (Secrets/ConfigMaps) are read only from this namespace.
+    namespace: cert-manager
+
+# Only the platform CA is distributed; the public CA package is unused.
+defaultPackage:
+  enabled: false
+
+# Off: allowing even one target Secret name gives trust-manager cluster-wide
+# get/list/watch on all Secrets. Bundles write ConfigMaps only.
+secretTargets:
+  enabled: false
