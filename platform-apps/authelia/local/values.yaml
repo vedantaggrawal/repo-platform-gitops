@@ -114,6 +114,18 @@ configMap:
           scopes: [openid, profile, email, groups, offline_access]
           grant_types: [authorization_code, refresh_token]
           response_types: [code]
+        - client_id: kargo
+          client_name: Kargo
+          public: true
+          require_pkce: true
+          pkce_challenge_method: S256
+          # UI only. The CLI's `--sso` callback uses localhost on a random port,
+          # which needs a loopback-port check against Authelia first.
+          redirect_uris: [https://local.kargo.internal:30443/login]
+          # Kargo asks for offline_access when the provider advertises it.
+          scopes: [openid, profile, email, groups, offline_access]
+          grant_types: [authorization_code, refresh_token]
+          response_types: [code]
 
 extraObjects:
   - apiVersion: v1
