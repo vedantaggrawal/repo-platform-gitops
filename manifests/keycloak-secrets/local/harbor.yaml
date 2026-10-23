@@ -103,9 +103,11 @@ spec:
         key: platform/keycloak/clients/harbor
         property: client_secret
 ---
-# Public platform root CA (same as keycloak/platform-ca-bundle), for Harbor's
-# caBundleSecretName: added to the trust store so oidc_verify_cert works against
-# the issuer's platform-ca certificate. Not secret.
+# Public platform root CA, for Harbor's caBundleSecretName: added to the trust
+# store so oidc_verify_cert works against the issuer's platform-ca certificate.
+# Not secret. The one remaining hand copy of the CA: trust-manager distributes it
+# as ConfigMap platform-ca-bundle, but Harbor's chart only takes a Secret. Update
+# it when the platform root CA is rotated.
 apiVersion: v1
 kind: Secret
 metadata:
