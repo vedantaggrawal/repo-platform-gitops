@@ -6,6 +6,9 @@
 # Self-init (first start only) enables Kubernetes auth, a KV v2 store at
 # `secret/`, and a `bao-config` role used by later config jobs; the root token
 # it uses is revoked automatically.
+# If self-init ever fails, it can't be retried (the store is already
+# initialised and the root token revoked): fix the config, then delete PVC
+# data-local-openbao-0 and the pod to start over.
 
 injector:
   enabled: false
@@ -32,22 +35,22 @@ server:
       }
       initialize "platform" {
         request "kubernetes-auth" {
-          operation = "write"
+          operation = "update"
           path      = "sys/auth/kubernetes"
           data      = { type = "kubernetes" }
         }
         request "kubernetes-auth-config" {
-          operation = "write"
+          operation = "update"
           path      = "auth/kubernetes/config"
           data      = { kubernetes_host = "https://kubernetes.default.svc" }
         }
         request "kv" {
-          operation = "write"
+          operation = "update"
           path      = "sys/mounts/secret"
           data      = { type = "kv", options = { version = "2" } }
         }
         request "bao-config-policy" {
-          operation = "write"
+          operation = "update"
           path      = "sys/policy/bao-config"
           data = {
             policy = <<-EOP
@@ -62,7 +65,7 @@ server:
           }
         }
         request "bao-config-role" {
-          operation = "write"
+          operation = "update"
           path      = "auth/kubernetes/role/bao-config"
           data = {
             bound_service_account_names      = "bao-config"
