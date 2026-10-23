@@ -1,0 +1,28 @@
+# GitLab (gitlab.com) OAuth application for the platform realm's GitLab login, consumed by
+# keycloak-config-cli (env GITLAB_CLIENT_ID / GITLAB_CLIENT_SECRET). The value
+# is written to OpenBao once by a human (keys client_id, client_secret):
+#   bao kv put secret/platform/keycloak/idp/gitlab client_id=<id> client_secret=<secret>
+# Until then this ExternalSecret errors, no Secret exists, and the IdP keeps
+# placeholder values (the config-cli env refs are optional).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: keycloak-gitlab-idp
+  namespace: keycloak
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: keycloak-gitlab-idp
+    creationPolicy: Owner
+  data:
+    - secretKey: GITLAB_CLIENT_ID
+      remoteRef:
+        key: platform/keycloak/idp/gitlab
+        property: client_id
+    - secretKey: GITLAB_CLIENT_SECRET
+      remoteRef:
+        key: platform/keycloak/idp/gitlab
+        property: client_secret
