@@ -9,6 +9,10 @@ metadata:
     # so waves don't order the two; Keycloak's dbchecker init container waits for
     # this database instead.
     argocd.argoproj.io/sync-wave: "0"
+    # CNPG's webhook defaults fields inside the Cluster spec (encoding, locale,
+    # resizeInUseVolumes); the client-side diff reports them as drift and selfHeal
+    # re-syncs forever. Server-side diff compares what the API server would apply.
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
   project: default
   source:
