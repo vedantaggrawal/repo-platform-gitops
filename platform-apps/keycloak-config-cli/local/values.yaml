@@ -3,15 +3,19 @@
 # the chart's rendered Secret, so the app goes OutOfSync and the Job re-runs. remote-state is on by default, so it only purges
 # resources it created, never hand-made ones.
 #
-# Out-of-band Secrets in the keycloak namespace (NOT in git, this repo is public):
-#   - keycloak-admin-creds : Keycloak admin credentials (from the Keycloak deploy)
+# Secrets in the keycloak namespace (NOT in git, this repo is public):
+#   - keycloak-admin-creds : Keycloak admin credentials (out-of-band, from the Keycloak deploy)
 #   - keycloak-github-idp  : GitHub OAuth app for the platform realm's GitHub login
-#                            (keys GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET). Optional:
+#                            (keys GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET), delivered
+#                            from OpenBao by manifests/keycloak-secrets. Optional:
 #                            until it exists the IdP is created with placeholder
 #                            values and GitHub login doesn't work.
 #
 # Realms here are non-sensitive: secrets are substituted at run time with
-# $(env:NAME:-default).
+# $(env:NAME:-default). The import checksum is taken after substitution, so a
+# changed secret is applied on the next run of the Job. The Job runs on every
+# sync of this app, not when a Secret changes: after changing a secret in
+# OpenBao (and the ExternalSecret has refreshed), bump importGeneration below.
 
 image:
   # CLI 6.5.1 built against Keycloak 26.5.5 (admin API forward-compatible with 26.8).

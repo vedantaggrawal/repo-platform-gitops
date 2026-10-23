@@ -1,0 +1,20 @@
+# Client secrets of the Codaxy realm (managed outside this repo), injected into
+# keycloak-config-cli by $(env:...) substitution. Written to OpenBao once by a
+# human, one property per env var name; every property becomes a Secret key:
+#   bao kv put secret/platform/keycloak/codaxy <ENV_NAME>=<secret> ...
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: codaxy-client-secrets
+  namespace: keycloak
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: codaxy-client-secrets
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: platform/keycloak/codaxy
