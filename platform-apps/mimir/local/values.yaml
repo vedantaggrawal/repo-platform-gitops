@@ -99,7 +99,13 @@ ingester:
 
 querier:
   replicas: 1
-  resources: *resourcesSmall
+  # Own block, not *resourcesSmall: OOMKilled at 128Mi under dashboard queries.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
 
 query_frontend:
   replicas: 1
@@ -120,8 +126,10 @@ store_gateway:
 
 compactor:
   replicas: 1
+  # Scratch space for downloading and merging blocks: about 2x the largest
+  # compacted range (24h, ~1.5 GB at ~220k series), so 2Gi fails at that stage.
   persistentVolume:
-    size: 2Gi
+    size: 10Gi
     storageClass: standard
   # Own block, not *resourcesSmall: merging 2h blocks into a 12h block at
   # ~220k active series OOMKilled at 128Mi, so nothing was compacted and
@@ -132,6 +140,10 @@ compactor:
       memory: 256Mi
     limits:
       memory: 1Gi
+  env:
+    # Let the Go GC work before the 1Gi limit OOMKills the pod.
+    - name: GOMEMLIMIT
+      value: 900MiB
 
 ruler:
   enabled: false
