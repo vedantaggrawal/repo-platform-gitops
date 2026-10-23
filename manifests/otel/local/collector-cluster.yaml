@@ -22,12 +22,19 @@ spec:
     enabled: false
   # Bounded so scraping cadvisor (high-cardinality) + remote_write buffering
   # can't OOM the node; memory_limiter (below) applies backpressure at 80%.
+  # At 512Mi the memory_limiter soft limit (~282MiB) sat below the working heap
+  # (~386MiB): it refused ~20% of points and the pod still OOMKilled. 1Gi gives a
+  # ~563MiB soft limit. GOMEMLIMIT matches the limiter's hard limit (80%) instead
+  # of the operator's default of 100% of the container limit.
   resources:
     requests:
       cpu: 250m
-      memory: 512Mi
+      memory: 1Gi
     limits:
-      memory: 512Mi
+      memory: 1Gi
+  env:
+    - name: GOMEMLIMIT
+      value: 820MiB
   observability:
     metrics:
       enableMetrics: true
