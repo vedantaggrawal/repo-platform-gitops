@@ -1,0 +1,7 @@
+enabled: "true"
+chart: authelia
+repoURL: https://charts.authelia.com
+targetRevision: "0.11.22"
+namespace: authelia
+# After OpenBao/External Secrets and the authelia secrets app (wave 2).
+syncWave: "3"
