@@ -1,0 +1,23 @@
+# OpenBao as the store for every ExternalSecret / PushSecret in the cluster.
+# ESO logs in with its own service account via OpenBao's Kubernetes auth
+# (role `eso`, created by OpenBao's self-init).
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: openbao
+  annotations:
+    # The CRD comes from the external-secrets app.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  provider:
+    vault:
+      server: http://local-openbao.openbao.svc.cluster.local:8200
+      path: secret
+      version: v2
+      auth:
+        kubernetes:
+          mountPath: kubernetes
+          role: eso
+          serviceAccountRef:
+            name: local-external-secrets
+            namespace: external-secrets

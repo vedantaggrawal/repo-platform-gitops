@@ -2,24 +2,5 @@
 # Workloads keep consuming plain Secrets; the values live in OpenBao
 # (secret/platform/...), never in this public repo.
 
-extraObjects:
-  - apiVersion: external-secrets.io/v1
-    kind: ClusterSecretStore
-    metadata:
-      name: openbao
-      annotations:
-        # The CRD is installed by this same chart.
-        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    spec:
-      provider:
-        vault:
-          server: http://local-openbao.openbao.svc.cluster.local:8200
-          path: secret
-          version: v2
-          auth:
-            kubernetes:
-              mountPath: kubernetes
-              role: eso
-              serviceAccountRef:
-                name: local-external-secrets
-                namespace: external-secrets
+# The ClusterSecretStore lives in manifests/secret-stores (an app without
+# ServerSideApply): ESO custom resources in this SSA app crash Argo CD 2.10.2's diff.
