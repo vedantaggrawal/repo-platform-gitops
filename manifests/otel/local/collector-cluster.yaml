@@ -1,7 +1,8 @@
 # otel-cluster — StatefulSet + Target Allocator. Replaces Alloy pipelines 1
-# (ServiceMonitor/PodMonitor scrape), 2 (apiserver/kubelet/cadvisor/coredns),
-# and 5 (remote_write to Mimir). The TA discovers the same SM/PM objects Alloy
-# watched and shards them across the collector's prometheus receiver.
+# (ServiceMonitor/PodMonitor scrape), 2 (apiserver/kubelet/cadvisor/coredns, now
+# covered by the kube-prometheus-stack SMs) and 5 (remote_write to Mimir). The TA
+# discovers the SM/PM objects and shards them across the collector's prometheus
+# receiver.
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
@@ -51,57 +52,11 @@ spec:
     receivers:
       prometheus:
         config:
-          scrape_configs:
-            # Cluster-component scrapes ported verbatim from Alloy. The Target
-            # Allocator merges these with the SM/PM-derived jobs.
-            - job_name: apiserver
-              kubernetes_sd_configs:
-                - role: endpoints
-              scheme: https
-              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-              tls_config:
-                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-                insecure_skip_verify: true
-              relabel_configs:
-                - source_labels:
-                    - __meta_kubernetes_namespace
-                    - __meta_kubernetes_service_name
-                    - __meta_kubernetes_endpoint_port_name
-                  regex: default;kubernetes;https
-                  action: keep
-            - job_name: kubelet
-              kubernetes_sd_configs:
-                - role: node
-              scheme: https
-              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-              tls_config:
-                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-                insecure_skip_verify: true
-              relabel_configs:
-                - action: labelmap
-                  regex: __meta_kubernetes_node_label_(.+)
-            - job_name: cadvisor
-              kubernetes_sd_configs:
-                - role: node
-              scheme: https
-              metrics_path: /metrics/cadvisor
-              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-              tls_config:
-                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-                insecure_skip_verify: true
-              relabel_configs:
-                - action: labelmap
-                  regex: __meta_kubernetes_node_label_(.+)
-            - job_name: coredns
-              kubernetes_sd_configs:
-                - role: endpoints
-              relabel_configs:
-                - source_labels:
-                    - __meta_kubernetes_namespace
-                    - __meta_kubernetes_service_name
-                    - __meta_kubernetes_endpoint_port_name
-                  regex: kube-system;kube-dns;metrics
-                  action: keep
+          # Every job comes from SMs/PMs via the TA. The native apiserver/kubelet/
+          # cadvisor/coredns jobs duplicated the kube-prometheus-stack SMs, whose
+          # labels (job="kubelet", metrics_path=...) the mixin dashboards/rules use.
+          # Keep the empty list: operator 0.158 errors on `config` without it.
+          scrape_configs: []
     processors:
       memory_limiter:
         check_interval: 5s
