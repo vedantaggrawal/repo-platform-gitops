@@ -1,0 +1,6 @@
+enabled: "true"
+chart: external-secrets
+repoURL: https://charts.external-secrets.io
+targetRevision: "2.13.0"
+namespace: external-secrets
+syncWave: "-1"

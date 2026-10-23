@@ -4,8 +4,10 @@
 # up off-cluster: losing it means losing everything stored in OpenBao.
 #   kubectl -n openbao get secret openbao-unseal -o jsonpath='{.data.key}' > openbao-unseal.key.b64
 # Self-init (first start only) enables Kubernetes auth, a KV v2 store at
-# `secret/`, and a `bao-config` role used by later config jobs; the root token
-# it uses is revoked automatically.
+# `secret/`, a `bao-config` admin role (break-glass:
+#   kubectl -n openbao create token bao-config | bao login -method=kubernetes role=bao-config jwt=-)
+# and the `eso` role for External Secrets. The root token it uses is revoked.
+# Changing the initialize stanza only takes effect on an empty store.
 # If self-init ever fails, it can't be retried (the store is already
 # initialised and the root token revoked): fix the config, then delete PVC
 # data-local-openbao-0 and the pod to start over.
@@ -72,6 +74,29 @@ server:
             bound_service_account_namespaces = "openbao"
             policies                         = "bao-config"
             ttl                              = "15m"
+          }
+        }
+        # External Secrets Operator: read platform secrets and push generated
+        # ones. PushSecret writes custom_metadata first, so metadata needs
+        # create/update; no delete, so PushSecrets keep deletionPolicy None.
+        request "eso-policy" {
+          operation = "update"
+          path      = "sys/policy/eso"
+          data = {
+            policy = <<-EOP
+              path "secret/data/platform/*"     { capabilities = ["create", "read", "update"] }
+              path "secret/metadata/platform/*" { capabilities = ["create", "read", "update", "list"] }
+            EOP
+          }
+        }
+        request "eso-role" {
+          operation = "update"
+          path      = "auth/kubernetes/role/eso"
+          data = {
+            bound_service_account_names      = "local-external-secrets"
+            bound_service_account_namespaces = "external-secrets"
+            policies                         = "eso"
+            ttl                              = "1h"
           }
         }
       }
