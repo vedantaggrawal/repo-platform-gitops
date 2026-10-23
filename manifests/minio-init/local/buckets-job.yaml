@@ -2,6 +2,12 @@
 # Argo strips Helm hooks (helm.sh/hook is ignored unless renamed to
 # argocd.argoproj.io/hook), so the chart's `buckets:` Job never ran.
 # This Job is Argo-native: PostSync hook with hook-succeeded delete policy.
+#
+# It also gives mimir/loki/tempo their own least-privilege MinIO users: the
+# `creds` init container generates each app's key once (reused afterwards) and
+# stores it in Secret s3-<app> in `monitoring`; the mc container creates the
+# user with a policy limited to that app's buckets. MinIO root credentials are
+# read from the chart's Secret, never from Git.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -20,18 +26,57 @@ spec:
         app.kubernetes.io/name: minio-init
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: minio-init
+      volumes:
+        - name: creds
+          emptyDir:
+            medium: Memory
+      initContainers:
+        - name: creds
+          image: docker.io/alpine/k8s:1.31.4
+          command:
+            - sh
+            - -ec
+            - |
+              for app in mimir loki tempo; do
+                if ! kubectl -n monitoring get secret "s3-$app" >/dev/null 2>&1; then
+                  key="$app-$(head -c 32 /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 12)"
+                  secret=$(head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)
+                  kubectl -n monitoring create secret generic "s3-$app" \
+                    --from-literal=S3_ACCESS_KEY_ID="$key" --from-literal=S3_SECRET_ACCESS_KEY="$secret" >/dev/null
+                  echo "created s3-$app"
+                fi
+                kubectl -n monitoring get secret "s3-$app" -o jsonpath='{.data.S3_ACCESS_KEY_ID}' | base64 -d > "/creds/$app.key"
+                kubectl -n monitoring get secret "s3-$app" -o jsonpath='{.data.S3_SECRET_ACCESS_KEY}' | base64 -d > "/creds/$app.secret"
+              done
+          volumeMounts:
+            - name: creds
+              mountPath: /creds
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
       containers:
         - name: mc
           image: quay.io/minio/mc:latest
           imagePullPolicy: IfNotPresent
           env:
-            - name: MC_HOST_local
-              value: "http://lgtm-admin:lgtm-admin-local@local-minio.monitoring-storage.svc.cluster.local:9000"
+            - name: ROOT_USER
+              valueFrom: { secretKeyRef: { name: local-minio, key: rootUser } }
+            - name: ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: local-minio, key: rootPassword } }
+          volumeMounts:
+            - name: creds
+              mountPath: /creds
+              readOnly: true
           command:
             - sh
             - -c
             - |
               set -eu
+              export MC_HOST_local="http://${ROOT_USER}:${ROOT_PASSWORD}@local-minio.monitoring-storage.svc.cluster.local:9000"
               # Wait for MinIO API (up to 60s).
               for i in $(seq 1 90); do
                 if mc ls local >/dev/null 2>&1; then
@@ -43,6 +88,23 @@ spec:
                             loki-chunks loki-ruler tempo-blocks; do
                 mc mb --ignore-existing "local/$bucket"
                 echo "ensured: $bucket"
+              done
+              # Per-app users, each limited to its own buckets.
+              policy() { # $1 name, rest buckets
+                name=$1; shift; res=""
+                for b in "$@"; do res="$res\"arn:aws:s3:::$b\",\"arn:aws:s3:::$b/*\","; done
+                printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket","s3:GetBucketLocation","s3:ListBucketMultipartUploads","s3:ListMultipartUploadParts","s3:AbortMultipartUpload"],"Resource":[%s]}]}' "${res%,}" > "/tmp/$name.json"
+                mc admin policy create local "$name" "/tmp/$name.json" >/dev/null
+              }
+              policy mimir-rw mimir-blocks mimir-ruler mimir-alertmanager
+              policy loki-rw loki-chunks loki-ruler
+              policy tempo-rw tempo-blocks
+              for app in mimir loki tempo; do
+                mc admin user add local "$(cat /creds/$app.key)" "$(cat /creds/$app.secret)" >/dev/null
+                mc admin policy attach local "$app-rw" --user "$(cat /creds/$app.key)" >/dev/null 2>&1 \
+                  || mc admin user info local "$(cat /creds/$app.key)" --json | grep -q "\"$app-rw\"" \
+                  || { echo "policy $app-rw not attached for $app"; exit 1; }
+                echo "ensured user for $app"
               done
               mc ls local
           resources:
