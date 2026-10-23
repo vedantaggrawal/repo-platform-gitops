@@ -12,9 +12,13 @@ deploymentUpdate:
 additionalAnnotations:
   argocd.argoproj.io/sync-options: Replace=true
 
-# Local dev credentials. PROD: pull from External Secrets Operator + Vault/SOPS.
-rootUser: lgtm-admin
-rootPassword: lgtm-admin-local
+# Root credentials: Secret minio-root (keys rootUser/rootPassword), delivered
+# from OpenBao by an ExternalSecret in manifests/minio-init/local.
+existingSecret: minio-root
+
+# The chart default `users` adds a console user with a well-known password; app
+# users are created by the minio-init Job instead.
+users: []
 
 persistence:
   enabled: true

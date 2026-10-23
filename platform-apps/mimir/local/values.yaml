@@ -13,8 +13,9 @@ mimir:
         backend: s3
         s3:
           endpoint: local-minio.monitoring-storage.svc.cluster.local:9000
-          access_key_id: lgtm-admin
-          secret_access_key: lgtm-admin-local
+          # From Secret mimir-s3 (global.extraEnvFrom); Mimir expands ${VAR}.
+          access_key_id: "${MIMIR_S3_ACCESS_KEY_ID}"
+          secret_access_key: "${MIMIR_S3_SECRET_ACCESS_KEY}"
           insecure: true
           region: us-east-1
     blocks_storage:
@@ -47,7 +48,10 @@ mimir:
         replication_factor: 1
 
 global:
-  extraEnvFrom: []
+  # MinIO user credentials from OpenBao (ExternalSecret in manifests/minio-init).
+  extraEnvFrom:
+    - secretRef:
+        name: mimir-s3
 
 # Resource floor used everywhere we don't override per-component.
 _resourcesSmall: &resourcesSmall

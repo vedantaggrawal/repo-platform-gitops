@@ -5,8 +5,8 @@
 #
 # It also gives mimir/loki/tempo their own MinIO users, each with a policy
 # limited to its own buckets. Their credentials come from the ExternalSecrets in
-# externalsecrets.yaml (OpenBao); PostSync waits until those are synced. The
-# root login is read from the chart's Secret local-minio.
+# externalsecrets.yaml (OpenBao), as does the root login (minio-root); PostSync
+# waits until those are synced.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -31,9 +31,9 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: ROOT_USER
-              valueFrom: { secretKeyRef: { name: local-minio, key: rootUser } }
+              valueFrom: { secretKeyRef: { name: minio-root, key: rootUser } }
             - name: ROOT_PASSWORD
-              valueFrom: { secretKeyRef: { name: local-minio, key: rootPassword } }
+              valueFrom: { secretKeyRef: { name: minio-root, key: rootPassword } }
           envFrom:
             - secretRef:
                 name: minio-app-users

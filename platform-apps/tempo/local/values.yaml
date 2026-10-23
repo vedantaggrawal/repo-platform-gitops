@@ -7,6 +7,11 @@ replicas: 1
 
 tempo:
   retention: 72h
+  extraArgs:
+    config.expand-env: "true"
+  extraEnvFrom:
+    - secretRef:
+        name: tempo-s3
   multitenancyEnabled: false
   server:
     http_listen_port: 3200
@@ -19,8 +24,9 @@ tempo:
       s3:
         bucket: tempo-blocks
         endpoint: local-minio.monitoring-storage.svc.cluster.local:9000
-        access_key: lgtm-admin
-        secret_key: lgtm-admin-local
+        # From Secret tempo-s3 (tempo.extraEnvFrom), expanded by -config.expand-env.
+        access_key: "${TEMPO_S3_ACCESS_KEY}"
+        secret_key: "${TEMPO_S3_SECRET_KEY}"
         insecure: true
         forcepathstyle: true
         region: us-east-1
