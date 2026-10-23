@@ -54,7 +54,8 @@ spec:
               done
               [ -n "$ok" ] || { echo "MinIO not reachable with root credentials"; exit 1; }
               for bucket in mimir-blocks mimir-ruler mimir-alertmanager \
-                            loki-chunks loki-ruler tempo-blocks; do
+                            loki-chunks loki-ruler tempo-blocks \
+                            keycloak-db-backups; do
                 mc mb --ignore-existing "local/$bucket"
                 echo "ensured: $bucket"
               done
@@ -69,6 +70,8 @@ spec:
               policy mimir-rw mimir-blocks mimir-ruler mimir-alertmanager
               policy loki-rw loki-chunks loki-ruler
               policy tempo-rw tempo-blocks
+              # cnpg: CloudNativePG backups of keycloak-db.
+              policy cnpg-rw keycloak-db-backups
               user() { # $1 app, $2 user, $3 password
                 mc admin user add local "$2" "$3" >/dev/null
                 # attach fails when the policy is already attached.
@@ -80,6 +83,7 @@ spec:
               user mimir "$MIMIR_USER" "$MIMIR_PASSWORD"
               user loki "$LOKI_USER" "$LOKI_PASSWORD"
               user tempo "$TEMPO_USER" "$TEMPO_PASSWORD"
+              user cnpg "$CNPG_USER" "$CNPG_PASSWORD"
               mc ls local
           resources:
             requests:

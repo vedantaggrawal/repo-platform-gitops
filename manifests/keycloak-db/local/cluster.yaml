@@ -18,6 +18,14 @@ spec:
     initdb:
       database: keycloak
       owner: keycloak
+  # Continuous WAL archiving to MinIO via the Barman Cloud plugin
+  # (objectstore.yaml). Adding it restarts the single instance once.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      enabled: true
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: keycloak-db-backups
   storage:
     size: 2Gi
     storageClass: standard
