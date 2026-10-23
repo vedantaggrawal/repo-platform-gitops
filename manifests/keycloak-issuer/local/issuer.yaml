@@ -5,7 +5,8 @@
 # serves local.keycloak.internal with the platform-ca certificate. OIDC clients
 # resolve the hostname to it with:
 #   hostAliases: [{ip: 10.96.0.200, hostnames: [local.keycloak.internal]}]
-# and trust platform-ca via the platform-ca-bundle ConfigMap below.
+# and trust platform-ca via the platform-ca-bundle ConfigMap, which
+# trust-manager writes into every namespace (manifests/trust-bundles).
 # The endpoint is the ingress-ready node's IP (kind control-plane 172.18.0.2);
 # re-check it after a cluster recreate (the self-test below catches it).
 apiVersion: v1
@@ -36,27 +37,6 @@ ports:
 endpoints:
   # Only nodes labelled ingress-ready=true run the Envoy listener (control-plane).
   - addresses: ["172.18.0.2"]
----
-# Public root certificate of the platform CA (not secret). Copy or mount where
-# OIDC clients need to trust the issuer.
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: platform-ca-bundle
-  namespace: keycloak
-data:
-  ca.crt: |
-    -----BEGIN CERTIFICATE-----
-    MIIBgTCCASagAwIBAgIQB/8YJdb3OtmidL634o3oSzAKBggqhkjOPQQDAjAgMR4w
-    HAYDVQQDExVldmUgcGxhdGZvcm0gbG9jYWwgQ0EwHhcNMjYxMDIzMDIyMzU0WhcN
-    MzYxMDIwMDIyMzU0WjAgMR4wHAYDVQQDExVldmUgcGxhdGZvcm0gbG9jYWwgQ0Ew
-    WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARsYgvcYWnsUeKQe5rjxeX/kcerwJTx
-    WzP73sQ1SZmeDAyUnC/oyWwRq6vHhCdBEQ0meUc2vKMUAl1uoBtu7mXwo0IwQDAO
-    BgNVHQ8BAf8EBAMCAqQwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUmxRxF9ub
-    yE1im8onzF7IscaXrbIwCgYIKoZIzj0EAwIDSQAwRgIhAL5Q2azSZFfSWTBhHaNI
-    XiPQAIIXfsb73q3hEDZ3yBdNAiEAxDvRCRque6UrexgZG+MKEwM/Cobm/rztNM2D
-    mL/58NE=
-    -----END CERTIFICATE-----
 ---
 # Self-test after every sync: discovery through the in-cluster path must work
 # and its issuer must equal the external URL.
