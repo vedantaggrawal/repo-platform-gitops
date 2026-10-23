@@ -1,0 +1,6 @@
+# External Secrets Operator — syncs secrets from OpenBao into Kubernetes Secrets.
+# Workloads keep consuming plain Secrets; the values live in OpenBao
+# (secret/platform/...), never in this public repo.
+
+# The ClusterSecretStore lives in manifests/secret-stores (an app without
+# ServerSideApply): ESO custom resources in this SSA app crash Argo CD 2.10.2's diff.

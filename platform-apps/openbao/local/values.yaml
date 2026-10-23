@@ -1,0 +1,205 @@
+# OpenBao — the platform's secrets manager. Standalone (one replica, PebbleDB on
+# a PVC). Unseals itself with a static key held in Secret `openbao-unseal`,
+# which a PreSync Job below generates in-cluster once (never in Git). Back it
+# up off-cluster: losing it means losing everything stored in OpenBao.
+#   kubectl -n openbao get secret openbao-unseal -o jsonpath='{.data.key}' > openbao-unseal.key.b64
+# Self-init (first start only) enables Kubernetes auth, a KV v2 store at
+# `secret/`, a `bao-config` admin role (break-glass:
+#   kubectl -n openbao create token bao-config | bao login -method=kubernetes role=bao-config jwt=-)
+# and the `eso` role for External Secrets. The root token it uses is revoked.
+# Changing the initialize stanza only takes effect on an empty store.
+# If self-init ever fails, it can't be retried (the store is already
+# initialised and the root token revoked): fix the config, then delete PVC
+# data-local-openbao-0 and the pod to start over.
+
+injector:
+  enabled: false
+
+ui:
+  enabled: true
+
+server:
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+      listener "tcp" {
+        tls_disable     = 1        # TLS terminates at the ingress
+        address         = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+      storage "pebbledb" {
+        path = "/openbao/data/pebbledb"
+      }
+      seal "static" {
+        current_key_id = "platform-1"
+        current_key    = "file:///openbao/unseal/key"
+      }
+      initialize "platform" {
+        request "kubernetes-auth" {
+          operation = "update"
+          path      = "sys/auth/kubernetes"
+          data      = { type = "kubernetes" }
+        }
+        request "kubernetes-auth-config" {
+          operation = "update"
+          path      = "auth/kubernetes/config"
+          data      = { kubernetes_host = "https://kubernetes.default.svc" }
+        }
+        request "kv" {
+          operation = "update"
+          path      = "sys/mounts/secret"
+          data      = { type = "kv", options = { version = "2" } }
+        }
+        request "bao-config-policy" {
+          operation = "update"
+          path      = "sys/policy/bao-config"
+          data = {
+            policy = <<-EOP
+              path "sys/auth/*"   { capabilities = ["create", "read", "update", "delete", "list", "sudo"] }
+              path "sys/auth"     { capabilities = ["read"] }
+              path "auth/*"       { capabilities = ["create", "read", "update", "delete", "list"] }
+              path "sys/policies/acl/*" { capabilities = ["create", "read", "update", "delete", "list"] }
+              path "sys/policy/*" { capabilities = ["create", "read", "update", "delete", "list"] }
+              path "sys/mounts/*" { capabilities = ["create", "read", "update", "list"] }
+              path "secret/*"     { capabilities = ["create", "read", "update", "list"] }
+            EOP
+          }
+        }
+        request "bao-config-role" {
+          operation = "update"
+          path      = "auth/kubernetes/role/bao-config"
+          data = {
+            bound_service_account_names      = "bao-config"
+            bound_service_account_namespaces = "openbao"
+            policies                         = "bao-config"
+            ttl                              = "15m"
+          }
+        }
+        # External Secrets Operator: read platform secrets and push generated
+        # ones. PushSecret writes custom_metadata first, so metadata needs
+        # create/update; no delete, so PushSecrets keep deletionPolicy None.
+        request "eso-policy" {
+          operation = "update"
+          path      = "sys/policy/eso"
+          data = {
+            policy = <<-EOP
+              path "secret/data/platform/*"     { capabilities = ["create", "read", "update"] }
+              path "secret/metadata/platform/*" { capabilities = ["create", "read", "update", "list"] }
+            EOP
+          }
+        }
+        request "eso-role" {
+          operation = "update"
+          path      = "auth/kubernetes/role/eso"
+          data = {
+            bound_service_account_names      = "local-external-secrets"
+            bound_service_account_namespaces = "external-secrets"
+            policies                         = "eso"
+            ttl                              = "1h"
+          }
+        }
+      }
+  dataStorage:
+    size: 1Gi
+    storageClass: standard
+  volumes:
+    - name: unseal
+      secret:
+        secretName: openbao-unseal
+  volumeMounts:
+    - name: unseal
+      mountPath: /openbao/unseal
+      readOnly: true
+  ingress:
+    enabled: true
+    ingressClassName: cilium
+    annotations:
+      cert-manager.io/cluster-issuer: platform-ca
+      cert-manager.io/usages: "digital signature,key encipherment,server auth"
+    hosts:
+      - host: local.openbao.internal
+        paths: []
+    tls:
+      - secretName: openbao-tls
+        hosts:
+          - local.openbao.internal
+
+extraObjects:
+  # Generates the static unseal key once (32 random bytes); exits if present.
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: openbao-unseal-init
+      namespace: openbao
+      annotations:
+        argocd.argoproj.io/hook: PreSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        argocd.argoproj.io/sync-wave: "-2"
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: openbao-unseal-init
+      namespace: openbao
+      annotations:
+        argocd.argoproj.io/hook: PreSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        argocd.argoproj.io/sync-wave: "-2"
+    rules:
+      - apiGroups: [""]
+        resources: ["secrets"]
+        resourceNames: ["openbao-unseal"]
+        verbs: ["get"]
+      # RBAC can't restrict `create` by name.
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["create"]
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: openbao-unseal-init
+      namespace: openbao
+      annotations:
+        argocd.argoproj.io/hook: PreSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        argocd.argoproj.io/sync-wave: "-2"
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: openbao-unseal-init
+    subjects:
+      - kind: ServiceAccount
+        name: openbao-unseal-init
+        namespace: openbao
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: openbao-unseal-init
+      namespace: openbao
+      annotations:
+        argocd.argoproj.io/hook: PreSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          serviceAccountName: openbao-unseal-init
+          restartPolicy: Never
+          containers:
+            - name: init
+              image: docker.io/alpine/k8s:1.31.4
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  if kubectl -n openbao get secret openbao-unseal >/dev/null 2>&1; then echo "openbao-unseal exists"; exit 0; fi
+                  head -c 32 /dev/urandom > /tmp/key
+                  kubectl -n openbao create secret generic openbao-unseal --from-file=key=/tmp/key >/dev/null
+                  rm -f /tmp/key
+                  echo "openbao-unseal created"
+  # Identity for later config jobs (bound to the bao-config role by self-init).
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: bao-config
+      namespace: openbao
