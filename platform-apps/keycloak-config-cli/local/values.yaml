@@ -36,7 +36,7 @@ extraEnv:
   - name: GITHUB_CLIENT_SECRET
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } }
 
-# One retry if Keycloak isn't ready yet / the ConfigMap app hasn't synced.
+# One retry if Keycloak isn't ready yet.
 backoffLimit: 2
 
 resources:
