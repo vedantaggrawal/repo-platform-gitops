@@ -1,0 +1,61 @@
+# Authelia configuration. Secrets are injected from files (see secrets.yaml);
+# the `secret` template filter reads the OIDC signing key.
+theme: auto
+server:
+  address: tcp://0.0.0.0:9091
+log:
+  level: info
+  format: json
+authentication_backend:
+  # Passwords are hashes held in OpenBao: change them there, not in the UI.
+  password_reset:
+    disable: true
+  password_change:
+    disable: true
+  file:
+    path: /users/users_database.yml
+    watch: true
+access_control:
+  default_policy: two_factor
+session:
+  cookies:
+    - domain: local.authelia.internal
+      authelia_url: https://local.authelia.internal:30443
+storage:
+  local:
+    path: /data/db.sqlite3
+notifier:
+  # No mail server: one-time codes for 2FA enrolment are written here
+  # (kubectl -n authelia exec deploy/authelia -- cat /data/notification.txt).
+  filesystem:
+    filename: /data/notification.txt
+totp:
+  issuer: platform
+webauthn:
+  display_name: Platform
+identity_providers:
+  oidc:
+    jwks:
+      - key_id: main
+        algorithm: RS256
+        use: sig
+        key: {{ secret "/jwk/tls.key" | mindent 10 "|" | msquote }}
+    clients:
+      - client_id: grafana
+        client_name: Grafana
+        public: true
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris: [https://local.grafana.internal:30443/login/generic_oauth]
+        scopes: [openid, profile, email, groups]
+      - client_id: argocd
+        client_name: Argo CD
+        public: true
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - https://local.argocd.internal:30443/auth/callback
+          - http://localhost:8085/auth/callback   # argocd login --sso
+        scopes: [openid, profile, email, groups, offline_access]
+        grant_types: [authorization_code, refresh_token]
+        response_types: [code]

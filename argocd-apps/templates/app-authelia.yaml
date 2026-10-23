@@ -1,0 +1,34 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-authelia
+  namespace: argocd
+  annotations:
+    # The platform's identity provider (manifests/authelia).
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/authelia/{{ .Values.env }}
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: authelia
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # ESO and cert-manager CRDs come from other apps.
+      - SkipDryRunOnMissingResource=true
+      # No ServerSideApply: Argo CD 2.10 panics diffing ESO custom resources under SSA.
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
