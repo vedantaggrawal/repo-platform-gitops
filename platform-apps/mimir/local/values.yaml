@@ -147,7 +147,9 @@ memcached:
 memcachedExporter:
   enabled: false
 metaMonitoring:
+  # ServiceMonitors for every Mimir component; the OTel Target Allocator picks
+  # them up, so Mimir's own metrics (ring, shipper, OOMs) land in Mimir.
   serviceMonitor:
-    enabled: false
+    enabled: true
   grafanaAgent:
     enabled: false
