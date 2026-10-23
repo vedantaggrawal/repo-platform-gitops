@@ -178,3 +178,51 @@ extraObjects:
     metadata:
       name: bao-config
       namespace: openbao
+  # OpenBao configuration as code, applied after every sync via the
+  # bao-config role (no root token): ESO read policy/role, and platform
+  # secrets seeded with random values only if absent (re-runs never rotate).
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: bao-config
+      namespace: openbao
+      annotations:
+        argocd.argoproj.io/hook: PostSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          serviceAccountName: bao-config
+          restartPolicy: Never
+          containers:
+            - name: config
+              image: quay.io/openbao/openbao:2.7.1
+              env:
+                - name: BAO_ADDR
+                  value: http://local-openbao.openbao.svc.cluster.local:8200
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=bao-config \
+                    jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token)
+                  export BAO_TOKEN
+                  printf '%s\n' \
+                    'path "secret/data/platform/*" { capabilities = ["read"] }' \
+                    'path "secret/metadata/platform/*" { capabilities = ["read", "list"] }' \
+                    | bao policy write eso-read - >/dev/null
+                  bao write auth/kubernetes/role/eso >/dev/null \
+                    bound_service_account_names=local-external-secrets \
+                    bound_service_account_namespaces=external-secrets \
+                    policies=eso-read ttl=1h
+                  rand() { head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c "$1"; }
+                  seed() { # path, then key=value pairs; cas=0 makes the server refuse to overwrite
+                    p=$1; shift
+                    if bao kv put -cas=0 "$p" "$@" >/dev/null 2>&1; then echo "seeded: $p"
+                    elif bao kv metadata get "$p" >/dev/null 2>&1; then echo "exists: $p"
+                    else echo "failed: $p"; exit 1; fi
+                  }
+                  seed secret/platform/minio/root rootUser="admin-$(rand 8 | tr 'A-Z' 'a-z')" rootPassword="$(rand 40)"
+                  for app in mimir loki tempo; do
+                    seed "secret/platform/minio/$app" accessKeyId="$app-$(rand 12 | tr 'A-Z' 'a-z')" secretAccessKey="$(rand 40)"
+                  done
