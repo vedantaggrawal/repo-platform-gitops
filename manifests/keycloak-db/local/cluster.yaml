@@ -7,8 +7,10 @@ metadata:
   name: keycloak-db
   namespace: keycloak
   annotations:
-    # The CRD comes from the cloudnative-pg platform app (separate Application).
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    # SkipDryRun: the CRD comes from the cloudnative-pg platform app (separate
+    # Application). Delete/Prune=false: Argo never deletes this Cluster (doing so
+    # drops the database and rotates its credentials).
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Delete=false,Prune=false
 spec:
   instances: 1
   imageName: ghcr.io/cloudnative-pg/postgresql:17.6
