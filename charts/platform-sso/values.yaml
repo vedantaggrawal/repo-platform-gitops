@@ -1,0 +1,50 @@
+# Defaults. Per-environment values live in platform-apps/platform-sso/<env>/values.yaml.
+
+# Which half this release renders. Two Argo CD apps share the chart:
+#   secrets: ExternalSecrets (Degraded until OpenBao holds the value)
+#   realm:   realm ConfigMap + keycloak-config-cli import Job (a Degraded
+#            ExternalSecret in the same app would block the PostSync import)
+component: realm
+
+secretStore: openbao
+refreshInterval: 5m
+
+# Realm settings other than clients and identity providers (env values).
+realm: {}
+
+# Brokered identity providers: alias -> {defaultScope}. Credentials come from
+# OpenBao platform/keycloak/idp/<alias> (client_id, client_secret) into Secret
+# keycloak-<alias>-idp, and reach the realm as $(env:<ALIAS>_CLIENT_ID).
+idps: {}
+
+# OIDC clients: clientId -> {name, url, redirectPaths, logoutPath,
+# extraRedirectUris, rootUrl, offlineAccess}. Public clients with PKCE.
+clients: {}
+
+clientDefaults:
+  defaultClientScopes: [basic, web-origins, acr, roles, profile, email, groups]
+
+keycloak-config-cli:
+  enabled: true
+  image:
+    # CLI 6.5.1 built against Keycloak 26.5.5 (admin API forward-compatible with 26.8).
+    tag: "6.5.1-26.5.5"
+  existingSecret: keycloak-admin-creds
+  existingSecretKey: password
+  # The realm file comes from this chart (templates/realm.yaml).
+  existingConfigMap: platform-sso-realm
+  env:
+    KEYCLOAK_USER: "admin"
+    # Wait for Keycloak to answer before importing.
+    KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
+    KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: "300s"
+    # Resolve $(env:...) placeholders in the realm file from the container env.
+    IMPORT_VARSUBSTITUTION_ENABLED: "true"
+    IMPORT_FILES_LOCATIONS: "/config/*"
+  backoffLimit: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi

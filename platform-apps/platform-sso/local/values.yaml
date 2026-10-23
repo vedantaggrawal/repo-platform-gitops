@@ -1,0 +1,78 @@
+# Platform SSO (chart: charts/platform-sso). Adding a UI = one entry under
+# `clients` plus that app's own OIDC settings in its values.
+# Secrets never live here: IdP credentials come from OpenBao
+# (platform/keycloak/idp/<alias>, keys client_id/client_secret) via External Secrets.
+# The import re-runs on every sync of the realm app; after changing a secret in
+# OpenBao, bump realm.attributes.importGeneration.
+
+idps:
+  github: { defaultScope: "read:user" }
+  # Keycloak's built-in gitlab provider: read_user for /api/v4/user, openid for the ID token.
+  gitlab: { defaultScope: "openid read_user" }
+
+clients:
+  grafana:
+    name: Grafana
+    url: https://local.grafana.internal:30443
+    redirectPaths: [/login/generic_oauth]
+    logoutPath: /*
+  argocd:
+    name: Argo CD
+    url: https://local.argocd.internal:30443
+    rootUrl: true
+    redirectPaths: [/auth/callback]
+    extraRedirectUris: ["http://localhost:8085/auth/callback"]   # argocd login --sso
+    logoutPath: /applications
+    offlineAccess: true
+
+# People log in with GitHub or GitLab; everyone lands in platform-viewers,
+# listed users in platform-admins.
+realm:
+  realm: platform
+  # Bump to force a re-import (e.g. after Keycloak's database was rebuilt).
+  attributes:
+    importGeneration: "2"
+  enabled: true
+  displayName: Platform
+  registrationAllowed: false
+  loginWithEmailAllowed: false
+  groups:
+    - name: platform-admins
+    - name: platform-viewers
+  defaultGroups:
+    - /platform-viewers
+  users:
+    - username: vedantaggrawal
+      enabled: true
+      federatedIdentities:
+        - identityProvider: github
+          userId: "14919641"
+          userName: vedantaggrawal
+      groups:
+        - /platform-admins
+  clientScopes:
+    - name: groups
+      protocol: openid-connect
+      attributes:
+        include.in.token.scope: "true"
+      protocolMappers:
+        - name: groups
+          protocol: openid-connect
+          protocolMapper: oidc-group-membership-mapper
+          config:
+            claim.name: groups
+            full.path: "false"
+            id.token.claim: "true"
+            access.token.claim: "true"
+            userinfo.token.claim: "true"
+
+keycloak-config-cli:
+  env:
+    KEYCLOAK_URL: "http://local-keycloak-keycloakx-http.keycloak.svc.cluster.local"
+  # One pair per idp (the subchart's env can't be generated). Optional: until the
+  # Secret exists the IdP is imported with placeholder values.
+  extraEnv:
+    - { name: GITHUB_CLIENT_ID,     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_ID,     optional: true } } }
+    - { name: GITHUB_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } } }
+    - { name: GITLAB_CLIENT_ID,     valueFrom: { secretKeyRef: { name: keycloak-gitlab-idp, key: GITLAB_CLIENT_ID,     optional: true } } }
+    - { name: GITLAB_CLIENT_SECRET, valueFrom: { secretKeyRef: { name: keycloak-gitlab-idp, key: GITLAB_CLIENT_SECRET, optional: true } } }

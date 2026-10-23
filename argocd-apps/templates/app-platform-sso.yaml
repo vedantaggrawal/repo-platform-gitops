@@ -1,0 +1,46 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+{{- /* charts/platform-sso as two apps: secrets first, then the realm import.
+       Split so a Degraded ExternalSecret (OpenBao value not written yet) can't
+       block the import's PostSync Job. Both read the same values file. */}}
+{{- range $component, $wave := dict "secrets" "2" "realm" "3" }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Values.env }}-sso-{{ $component }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $wave | quote }}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: charts/platform-sso
+    helm:
+      valueFiles:
+        - ../../platform-apps/platform-sso/{{ $.Values.env }}/values.yaml
+      valuesObject:
+        component: {{ $component }}
+        keycloak-config-cli:
+          enabled: {{ eq $component "realm" }}
+  destination:
+    server: {{ $.Values.cluster }}
+    namespace: keycloak
+  syncPolicy:
+    automated:
+      prune: {{ $.Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # ESO CRDs come from the external-secrets app.
+      - SkipDryRunOnMissingResource=true
+      # No ServerSideApply: Argo CD 2.10 panics diffing ESO custom resources under SSA.
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
+{{- end }}

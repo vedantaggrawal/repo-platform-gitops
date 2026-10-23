@@ -1,0 +1,14 @@
+apiVersion: v2
+name: platform-sso
+description: >-
+  Single source for platform SSO: the Keycloak `platform` realm (clients and
+  identity providers generated from one list) and the OpenBao-backed secrets
+  they need. Values: platform-apps/platform-sso/<env>/values.yaml.
+type: application
+version: 0.1.0
+dependencies:
+  # Vendored in charts/ so rendering needs no network.
+  - name: keycloak-config-cli
+    version: 1.3.8
+    repository: https://jkroepke.github.io/helm-charts
+    condition: keycloak-config-cli.enabled
