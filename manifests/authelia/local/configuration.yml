@@ -3,6 +3,9 @@
 theme: auto
 server:
   address: tcp://0.0.0.0:9091
+  # The image's healthcheck file can't be written on a read-only root filesystem;
+  # Kubernetes probes /api/health instead.
+  disable_healthcheck: true
 log:
   level: info
   format: json
@@ -12,9 +15,10 @@ authentication_backend:
     disable: true
   password_change:
     disable: true
+  # Changes to the users Secret need `kubectl -n authelia rollout restart deploy/authelia`
+  # (Authelia's file watcher doesn't see Secret volume updates).
   file:
     path: /users/users_database.yml
-    watch: true
 access_control:
   default_policy: two_factor
 session:
