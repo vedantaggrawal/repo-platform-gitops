@@ -1,0 +1,18 @@
+# "Log in with GitLab" (gitlab.com). Credentials come from env (OpenBao →
+# Secret authentik-gitlab); until they exist the button is shown but fails.
+# A GitLab login is linked to an existing Authentik user only when the user
+# connects GitLab in their own settings; otherwise it enrols a new user.
+version: 1
+metadata:
+  name: platform - gitlab login
+entries:
+  - model: authentik_sources_oauth.oauthsource
+    identifiers: { slug: gitlab }
+    attrs:
+      name: GitLab
+      provider_type: gitlab
+      consumer_key: !Env [GITLAB_CLIENT_ID, unset]
+      consumer_secret: !Env [GITLAB_CLIENT_SECRET, unset]
+      authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
+      enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
+      user_matching_mode: identifier
