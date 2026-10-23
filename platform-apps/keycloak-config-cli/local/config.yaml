@@ -1,0 +1,9 @@
+enabled: "true"
+chart: keycloak-config-cli
+repoURL: https://jkroepke.github.io/helm-charts
+targetRevision: "1.3.8"
+namespace: keycloak
+# After Keycloak (wave 1) and the realm ConfigMap app (wave 2). The chart ships the
+# CLI as a Helm hook Job, which Argo CD runs as a PostSync hook — so realms
+# reconcile on every sync of this app.
+syncWave: "3"

@@ -1,0 +1,46 @@
+# keycloak-config-cli — declaratively reconciles Keycloak realms from the
+# `keycloak-realms` ConfigMap (manifests/keycloak-config). Runs as a PostSync
+# hook Job on every sync. remote-state is on by default, so it only purges
+# resources it created, never hand-made ones.
+#
+# Out-of-band Secrets in the keycloak namespace (NOT in git, this repo is public):
+#   - keycloak-admin-creds : Keycloak admin credentials (from the Keycloak deploy)
+#   - keycloak-github-idp  : GitHub OAuth app for the platform realm's GitHub login
+#                            (keys GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET). Optional:
+#                            until it exists the IdP is created with placeholder
+#                            values and GitHub login doesn't work.
+
+image:
+  # CLI 6.5.1 built against Keycloak 26.5.5 (admin API forward-compatible with 26.8).
+  tag: "6.5.1-26.5.5"
+
+existingConfigMap: keycloak-realms
+
+existingSecret: keycloak-admin-creds
+existingSecretKey: password
+
+env:
+  KEYCLOAK_URL: "http://local-keycloak-keycloakx-http.keycloak.svc.cluster.local"
+  KEYCLOAK_USER: "admin"
+  # Wait for Keycloak to answer before importing (Job may start before KC is ready).
+  KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
+  KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: "120s"
+  # Resolve $(env:...) placeholders in the realm files from the container env.
+  IMPORT_VARSUBSTITUTION_ENABLED: "true"
+  IMPORT_FILES_LOCATIONS: "/config/*"
+
+extraEnv:
+  - name: GITHUB_CLIENT_ID
+    valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_ID, optional: true } }
+  - name: GITHUB_CLIENT_SECRET
+    valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } }
+
+# One retry if Keycloak isn't ready yet / the ConfigMap app hasn't synced.
+backoffLimit: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
