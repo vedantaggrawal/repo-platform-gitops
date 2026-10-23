@@ -1,13 +1,13 @@
 {{- if eq .Values.component "realm" }}
 {{- $idps := list }}
 {{- range $alias, $idp := .Values.idps }}
-{{- $env := upper $alias }}
+{{- $prefix := upper $alias }}
 {{- $idps = append $idps (dict
       "alias" $alias "providerId" $alias "enabled" true "trustEmail" false
       "firstBrokerLoginFlowAlias" "first broker login"
       "config" (dict
-        "clientId" (printf "$(env:%s_CLIENT_ID:-unset)" $env)
-        "clientSecret" (printf "$(env:%s_CLIENT_SECRET:-unset)" $env)
+        "clientId" (printf "$(env:%s_CLIENT_ID:-unset)" $prefix)
+        "clientSecret" (printf "$(env:%s_CLIENT_SECRET:-unset)" $prefix)
         "syncMode" "IMPORT" "defaultScope" $idp.defaultScope)) }}
 {{- end }}
 {{- $clients := list }}
@@ -20,7 +20,7 @@
       "redirectUris" (concat $redirects ($c.extraRedirectUris | default list))
       "webOrigins" (list $c.url)
       "attributes" (dict "pkce.code.challenge.method" "S256" "post.logout.redirect.uris" (print $c.url $c.logoutPath))
-      "defaultClientScopes" $.Values.clientDefaults.defaultClientScopes }}
+      "defaultClientScopes" (list "basic" "web-origins" "acr" "roles" "profile" "email" "groups") }}
 {{- if $c.rootUrl }}{{ $_ := set $client "rootUrl" $c.url }}{{ end }}
 {{- /* Clients that request offline_access (e.g. the Argo CD CLI) need it as an
        optional scope: explicit default scopes drop Keycloak's built-ins. */}}
@@ -28,10 +28,10 @@
 {{- $clients = append $clients $client }}
 {{- end }}
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: platform-sso-realm
-data:
+stringData:
   platform.json: |
     {{- merge (dict "identityProviders" $idps "clients" $clients) .Values.realm | toPrettyJson | nindent 4 }}
 {{- end }}

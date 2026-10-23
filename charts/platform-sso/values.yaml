@@ -2,7 +2,7 @@
 
 # Which half this release renders. Two Argo CD apps share the chart:
 #   secrets: ExternalSecrets (Degraded until OpenBao holds the value)
-#   realm:   realm ConfigMap + keycloak-config-cli import Job (a Degraded
+#   realm:   realm Secret + keycloak-config-cli import Job (a Degraded
 #            ExternalSecret in the same app would block the PostSync import)
 component: realm
 
@@ -21,9 +21,6 @@ idps: {}
 # extraRedirectUris, rootUrl, offlineAccess}. Public clients with PKCE.
 clients: {}
 
-clientDefaults:
-  defaultClientScopes: [basic, web-origins, acr, roles, profile, email, groups]
-
 keycloak-config-cli:
   enabled: true
   image:
@@ -32,7 +29,7 @@ keycloak-config-cli:
   existingSecret: keycloak-admin-creds
   existingSecretKey: password
   # The realm file comes from this chart (templates/realm.yaml).
-  existingConfigMap: platform-sso-realm
+  existingConfigSecret: platform-sso-realm
   env:
     KEYCLOAK_USER: "admin"
     # Wait for Keycloak to answer before importing.
