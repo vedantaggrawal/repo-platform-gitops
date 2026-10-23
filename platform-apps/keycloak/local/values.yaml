@@ -1,7 +1,7 @@
 # Keycloak (codecentric keycloakx chart) — local dev environment.
 #
-# Runs in production mode (`start`) on the in-cluster Postgres from
-# manifests/keycloak-db (password generated in-cluster), so realms, clients and
+# Runs in production mode (`start`) on a CloudNativePG Postgres cluster
+# (manifests/keycloak-db; the operator generates the credentials), so realms, clients and
 # users survive pod restarts. (start-dev's embedded H2 lost everything on every
 # restart, which made it unusable as the platform's OIDC provider.)
 #
@@ -28,11 +28,11 @@ args:
 
 database:
   vendor: postgres
-  hostname: keycloak-db
+  hostname: keycloak-db-rw
   port: 5432
   database: keycloak
   username: keycloak
-  existingSecret: keycloak-db
+  existingSecret: keycloak-db-app
   existingSecretKey: password
 
 # Wait for Postgres before starting Keycloak (no ordering between the

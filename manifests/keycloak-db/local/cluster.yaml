@@ -1,0 +1,27 @@
+# Keycloak's Postgres, run by the CloudNativePG operator. The operator creates
+# the database, the `keycloak` owner and the `keycloak-db-app` Secret (username,
+# password, host, uri) — no credential lives in this public repo.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: keycloak-db
+  namespace: keycloak
+  annotations:
+    # The CRD comes from the cloudnative-pg platform app (separate Application).
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  bootstrap:
+    initdb:
+      database: keycloak
+      owner: keycloak
+  storage:
+    size: 2Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
