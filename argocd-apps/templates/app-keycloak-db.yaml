@@ -9,10 +9,6 @@ metadata:
     # so waves don't order the two; Keycloak's dbchecker init container waits for
     # this database instead.
     argocd.argoproj.io/sync-wave: "0"
-    # CNPG's webhook defaults fields inside the Cluster spec (encoding, locale,
-    # resizeInUseVolumes); the client-side diff reports them as drift and selfHeal
-    # re-syncs forever. Server-side diff compares what the API server would apply.
-    argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
   project: default
   source:
@@ -24,13 +20,44 @@ spec:
   destination:
     server: {{ .Values.cluster }}
     namespace: keycloak
+  # CNPG's webhook fills in defaults for these Cluster fields; without this they
+  # show as drift and selfHeal re-syncs forever. Fields we declare are still compared.
+  ignoreDifferences:
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jqPathExpressions:
+        - .spec.affinity
+        - .spec.bootstrap.initdb.encoding
+        - .spec.bootstrap.initdb.localeCType
+        - .spec.bootstrap.initdb.localeCollate
+        - .spec.enablePDB
+        - .spec.enableSuperuserAccess
+        - .spec.failoverDelay
+        - .spec.logLevel
+        - .spec.maxSyncReplicas
+        - .spec.minSyncReplicas
+        - .spec.monitoring
+        - .spec.postgresGID
+        - .spec.postgresUID
+        - .spec.postgresql
+        - .spec.primaryUpdateMethod
+        - .spec.primaryUpdateStrategy
+        - .spec.probes
+        - .spec.replicationSlots
+        - .spec.smartShutdownTimeout
+        - .spec.startDelay
+        - .spec.stopDelay
+        - .spec.storage.resizeInUseVolumes
+        - .spec.switchoverDelay
   syncPolicy:
     automated:
       prune: {{ .Values.prune }}
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
+      # No ServerSideApply here: Argo CD 2.10.2 can't resolve the CNPG Cluster
+      # schema, and both structured-merge and server-side diff then panic (nil
+      # pointer) on every compare. The plain three-way diff works.
     retry:
       limit: 5
       backoff:
