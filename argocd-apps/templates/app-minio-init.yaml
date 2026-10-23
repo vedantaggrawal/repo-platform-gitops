@@ -23,5 +23,15 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
+      # No ServerSideApply: Argo CD 2.10.2's server-side diff panics on the
+      # External Secrets resources here (same as keycloak-db).
+    # External Secrets resources stay Degraded while ESO or OpenBao isn't ready
+    # (fresh cluster, or other apps still syncing). Argo doesn't auto-retry a
+    # failed revision, and the PostSync Job only runs on success: retry long.
+    retry:
+      limit: 20
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
 {{- end }}

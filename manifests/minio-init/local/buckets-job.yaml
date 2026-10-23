@@ -2,6 +2,11 @@
 # Argo strips Helm hooks (helm.sh/hook is ignored unless renamed to
 # argocd.argoproj.io/hook), so the chart's `buckets:` Job never ran.
 # This Job is Argo-native: PostSync hook with hook-succeeded delete policy.
+#
+# It also gives mimir/loki/tempo their own MinIO users, each with a policy
+# limited to its own buckets. Their credentials come from the ExternalSecrets in
+# externalsecrets.yaml (OpenBao), as does the root login (minio-root); PostSync
+# waits until those are synced.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -25,25 +30,56 @@ spec:
           image: quay.io/minio/mc:latest
           imagePullPolicy: IfNotPresent
           env:
-            - name: MC_HOST_local
-              value: "http://lgtm-admin:lgtm-admin-local@local-minio.monitoring-storage.svc.cluster.local:9000"
+            - name: ROOT_USER
+              valueFrom: { secretKeyRef: { name: minio-root, key: rootUser } }
+            - name: ROOT_PASSWORD
+              valueFrom: { secretKeyRef: { name: minio-root, key: rootPassword } }
+          envFrom:
+            - secretRef:
+                name: minio-app-users
           command:
             - sh
             - -c
             - |
               set -eu
-              # Wait for MinIO API (up to 60s).
-              for i in $(seq 1 90); do
+              export MC_HOST_local="http://${ROOT_USER}:${ROOT_PASSWORD}@local-minio.monitoring-storage.svc.cluster.local:9000"
+              # Wait for MinIO to accept the root credentials (up to 10 min:
+              # MinIO restarts when they change).
+              ok=""
+              for i in $(seq 1 300); do
                 if mc ls local >/dev/null 2>&1; then
-                  echo "MinIO reachable"; break
+                  echo "MinIO reachable"; ok=1; break
                 fi
                 echo "Waiting for MinIO..."; sleep 2
               done
+              [ -n "$ok" ] || { echo "MinIO not reachable with root credentials"; exit 1; }
               for bucket in mimir-blocks mimir-ruler mimir-alertmanager \
                             loki-chunks loki-ruler tempo-blocks; do
                 mc mb --ignore-existing "local/$bucket"
                 echo "ensured: $bucket"
               done
+              # Per-app users, each limited to its own buckets. `policy create`
+              # and `user add` are upserts, so re-runs apply rotated passwords.
+              policy() { # $1 name, rest buckets
+                name=$1; shift; res=""
+                for b in "$@"; do res="$res\"arn:aws:s3:::$b\",\"arn:aws:s3:::$b/*\","; done
+                printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket","s3:GetBucketLocation","s3:ListBucketMultipartUploads","s3:ListMultipartUploadParts","s3:AbortMultipartUpload"],"Resource":[%s]}]}' "${res%,}" > "/tmp/$name.json"
+                mc admin policy create local "$name" "/tmp/$name.json" >/dev/null
+              }
+              policy mimir-rw mimir-blocks mimir-ruler mimir-alertmanager
+              policy loki-rw loki-chunks loki-ruler
+              policy tempo-rw tempo-blocks
+              user() { # $1 app, $2 user, $3 password
+                mc admin user add local "$2" "$3" >/dev/null
+                # attach fails when the policy is already attached.
+                mc admin policy attach local "$1-rw" --user "$2" >/dev/null 2>&1 \
+                  || mc admin user info local "$2" --json | grep -q "\"$1-rw\"" \
+                  || { echo "policy $1-rw not attached for $1"; exit 1; }
+                echo "ensured user for $1"
+              }
+              user mimir "$MIMIR_USER" "$MIMIR_PASSWORD"
+              user loki "$LOKI_USER" "$LOKI_PASSWORD"
+              user tempo "$TEMPO_USER" "$TEMPO_PASSWORD"
               mc ls local
           resources:
             requests:

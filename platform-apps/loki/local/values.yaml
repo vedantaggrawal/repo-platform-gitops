@@ -27,8 +27,9 @@ loki:
       ruler: loki-ruler
     s3:
       endpoint: local-minio.monitoring-storage.svc.cluster.local:9000
-      accessKeyId: lgtm-admin
-      secretAccessKey: lgtm-admin-local
+      # From Secret loki-s3 (singleBinary.extraEnvFrom), expanded by -config.expand-env.
+      accessKeyId: "${LOKI_S3_ACCESS_KEY_ID}"
+      secretAccessKey: "${LOKI_S3_SECRET_ACCESS_KEY}"
       s3ForcePathStyle: true
       insecure: true
       region: us-east-1
@@ -47,6 +48,11 @@ loki:
 
 singleBinary:
   replicas: 1
+  extraArgs:
+    - -config.expand-env=true
+  extraEnvFrom:
+    - secretRef:
+        name: loki-s3
   persistence:
     enabled: true
     size: 5Gi
