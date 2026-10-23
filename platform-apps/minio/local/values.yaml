@@ -37,7 +37,7 @@ consoleIngress:
   enabled: true
   ingressClassName: cilium
   annotations:
-    cert-manager.io/cluster-issuer: selfsigned
+    cert-manager.io/cluster-issuer: platform-ca
   hosts:
     - local.minio.internal
   tls:

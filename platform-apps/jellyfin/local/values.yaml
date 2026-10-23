@@ -33,7 +33,7 @@ ingress:
   enabled: true
   className: cilium
   annotations:
-    cert-manager.io/cluster-issuer: selfsigned
+    cert-manager.io/cluster-issuer: platform-ca
   hosts:
     - host: local.jellyfin.internal
       paths:
