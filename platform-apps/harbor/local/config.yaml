@@ -1,7 +1,7 @@
 enabled: "true"
 chart: harbor
 repoURL: https://helm.goharbor.io
-targetRevision: "1.19.*"
+targetRevision: "1.19.4"
 namespace: harbor
 # After cert-manager (-2): the ingress requests a cert from the `selfsigned`
 # ClusterIssuer. Same wave as Keycloak/Kargo.
