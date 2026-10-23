@@ -77,14 +77,15 @@ server:
           }
         }
         # External Secrets Operator: read platform secrets and push generated
-        # ones (PushSecret, create-only by policy on the ESO side).
+        # ones. PushSecret writes custom_metadata first, so metadata needs
+        # create/update; no delete, so PushSecrets keep deletionPolicy None.
         request "eso-policy" {
           operation = "update"
           path      = "sys/policy/eso"
           data = {
             policy = <<-EOP
               path "secret/data/platform/*"     { capabilities = ["create", "read", "update"] }
-              path "secret/metadata/platform/*" { capabilities = ["read", "list"] }
+              path "secret/metadata/platform/*" { capabilities = ["create", "read", "update", "list"] }
             EOP
           }
         }
