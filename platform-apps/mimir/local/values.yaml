@@ -123,7 +123,15 @@ compactor:
   persistentVolume:
     size: 2Gi
     storageClass: standard
-  resources: *resourcesSmall
+  # Own block, not *resourcesSmall: merging 2h blocks into a 12h block at
+  # ~220k active series OOMKilled at 128Mi, so nothing was compacted and
+  # retention never ran. Usage peaks during a compaction, idle in between.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
 
 ruler:
   enabled: false
