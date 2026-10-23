@@ -18,3 +18,13 @@ defaultRules:
     # kind nodes have no NTP sync (node_timex_sync_status is always 0).
     NodeClockNotSynchronising: true
     NodeClockSkewDetected: true
+
+# The nfsd collector fails on every scrape on this kernel ("unknown NFSd
+# metric line wdeleg_getattr") and logs an error each time; no node serves NFS.
+# Setting extraArgs replaces the chart's list, so its two filesystem excludes
+# are repeated here.
+prometheus-node-exporter:
+  extraArgs:
+    - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+    - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
+    - --no-collector.nfsd
