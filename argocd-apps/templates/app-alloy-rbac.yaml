@@ -4,6 +4,10 @@ kind: Application
 metadata:
   name: {{ .Values.env }}-alloy-rbac
   namespace: argocd
+  # Cascade-delete the ClusterRole/Binding when this app is removed (Alloy is
+  # retired; the app itself goes in a follow-up change).
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
   annotations:
     # Up before Alloy syncs so the SA has perms by the time it starts watching.
     argocd.argoproj.io/sync-wave: "-3"
