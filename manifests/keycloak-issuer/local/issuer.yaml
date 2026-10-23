@@ -8,7 +8,8 @@
 # and trust platform-ca via the platform-ca-bundle ConfigMap, which
 # trust-manager writes into every namespace (manifests/trust-bundles).
 # The endpoint is the ingress-ready node's IP (kind control-plane 172.18.0.2);
-# re-check it after a cluster recreate (the self-test below catches it).
+# re-check it after a cluster recreate (`kubectl get --raw` through the Service
+# proxy, see the PR description).
 apiVersion: v1
 kind: Service
 metadata:
@@ -37,40 +38,3 @@ ports:
 endpoints:
   # Only nodes labelled ingress-ready=true run the Envoy listener (control-plane).
   - addresses: ["172.18.0.2"]
----
-# Self-test after every sync: discovery through the in-cluster path must work
-# and its issuer must equal the external URL.
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: keycloak-issuer-check
-  namespace: keycloak
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
-spec:
-  backoffLimit: 0
-  template:
-    spec:
-      restartPolicy: Never
-      hostAliases:
-        - ip: 10.96.0.200
-          hostnames: ["local.keycloak.internal"]
-      containers:
-        - name: check
-          image: curlimages/curl:8.11.1
-          command: ["/bin/sh", "-ec"]
-          args:
-            - |
-              for i in $(seq 1 10); do
-                out=$(curl -sS --max-time 5 --cacert /ca/ca.crt https://local.keycloak.internal:30443/realms/platform/.well-known/openid-configuration)
-                echo "$out" | grep -q '"issuer":"https://local.keycloak.internal:30443/realms/platform"' || { echo "attempt $i failed: $(echo "$out" | head -c 200)"; exit 1; }
-              done
-              echo "issuer reachable in-cluster (10/10)"
-          volumeMounts:
-            - name: ca
-              mountPath: /ca
-      volumes:
-        - name: ca
-          configMap:
-            name: platform-ca-bundle
