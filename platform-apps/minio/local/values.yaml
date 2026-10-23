@@ -78,15 +78,16 @@ oidc:
   displayName: Keycloak
 
 # MINIO_IDENTITY_OPENID_CLIENT_SECRET comes from config.env in Secret minio-oidc
-# (ExternalSecret in manifests/minio-init, from OpenBao). The volume is optional and
-# MinIO skips a missing env file, so MinIO starts without it, with a broken SSO
-# login. MinIO reads the file only at start: once the Secret first appears, restart
+# (ExternalSecret in manifests/keycloak-secrets, from OpenBao). The volume is
+# optional and MinIO skips a missing env file, so MinIO starts without it, with
+# a broken SSO login. MinIO reads the file only at start: once the Secret first appears, restart
 # MinIO once (kubectl -n monitoring-storage rollout restart deploy/local-minio).
 environment:
   MINIO_CONFIG_ENV_FILE: /tmp/minio-oidc/config.env
 
-# Trust platform-ca for the issuer. MinIO loads every certificate in
-# <certsPath>/CAs at start. Optional: MinIO starts even without the ConfigMap.
+# Trust platform-ca for the issuer. trust-manager provides ConfigMap
+# platform-ca-bundle (key ca.crt) in every namespace. MinIO loads every
+# certificate in <certsPath>/CAs at start. Optional: MinIO starts without it.
 extraVolumes:
   - name: platform-ca
     configMap:

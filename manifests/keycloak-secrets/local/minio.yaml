@@ -1,6 +1,6 @@
 # Confidential client `minio` (MinIO console login). The secret is generated once
 # and stored in OpenBao at secret/platform/keycloak/clients/minio; config-cli reads
-# it from the Secret below, MinIO from the copy in manifests/minio-init.
+# it from the Secret below, MinIO from the monitoring-storage copy at the end.
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -59,3 +59,30 @@ spec:
       remoteRef:
         key: platform/keycloak/clients/minio
         property: client_secret
+---
+# MinIO's copy, rendered as a MinIO env file (MINIO_CONFIG_ENV_FILE, optional
+# volume), so MinIO never waits for it. It lives here, not in minio-init: until
+# the PushSecret above has written OpenBao it is Degraded, which would hold back
+# minio-init's PostSync bucket/user Job. Alphanumeric secret, safe unquoted.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: minio-oidc
+  namespace: monitoring-storage
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: minio-oidc
+    template:
+      engineVersion: v2
+      data:
+        config.env: |
+          MINIO_IDENTITY_OPENID_CLIENT_SECRET={{ .client_secret }}
+  data:
+    - secretKey: client_secret
+      remoteRef: { key: platform/keycloak/clients/minio, property: client_secret }
