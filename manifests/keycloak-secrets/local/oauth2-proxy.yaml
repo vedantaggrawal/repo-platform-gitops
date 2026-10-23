@@ -3,8 +3,9 @@
 # keycloak-ns copy below; oauth2-proxy reads both via manifests/oauth2-proxy.
 #   secret/platform/keycloak/clients/oauth2-proxy  client_secret
 #   secret/platform/oauth2-proxy/cookie            cookie_secret
-# Cookie secret: 32 alphanumeric chars = 32 bytes, an AES-256 key as oauth2-proxy
-# requires (16/24/32 bytes), so it has its own generator.
+# Cookie secret: oauth2-proxy needs 16, 24 or 32 bytes and base64-decodes the
+# value first; 32 alphanumeric chars decode to 24 bytes (AES-192). The shared
+# 48-char generator doesn't fit, so this one has its own.
 apiVersion: generators.external-secrets.io/v1alpha1
 kind: Password
 metadata:

@@ -146,7 +146,8 @@ config:
           attributes:
             pkce.code.challenge.method: S256
           protocolMappers:
-            # oauth2-proxy's keycloak-oidc provider checks the access token's aud.
+            # Client id in the access token's aud, as oauth2-proxy's keycloak-oidc
+            # docs recommend (e.g. for --oidc-extra-audience / bearer-token use).
             - name: oauth2-proxy-audience
               protocol: openid-connect
               protocolMapper: oidc-audience-mapper
