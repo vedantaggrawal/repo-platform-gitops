@@ -3,7 +3,7 @@
 # argocd.argoproj.io/hook), so the chart's `buckets:` Job never ran.
 # This Job is Argo-native: PostSync hook with hook-succeeded delete policy.
 #
-# It also gives mimir/loki/tempo their own MinIO users, each with a policy
+# It also gives mimir/loki/tempo/cnpg (DB backups) MinIO users, each with a policy
 # limited to its own buckets. Their credentials come from the ExternalSecrets in
 # externalsecrets.yaml (OpenBao); PostSync waits until those are synced. The
 # root login is read from the chart's Secret local-minio.

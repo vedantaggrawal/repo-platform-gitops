@@ -7,7 +7,8 @@ metadata:
   annotations:
     # CloudNativePG Barman Cloud plugin (backups of keycloak-db to MinIO). Ships
     # the ObjectStore CRD that keycloak-db (wave 0) uses; that app retries until
-    # it exists.
+    # it exists. A chart bump changes the injected sidecar and so restarts the
+    # single keycloak-db instance (brief Keycloak outage): bump deliberately.
     argocd.argoproj.io/sync-wave: "-1"
 spec:
   project: default

@@ -1,6 +1,6 @@
 # Where the Barman Cloud plugin stores keycloak-db base backups and WAL: MinIO
 # bucket keycloak-db-backups, as the least-privilege user `cnpg` (Secret from
-# OpenBao, see manifests/minio-init). Same failure domain as the cluster: this
+# OpenBao, backup-s3-externalsecret.yaml). Same failure domain as the cluster: this
 # protects against deleting the database, not against losing the node/disk.
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
