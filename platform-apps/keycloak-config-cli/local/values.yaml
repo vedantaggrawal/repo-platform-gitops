@@ -39,6 +39,10 @@ extraEnv:
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_ID, optional: true } }
   - name: GITHUB_CLIENT_SECRET
     valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } }
+  # Generated client secrets (manifests/keycloak-secrets). Not optional: the Job
+  # waits for the Secret rather than importing a placeholder secret.
+  - name: HARBOR_CLIENT_SECRET
+    valueFrom: { secretKeyRef: { name: harbor-oidc, key: HARBOR_CLIENT_SECRET } }
 
 # One retry if Keycloak isn't ready yet.
 backoffLimit: 2
@@ -126,3 +130,30 @@ config:
             - profile
             - email
             - groups
+        # Confidential client: Harbor has no PKCE. Its secret is generated into
+        # OpenBao (manifests/keycloak-secrets/local/harbor.yaml).
+        - clientId: harbor
+          name: Harbor
+          enabled: true
+          publicClient: false
+          clientAuthenticatorType: client-secret
+          secret: $(env:HARBOR_CLIENT_SECRET)
+          standardFlowEnabled: true
+          directAccessGrantsEnabled: false
+          redirectUris:
+            - https://local.harbor.internal:30443/c/oidc/callback
+          webOrigins:
+            - https://local.harbor.internal:30443
+          attributes:
+            post.logout.redirect.uris: https://local.harbor.internal:30443/*
+          defaultClientScopes:
+            - basic
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - email
+            - groups
+          # Harbor asks for offline_access so the CLI secret outlives the session.
+          optionalClientScopes:
+            - offline_access

@@ -58,6 +58,11 @@ expose:
       nginx.ingress.kubernetes.io/ssl-redirect: null
       nginx.ingress.kubernetes.io/proxy-body-size: null
 
+# Public platform CA (Secret platform-ca-bundle, from manifests/keycloak-secrets),
+# added to the trust store of core and the other components, so Harbor verifies
+# Keycloak's platform-ca certificate (oidc_verify_cert: true).
+caBundleSecretName: platform-ca-bundle
+
 # --- Secrets: all from harbor-secrets (see header) ---
 existingSecretAdminPassword: harbor-secrets
 existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
@@ -68,6 +73,26 @@ core:
   existingXsrfSecretKey: CSRF_KEY
   # Token-signing keypair (tls.key/tls.crt); unset -> genCA per render.
   secretName: harbor-secrets
+  # --- SSO via the Keycloak `platform` realm ---
+  # Settings come from CONFIG_OVERWRITE_JSON, rendered by External Secrets into
+  # harbor-oidc (manifests/keycloak-secrets/local/harbor.yaml) because it holds
+  # the client secret; `configureUserSettings` would put it in git. Core applies
+  # it at every start and the configuration page becomes read-only. Switching
+  # auth_mode to oidc_auth only works while the DB has no users besides admin
+  # (otherwise core exits at start). Break-glass: the local `admin` keeps working
+  # on the login page ("Login via local DB").
+  extraEnvVars:
+    - name: CONFIG_OVERWRITE_JSON
+      valueFrom:
+        secretKeyRef:
+          name: harbor-oidc
+          key: CONFIG_OVERWRITE_JSON
+  # Bump to restart core after harbor-oidc changes (env is read at start only).
+  podAnnotations:
+    oidc-generation: "1"
+  # Core fetches discovery from the issuer URL itself (the issuer must match
+  # oidc_endpoint exactly); in-cluster DNS resolves local.keycloak.internal to
+  # the ingress route (manifests/coredns), and caBundleSecretName below trusts its CA.
   resources:
     requests:
       cpu: 100m
