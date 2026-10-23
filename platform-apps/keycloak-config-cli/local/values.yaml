@@ -1,0 +1,120 @@
+# keycloak-config-cli — declaratively reconciles the Keycloak realms defined
+# inline below (`config:`). Runs as a PostSync hook Job; editing a realm changes
+# the chart's rendered Secret, so the app goes OutOfSync and the Job re-runs. remote-state is on by default, so it only purges
+# resources it created, never hand-made ones.
+#
+# Out-of-band Secrets in the keycloak namespace (NOT in git, this repo is public):
+#   - keycloak-admin-creds : Keycloak admin credentials (from the Keycloak deploy)
+#   - keycloak-github-idp  : GitHub OAuth app for the platform realm's GitHub login
+#                            (keys GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET). Optional:
+#                            until it exists the IdP is created with placeholder
+#                            values and GitHub login doesn't work.
+#
+# Realms here are non-sensitive: secrets are substituted at run time with
+# $(env:NAME:-default).
+
+image:
+  # CLI 6.5.1 built against Keycloak 26.5.5 (admin API forward-compatible with 26.8).
+  tag: "6.5.1-26.5.5"
+
+existingSecret: keycloak-admin-creds
+existingSecretKey: password
+
+env:
+  KEYCLOAK_URL: "http://local-keycloak-keycloakx-http.keycloak.svc.cluster.local"
+  KEYCLOAK_USER: "admin"
+  # Wait for Keycloak to answer before importing (Job may start before KC is ready).
+  KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
+  KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: "120s"
+  # Resolve $(env:...) placeholders in the realm files from the container env.
+  IMPORT_VARSUBSTITUTION_ENABLED: "true"
+  IMPORT_FILES_LOCATIONS: "/config/*"
+
+extraEnv:
+  - name: GITHUB_CLIENT_ID
+    valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_ID, optional: true } }
+  - name: GITHUB_CLIENT_SECRET
+    valueFrom: { secretKeyRef: { name: keycloak-github-idp, key: GITHUB_CLIENT_SECRET, optional: true } }
+
+# One retry if Keycloak isn't ready yet.
+backoffLimit: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+# `platform`: SSO for platform UIs (Grafana first). People log in with GitHub;
+# everyone lands in platform-viewers, listed users in platform-admins.
+config:
+  platform:
+    inline:
+      realm: platform
+      enabled: true
+      displayName: Platform
+      registrationAllowed: false
+      loginWithEmailAllowed: false
+      groups:
+        - name: platform-admins
+        - name: platform-viewers
+      defaultGroups:
+        - /platform-viewers
+      identityProviders:
+        - alias: github
+          providerId: github
+          enabled: true
+          trustEmail: false
+          firstBrokerLoginFlowAlias: first broker login
+          config:
+            clientId: $(env:GITHUB_CLIENT_ID:-unset)
+            clientSecret: $(env:GITHUB_CLIENT_SECRET:-unset)
+            syncMode: IMPORT
+            defaultScope: read:user
+      users:
+        - username: vedantaggrawal
+          enabled: true
+          federatedIdentities:
+            - identityProvider: github
+              userId: "14919641"
+              userName: vedantaggrawal
+          groups:
+            - /platform-admins
+      clientScopes:
+        - name: groups
+          protocol: openid-connect
+          attributes:
+            include.in.token.scope: "true"
+          protocolMappers:
+            - name: groups
+              protocol: openid-connect
+              protocolMapper: oidc-group-membership-mapper
+              config:
+                claim.name: groups
+                full.path: "false"
+                id.token.claim: "true"
+                access.token.claim: "true"
+                userinfo.token.claim: "true"
+      clients:
+        - clientId: grafana
+          name: Grafana
+          enabled: true
+          publicClient: true
+          standardFlowEnabled: true
+          directAccessGrantsEnabled: false
+          redirectUris:
+            - https://local.grafana.internal:30443/login/generic_oauth
+          webOrigins:
+            - https://local.grafana.internal:30443
+          attributes:
+            pkce.code.challenge.method: S256
+            post.logout.redirect.uris: https://local.grafana.internal:30443/*
+          defaultClientScopes:
+            - basic
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - email
+            - groups
