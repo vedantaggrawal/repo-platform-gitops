@@ -3,6 +3,6 @@ chart: jellyfin
 repoURL: https://jellyfin.github.io/jellyfin-helm
 # Pinned below 3.5: chart 3.5.0 defaults to image jellyfin:12.3, which does not
 # exist on Docker Hub, so its rollout sticks in ImagePullBackOff.
-targetRevision: "3.4.*"
+targetRevision: "3.4.0"
 namespace: jellyfin
 syncWave: "0"
