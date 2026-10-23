@@ -29,6 +29,14 @@ spec:
         valueFiles:
           - $values/manifests/oauth2-proxy/values/common.yaml
           - $values/manifests/oauth2-proxy/values/prometheus.yaml
+    - repoURL: https://oauth2-proxy.github.io/manifests
+      chart: oauth2-proxy
+      targetRevision: 10.7.1
+      helm:
+        releaseName: oauth2-proxy-hubble
+        valueFiles:
+          - $values/manifests/oauth2-proxy/values/common.yaml
+          - $values/manifests/oauth2-proxy/values/hubble.yaml
     - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
       targetRevision: HEAD
       ref: values

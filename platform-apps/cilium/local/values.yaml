@@ -45,8 +45,12 @@ hubble:
     enabled: true
   ui:
     enabled: true
+    # Off: local.hubble.internal is served by oauth2-proxy-hubble (Keycloak
+    # login, manifests/oauth2-proxy). Two Ingresses on one host with different
+    # TLS secrets would give Cilium's shared Envoy listener duplicate SNI filter
+    # chains. Terraform (helm_release.cilium) applies this file.
     ingress:
-      enabled: true
+      enabled: false
       className: cilium
       annotations:
         cert-manager.io/cluster-issuer: platform-ca

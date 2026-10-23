@@ -1,0 +1,17 @@
+# Hubble UI (Cilium, kube-system). Its own Ingress is disabled in
+# platform-apps/cilium/local/values.yaml (Terraform-applied): two Ingresses for
+# one host with different TLS secrets would give Cilium's shared Envoy listener
+# duplicate SNI filter chains.
+config:
+  upstreams: ["http://hubble-ui.kube-system.svc.cluster.local:80"]
+
+extraArgs:
+  redirect-url: https://local.hubble.internal:30443/oauth2/callback
+
+ingress:
+  hosts:
+    - local.hubble.internal
+  tls:
+    - secretName: oauth2-proxy-hubble-tls
+      hosts:
+        - local.hubble.internal

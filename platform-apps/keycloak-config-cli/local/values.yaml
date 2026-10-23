@@ -142,6 +142,7 @@ config:
           directAccessGrantsEnabled: false
           redirectUris:
             - https://local.alertmanager.internal:30443/oauth2/callback
+            - https://local.hubble.internal:30443/oauth2/callback
             - https://local.prometheus.internal:30443/oauth2/callback
           attributes:
             pkce.code.challenge.method: S256
