@@ -126,3 +126,31 @@ config:
             - profile
             - email
             - groups
+        # Argo CD: public client with PKCE (UI and `argocd login --sso`).
+        # Argo CD adds offline_access when discovery advertises it, so it must be
+        # an allowed optional scope (explicit default scopes drop the built-ins).
+        - clientId: argocd
+          name: Argo CD
+          enabled: true
+          publicClient: true
+          standardFlowEnabled: true
+          directAccessGrantsEnabled: false
+          rootUrl: https://local.argocd.internal:30443
+          redirectUris:
+            - https://local.argocd.internal:30443/auth/callback
+            - http://localhost:8085/auth/callback
+          webOrigins:
+            - https://local.argocd.internal:30443
+          attributes:
+            pkce.code.challenge.method: S256
+            post.logout.redirect.uris: https://local.argocd.internal:30443/applications
+          defaultClientScopes:
+            - basic
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - email
+            - groups
+          optionalClientScopes:
+            - offline_access
