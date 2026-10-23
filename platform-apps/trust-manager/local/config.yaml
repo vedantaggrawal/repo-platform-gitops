@@ -1,0 +1,9 @@
+enabled: "true"
+chart: trust-manager
+repoURL: https://charts.jetstack.io
+targetRevision: "v0.25.0"
+# Must run in cert-manager: that is its trust namespace, where the
+# platform-root-ca Secret lives. cert-manager itself is installed by Terraform.
+namespace: cert-manager
+# Before the platform-ca-bundle Bundle (trust-bundles, wave 0) needs its CRD.
+syncWave: "-1"

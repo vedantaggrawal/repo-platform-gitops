@@ -1,0 +1,33 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-trust-bundles
+  namespace: argocd
+  annotations:
+    # After trust-manager (-1), which installs the Bundle CRD.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/trust-bundles/{{ .Values.env }}
+    directory:
+      recurse: true
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    # No ServerSideApply: Argo CD 2.10.2's server-side diff fails on some CRDs
+    # here (CNPG, ESO), and one small CR doesn't need it.
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
