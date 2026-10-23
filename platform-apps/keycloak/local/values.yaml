@@ -115,7 +115,22 @@ metrics:
 serviceMonitor:
   enabled: false
 
-# Bump to restart Keycloak after the keycloak-db credentials change (e.g. the
-# CNPG Cluster was recreated): env from secretKeyRef is only read at start.
-podAnnotations:
-  db-credentials-generation: "2"
+# Self-heal after the keycloak-db credentials change (CNPG Cluster recreated or
+# password rotated). Keycloak reads KC_DB_PASSWORD from env once, at start, and does
+# not exit when the DB rejects it: the readiness check (live DB connection) goes DOWN
+# while /health/live stays UP, so the pod sits Running 0/1 forever. A pod-template
+# bump cannot fix that either: the OrderedReady StatefulSet does not roll a pod that
+# is not Ready. So liveness probes /health/ready: after 5 minutes of a failing DB
+# check the kubelet restarts the container, which resolves the secretKeyRef env again
+# and picks up the current keycloak-db-app password. The 5-minute window absorbs a
+# CNPG restart or failover. It only starts after the startup probe has passed.
+# Keycloak registers the DB readiness check only when metrics are enabled, so keep
+# metrics.enabled: true, or this probe never fails.
+livenessProbe: |
+  httpGet:
+    path: '{{ tpl (coalesce .Values.http.managementRelativePath .Values.http.relativePath) $ | trimSuffix "/" }}/health/ready'
+    port: '{{ .Values.http.internalPort }}'
+    scheme: '{{ .Values.http.internalScheme }}'
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
