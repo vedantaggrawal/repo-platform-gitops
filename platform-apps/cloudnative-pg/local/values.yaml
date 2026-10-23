@@ -1,0 +1,9 @@
+# CloudNativePG operator — runs Postgres clusters for platform apps (Keycloak
+# first). The operator generates and owns each cluster's credentials Secret, so
+# no database password is ever kept in this public repo.
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
