@@ -1,8 +1,12 @@
 # Platform root CA for edge TLS. The existing `selfsigned` ClusterIssuer
 # (repo-platform Terraform) signs only this root; every ingress/gateway cert is
 # then issued by `platform-ca`, so trusting this one root on your machine makes
-# all *.internal hosts valid. Export it with:
+# all *.internal hosts valid. Trust it on macOS:
 #   kubectl -n cert-manager get secret platform-root-ca -o jsonpath='{.data.ca\.crt}' | base64 -d > eve-platform-ca.crt
+#   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain eve-platform-ca.crt
+#   curl -sI https://local.grafana.internal:30443   # verify: no certificate error
+# Firefox keeps its own store: import the file under Settings > Certificates
+# (or set security.enterprise_roots.enabled=true).
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

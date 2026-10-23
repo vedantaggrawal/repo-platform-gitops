@@ -34,6 +34,7 @@ ingress:
   className: cilium
   annotations:
     cert-manager.io/cluster-issuer: platform-ca
+    cert-manager.io/usages: "digital signature,key encipherment,server auth"
   hosts:
     - host: local.jellyfin.internal
       paths:
