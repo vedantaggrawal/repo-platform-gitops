@@ -70,14 +70,20 @@ oidc:
   enabled: true
   configUrl: https://local.keycloak.internal:30443/realms/platform/.well-known/openid-configuration
   clientId: minio
-  # From OpenBao via manifests/minio-init (ExternalSecret minio-oidc). The pod
-  # does not start until this Secret exists.
-  existingClientSecretName: minio-oidc
-  existingClientSecretKey: client_secret
+  # The client secret is not set here. It comes from the env file below, so
+  # storage never waits on SSO.
   claimName: policy
   scopes: "openid,profile,email"
   redirectUri: https://local.minio.internal:30443/oauth_callback
   displayName: Keycloak
+
+# MINIO_IDENTITY_OPENID_CLIENT_SECRET comes from config.env in Secret minio-oidc
+# (ExternalSecret in manifests/minio-init, from OpenBao). The volume is optional and
+# MinIO skips a missing env file, so MinIO starts without it, with a broken SSO
+# login. MinIO reads the file only at start: once the Secret first appears, restart
+# MinIO once (kubectl -n monitoring-storage rollout restart deploy/local-minio).
+environment:
+  MINIO_CONFIG_ENV_FILE: /tmp/minio-oidc/config.env
 
 # Trust platform-ca for the issuer. MinIO loads every certificate in
 # <certsPath>/CAs at start. Optional: MinIO starts even without the ConfigMap.
@@ -86,9 +92,16 @@ extraVolumes:
     configMap:
       name: platform-ca-bundle
       optional: true
+  - name: minio-oidc
+    secret:
+      secretName: minio-oidc
+      optional: true
 extraVolumeMounts:
   - name: platform-ca
     mountPath: /etc/minio/certs/CAs
+    readOnly: true
+  - name: minio-oidc
+    mountPath: /tmp/minio-oidc
     readOnly: true
 
 # Disable the metrics scrape job until Alloy is in place (phase 5).
