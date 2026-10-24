@@ -6,12 +6,18 @@ image:
   pullPolicy: IfNotPresent
 
 # Persist everything on the kind node via local-path-provisioner.
+# The standard class reclaims with Delete, so deleting a PVC wipes its data.
+# config and media are annotated so Argo CD never prunes them or deletes them
+# with the Application (e.g. when the app is disabled); cache is disposable.
 persistence:
   config:
     enabled: true
     accessMode: ReadWriteOnce
     storageClass: standard
     size: 5Gi
+    annotations:
+      helm.sh/resource-policy: keep
+      argocd.argoproj.io/sync-options: Delete=false,Prune=false
   cache:
     enabled: true
     type: pvc
@@ -24,6 +30,9 @@ persistence:
     accessMode: ReadWriteOnce
     storageClass: standard
     size: 20Gi
+    annotations:
+      helm.sh/resource-policy: keep
+      argocd.argoproj.io/sync-options: Delete=false,Prune=false
 
 service:
   type: ClusterIP

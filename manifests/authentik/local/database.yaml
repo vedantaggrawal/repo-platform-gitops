@@ -1,0 +1,25 @@
+# Authentik's database (CloudNativePG). The operator writes the password to
+# Secret authentik-db-app, which the chart reads (platform-apps/authentik).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: authentik-db
+  annotations:
+    # Users, 2FA enrolments and sessions live here: never delete it with the app.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Delete=false,Prune=false
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  bootstrap:
+    initdb:
+      database: authentik
+      owner: authentik
+  storage:
+    size: 2Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi

@@ -1,0 +1,31 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-cluster-dns
+  namespace: argocd
+  annotations:
+    # Cluster DNS (CoreDNS Corefile): resolves the platform's public
+    # local.*.internal hosts for pods.
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/cluster-dns/{{ .Values.env }}
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      # Never prune: the CoreDNS ConfigMap is cluster DNS (also annotated Delete=false,Prune=false).
+      prune: false
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
