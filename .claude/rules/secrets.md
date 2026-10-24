@@ -14,5 +14,8 @@ paths:
   4. a delivering `ExternalSecret`.
   - Example: `manifests/authentik/local/secrets.yaml`.
   - *Not* a seeding Job.
-- **Externally issued secrets** (e.g. OAuth app credentials) are written to OpenBao by a human. The manifest only references the path.
+- **Externally issued secrets** (e.g. OAuth app credentials) come from the human's tfvars:
+  - Terraform in `repo-platform` writes them as Secrets in `platform-seed`.
+  - A PushSecret in `manifests/secret-stores/` copies them into OpenBao (`updatePolicy: Replace`).
+  - Apps read only from OpenBao. Rotation = change the tfvars, then apply Terraform.
 - Never commit secret values, even base64-encoded.
