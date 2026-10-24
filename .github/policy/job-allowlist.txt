@@ -1,0 +1,14 @@
+# Existing one-time Jobs and sync hooks the policy check accepts. Anything else
+# that renders as a Job/CronJob or an Argo CD/Helm hook and isn't in the base
+# render fails CI: prefer a declarative, controller-reconciled option. Add an
+# entry only when none exists, and name the follow-up that would replace it.
+#
+# Format: <source-glob> <kind-glob> <name-glob> <reason>
+# source = platform-apps/<app>/<env> or manifests/<name>/<env>; globs are fnmatch.
+
+platform-apps/keycloak-config-cli/*  *  *keycloak-config-cli*  The chart ships the realm import as a hook Job (PostSync in Argo CD); there is no Keycloak realm operator in this stack.
+manifests/minio-init/*  *  minio-create-lgtm-buckets  Bucket bootstrap (PostSync); no declarative bucket resource for this MinIO install yet.
+platform-apps/minio/*  *  *-minio-post-job  The minio chart's own bucket/user/policy provisioning hook.
+platform-apps/openbao/*  *  openbao-unseal-init  PreSync Job (with its SA/Role/RoleBinding) that generates the static unseal key Secret once, in-cluster, so it never lives in Git.
+platform-apps/argo-cd/*  *  *redis-secret-init*  argo-cd chart hook that bootstraps the Redis auth Secret.
+platform-apps/kargo/*  CronJob  kargo-garbage-collector  Kargo's own recurring garbage collector, not a one-time Job.
