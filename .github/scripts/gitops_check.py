@@ -125,8 +125,15 @@ def render_argocd_apps(tree):
 
 
 def read_dir_yaml(tree, path):
-    parts = []
     root = os.path.join(tree, path)
+    # Argo CD builds a dir with a kustomization as kustomize; its inputs (e.g. Authentik
+    # blueprints with !Find tags) are not manifests.
+    if any(os.path.exists(os.path.join(root, k)) for k in ("kustomization.yaml", "kustomization.yml", "Kustomization")):
+        p = subprocess.run(["kubectl", "kustomize", root], capture_output=True, text=True)
+        if p.returncode != 0:
+            raise SystemExit(f"kustomize build failed for {path}:\n{p.stderr}")
+        return f"# Source: {path} (kustomize)\n{p.stdout}"
+    parts = []
     for d, _, files in sorted(os.walk(root)):
         for name in sorted(files):
             if name.endswith((".yaml", ".yml")):
