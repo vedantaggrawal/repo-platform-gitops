@@ -1,9 +1,12 @@
 # GitHub federation: GitHub is the identity source; nobody creates users by hand.
 # - First login of an allowed GitHub account creates the Authentik user (JIT)
-#   from the GitHub profile, via the github-enrollment flow.
-# - Access: GitHub logins in ALLOWED below (checked on enrollment and on every
-#   GitHub login). Admins: logins in ADMINS get group platform-admins, re-synced
-#   on every login (remove a login here and the next login drops the group).
+#   from the GitHub profile (github-enrollment flow); later logins use
+#   github-authentication. Both flows require the allowlist (all policies must pass).
+# - Accounts are keyed by GitHub's numeric user id (immutable; logins can be
+#   renamed and re-registered). Look one up: https://api.github.com/users/<login>
+# - ALLOWED: may log in. ADMINS: get group platform-admins (admin in every app and
+#   in Authentik); re-synced on every login, so removing an id here takes effect
+#   at that account's next login.
 # The GitHub source itself (with its credentials) is in secrets.yaml.
 version: 1
 metadata:
@@ -14,19 +17,19 @@ entries:
     identifiers: { name: github-allowlist }
     attrs:
       expression: |
-        ALLOWED = ["vedantaggrawal"]
+        ALLOWED = [14919641]  # vedantaggrawal
         info = request.context.get("oauth_userinfo") or {}
-        return info.get("login") in ALLOWED
+        return info.get("id") in ALLOWED
 
   - model: authentik_sources_oauth.oauthsourcepropertymapping
     id: github-groups
     identifiers: { name: github-groups }
     attrs:
       expression: |
-        ADMINS = ["vedantaggrawal"]
-        return {"groups": ["platform-admins"] if info.get("login") in ADMINS else []}
+        ADMINS = [14919641]  # vedantaggrawal
+        return {"groups": ["platform-admins"] if info.get("id") in ADMINS else []}
 
-  # JIT enrollment: no prompts; username, name and email come from GitHub.
+  # First login: create the user, no prompts (username, name, email from GitHub).
   - model: authentik_flows.flow
     id: enrollment
     identifiers: { slug: github-enrollment }
@@ -35,6 +38,7 @@ entries:
       title: Welcome
       designation: enrollment
       authentication: require_unauthenticated
+      policy_engine_mode: all
   - model: authentik_stages_user_write.userwritestage
     id: write
     identifiers: { name: github-enrollment-write }
@@ -45,9 +49,21 @@ entries:
     identifiers: { order: 10, target: !KeyOf enrollment, stage: !KeyOf write }
   - model: authentik_flows.flowstagebinding
     identifiers: { order: 100, target: !KeyOf enrollment, stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]] }
-
-  # The allowlist gates both creating a user and every later GitHub login.
   - model: authentik_policies.policybinding
     identifiers: { order: 0, target: !KeyOf enrollment, policy: !KeyOf github-allowlist }
+
+  # Later logins: own flow (not the shared default-source-authentication, whose
+  # always-true SSO policy and "any" mode would bypass the allowlist).
+  - model: authentik_flows.flow
+    id: authentication
+    identifiers: { slug: github-authentication }
+    attrs:
+      name: GitHub login
+      title: Welcome
+      designation: authentication
+      authentication: require_unauthenticated
+      policy_engine_mode: all
+  - model: authentik_flows.flowstagebinding
+    identifiers: { order: 100, target: !KeyOf authentication, stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]] }
   - model: authentik_policies.policybinding
-    identifiers: { order: 0, target: !Find [authentik_flows.flow, [slug, default-source-authentication]], policy: !KeyOf github-allowlist }
+    identifiers: { order: 0, target: !KeyOf authentication, policy: !KeyOf github-allowlist }
