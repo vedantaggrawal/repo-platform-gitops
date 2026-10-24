@@ -15,13 +15,12 @@ grafana.ini:
   # needs no trust in the platform CA. Admin = member of group platform-admins
   # (Authentik puts groups in the `profile` scope). The local admin (Secret
   # grafana-admin) remains as break-glass.
-  auth:
-    # Skip Grafana's login form: go straight to Authentik (break-glass admin
-    # login stays at /login?disableAutoLogin=true).
-    oauth_auto_login: true
   auth.generic_oauth:
     enabled: true
     name: Authentik
+    # Skip Grafana's login form: go straight to Authentik (break-glass admin
+    # login stays at /login?disableAutoLogin=true).
+    auto_login: true
     client_id: grafana
     use_pkce: true
     scopes: openid profile email
