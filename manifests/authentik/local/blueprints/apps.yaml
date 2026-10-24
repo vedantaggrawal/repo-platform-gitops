@@ -38,6 +38,7 @@ entries:
       client_id: argocd
       redirect_uris:
         - { matching_mode: strict, url: "https://local.argocd.internal:30443/auth/callback" }
+        - { matching_mode: strict, url: "https://local.argocd.internal:30443/pkce/verify" }   # UI login with PKCE (Argo CD 2.10)
         - { matching_mode: strict, url: "http://localhost:8085/auth/callback" }   # argocd login --sso
   - model: authentik_core.application
     identifiers: { slug: argocd }
