@@ -19,6 +19,26 @@ api:
     name: kargo-admin-creds
 
   host: local.kargo.internal
+
+  # SSO via Authentik (public client `kargo`, PKCE; GitHub login federated
+  # there). The API server verifies Authentik's issuer over TLS, so it trusts
+  # the platform CA (Secret platform-ca, delivered by ESO). Groups arrive in
+  # the `profile` scope; members of platform-admins are Kargo admins. The admin
+  # account above stays as break-glass.
+  oidc:
+    enabled: true
+    issuerURL: https://local.authentik.internal:30443/application/o/kargo/
+    clientID: kargo
+    cliClientID: kargo
+    additionalScopes: [profile, email]
+    usernameClaim: email
+    admins:
+      claims:
+        groups: [platform-admins]
+    dex:
+      enabled: false
+  cabundle:
+    secretName: platform-ca
   # JSON logs so Loki's `| json` parser unpacks fields cleanly, consistent with
   # the rest of the platform (argocd, cert-manager).
   logFormat: JSON
