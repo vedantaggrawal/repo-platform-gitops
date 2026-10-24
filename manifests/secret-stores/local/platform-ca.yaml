@@ -1,0 +1,41 @@
+# The platform CA's public certificate (ca.crt only; never tls.key), for apps
+# that must verify TLS to platform endpoints themselves, e.g. Argo CD and Kargo
+# validating Authentik's OIDC issuer. cert-manager owns the CA
+# (cert-manager/platform-root-ca); ESO copies the public cert into OpenBao and
+# from there into each consumer namespace as Secret platform-ca (key ca.crt).
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: platform-ca
+  namespace: cert-manager
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  updatePolicy: Replace
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - { kind: ClusterSecretStore, name: openbao }
+  selector:
+    secret: { name: platform-root-ca }
+  data:
+    - match:
+        secretKey: ca.crt
+        remoteRef: { remoteKey: platform/ca, property: ca.crt }
+---
+apiVersion: external-secrets.io/v1
+kind: ClusterExternalSecret
+metadata:
+  name: platform-ca
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  namespaces: [argocd, kargo]
+  refreshTime: 1h
+  externalSecretSpec:
+    refreshInterval: 1h
+    secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+    target: { name: platform-ca, creationPolicy: Owner }
+    data:
+      - secretKey: ca.crt
+        remoteRef: { key: platform/ca, property: ca.crt }
