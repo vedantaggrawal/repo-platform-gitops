@@ -20,3 +20,5 @@ The `ApplicationSet` seamlessly merges these two sources together.
 
 Inside `apps/devops-test-webserver/`:
 - `dev/`, `stg/`, `prod/`: Values files defining environment specifics. Observe how `prod/` turns on canary features and sets explicit resource limits, whereas `dev/` remains lightweight!
+
+Test PR for the @claude reviewer. Do not merge.
