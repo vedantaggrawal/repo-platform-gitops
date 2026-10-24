@@ -4,7 +4,7 @@ paths:
   - "manifests/authentik/**"
   - "platform-apps/keycloak*/**"
   - "manifests/keycloak*/**"
-  - "platform-apps/{grafana,argocd-image-updater,kargo,harbor,minio,headlamp,openbao}/**"
+  - "platform-apps/{grafana,kargo,harbor,minio,headlamp,openbao}/**"
 ---
 # Identity and SSO
 
