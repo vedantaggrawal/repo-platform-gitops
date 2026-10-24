@@ -8,6 +8,6 @@ resources:
 # applied by Authentik's worker when a file is added or its content changes.
 configMapGenerator:
   - name: authentik-blueprints
-    files: [blueprints/apps.yaml]
+    files: [blueprints/apps.yaml, blueprints/break-glass.yaml]
     options:
       disableNameSuffixHash: true   # the chart mounts it by this exact name

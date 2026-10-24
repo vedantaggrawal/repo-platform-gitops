@@ -1,0 +1,30 @@
+# Break-glass password login (akadmin, or any user) at
+#   https://local.authentik.internal:30443/if/flow/break-glass/
+# The default sign-in page goes straight to GitHub (see the github blueprint in
+# secrets.yaml); this flow keeps a password path for recovery and for linking
+# GitHub to an account the first time (Settings > Connected services).
+version: 1
+metadata:
+  name: platform - break-glass login
+entries:
+  - model: authentik_flows.flow
+    id: flow
+    identifiers: { slug: break-glass }
+    attrs:
+      name: Break-glass login
+      title: Break-glass login
+      designation: authentication
+      authentication: none
+  - model: authentik_stages_identification.identificationstage
+    id: identification
+    identifiers: { name: break-glass-identification }
+    attrs:
+      user_fields: [username]
+  - model: authentik_flows.flowstagebinding
+    identifiers: { order: 10, target: !KeyOf flow, stage: !KeyOf identification }
+  - model: authentik_flows.flowstagebinding
+    identifiers: { order: 20, target: !KeyOf flow, stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]] }
+  - model: authentik_flows.flowstagebinding
+    identifiers: { order: 30, target: !KeyOf flow, stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]] }
+  - model: authentik_flows.flowstagebinding
+    identifiers: { order: 100, target: !KeyOf flow, stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]] }
