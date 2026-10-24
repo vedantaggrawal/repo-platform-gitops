@@ -9,21 +9,25 @@ grafana.ini:
     format: json
   server:
     root_url: https://local.grafana.internal:30443
-  # SSO via the Keycloak `platform` realm (GitHub login brokered by Keycloak).
-  # Public client + PKCE, so there is no client secret anywhere. The browser goes
-  # to Keycloak's external URL; Grafana's back-channel calls use the in-cluster
-  # service (pods can't reach :30443). Admin = member of group platform-admins.
-  # The local admin (Secret grafana-admin, below) remains as break-glass.
+  # SSO via Authentik (GitHub login is offered there). Public client + PKCE, so
+  # there is no client secret. The browser goes to Authentik's external URL; the
+  # back-channel token/userinfo calls use the in-cluster service, so Grafana
+  # needs no trust in the platform CA. Admin = member of group platform-admins
+  # (Authentik puts groups in the `profile` scope). The local admin (Secret
+  # grafana-admin) remains as break-glass.
   auth.generic_oauth:
     enabled: true
-    name: Keycloak
+    name: Authentik
+    # Skip Grafana's login form: go straight to Authentik (break-glass admin
+    # login stays at /login?disableAutoLogin=true).
+    auto_login: true
     client_id: grafana
     use_pkce: true
-    scopes: openid profile email groups
-    auth_url: https://local.keycloak.internal:30443/realms/platform/protocol/openid-connect/auth
-    token_url: http://local-keycloak-keycloakx-http.keycloak.svc.cluster.local/realms/platform/protocol/openid-connect/token
-    api_url: http://local-keycloak-keycloakx-http.keycloak.svc.cluster.local/realms/platform/protocol/openid-connect/userinfo
-    signout_redirect_url: https://local.keycloak.internal:30443/realms/platform/protocol/openid-connect/logout?client_id=grafana&post_logout_redirect_uri=https%3A%2F%2Flocal.grafana.internal%3A30443%2Flogin
+    scopes: openid profile email
+    auth_url: https://local.authentik.internal:30443/application/o/authorize/
+    token_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/token/
+    api_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/userinfo/
+    signout_redirect_url: https://local.authentik.internal:30443/application/o/grafana/end-session/
     login_attribute_path: preferred_username
     email_attribute_path: email
     groups_attribute_path: groups
