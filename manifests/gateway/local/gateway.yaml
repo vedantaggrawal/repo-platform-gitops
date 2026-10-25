@@ -43,5 +43,7 @@ spec:
           requestRedirect:
             scheme: https
             # Public HTTPS port on the host (kind maps 30443 to the node's 443).
+            # Staging ports aren't host-mapped: until cutover this lands on Cilium,
+            # which serves the same hosts. In-cluster staging tests use 10443 directly.
             port: 30443
             statusCode: 301
