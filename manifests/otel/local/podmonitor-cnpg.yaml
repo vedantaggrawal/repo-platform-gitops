@@ -1,0 +1,17 @@
+# Postgres saturation signals (connections, locks, replication, pg_stat_*) from
+# every CNPG instance, cluster-wide. One monitor instead of per-Cluster
+# enablePodMonitor (deprecated in CNPG). The OTel target allocator ships them to Mimir.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cnpg-instances
+  namespace: opentelemetry-operator
+spec:
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      cnpg.io/podRole: instance
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s
