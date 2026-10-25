@@ -23,11 +23,15 @@ tempo:
     enabled: true
     processor:
       service_graphs: {}
-      span_metrics: {}
+      # Per-tenant RED: dimensions come from the gateway span tags (JWT claims).
+      span_metrics:
+        dimensions: [x-tenant-id, x-tier]
     storage:
       path: /var/tempo/generator/wal
       remote_write:
         - url: http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push
+          # Exemplars link a latency/error spike straight to a trace in Grafana.
+          send_exemplars: true
     traces_storage:
       path: /var/tempo/generator/traces
   overrides:
