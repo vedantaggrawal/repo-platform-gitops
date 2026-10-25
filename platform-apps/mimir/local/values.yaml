@@ -37,6 +37,8 @@ mimir:
       # Default 150k was hitting after adding cilium SMs. 1.5M gives
       # headroom for a small dev cluster; tune per-tenant in prod.
       max_global_series_per_user: 1500000
+      # Exemplar storage (off by default); fed by Tempo span-metrics.
+      max_global_exemplars_per_user: 100000
     # Single-replica ingester + store-gateway: drop the ring replication
     # factor from the default 3, otherwise queries fail with
     # "too many unhealthy instances in the ring".

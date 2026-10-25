@@ -82,6 +82,8 @@ datasources:
         jsonData:
           httpHeaderName1: X-Scope-OrgID
           timeInterval: 30s
+          exemplarTraceIdDestinations:
+            - {name: trace_id, datasourceUid: tempo}
         secureJsonData:
           httpHeaderValue1: anonymous
       - name: Loki
