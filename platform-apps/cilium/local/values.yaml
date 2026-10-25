@@ -31,6 +31,7 @@ operator:
     enabled: true
     serviceMonitor:
       enabled: true
+      interval: 30s   # chart default 10s; 30s cuts ingest ~3x for these
 
 # Restart agents/envoy when cilium-config changes (Helm upgrades only edit the ConfigMap).
 rollOutCiliumPods: true
@@ -60,6 +61,7 @@ hubble:
       - httpV2:exemplars=true;sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity;labelsContext=source_namespace,source_workload,destination_namespace,destination_workload
     serviceMonitor:
       enabled: true
+      interval: 30s   # chart default 10s; 30s cuts ingest ~3x for these
     dashboards:
       enabled: true
       namespace: monitoring
@@ -85,6 +87,7 @@ prometheus:
   enabled: true
   serviceMonitor:
     enabled: true
+    interval: 30s   # chart default 10s; 30s cuts ingest ~3x for these
 
 envoy:
   rollOutPods: true
@@ -92,3 +95,4 @@ envoy:
     enabled: true
     serviceMonitor:
       enabled: true
+      interval: 30s   # chart default 10s; 30s cuts ingest ~3x for these
