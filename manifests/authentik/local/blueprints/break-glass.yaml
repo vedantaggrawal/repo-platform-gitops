@@ -1,5 +1,8 @@
-# Break-glass password login (akadmin, or any user) at
-#   https://local.authentik.internal:30443/if/flow/break-glass/
+# Break-glass password login (akadmin, or any user), and the signed-out landing
+# page, at https://local.authentik.internal:30443/if/flow/break-glass/
+# After any logout Authentik lands here instead of the normal sign-in (which
+# auto-redirects to GitHub and would sign you straight back in). The GitHub
+# button is added in secrets.yaml (where the source lives).
 # The default sign-in page goes straight to GitHub (see the github blueprint in
 # secrets.yaml); this flow keeps a password path for recovery and for linking
 # GitHub to an account the first time (Settings > Connected services).
@@ -11,8 +14,8 @@ entries:
     id: flow
     identifiers: { slug: break-glass }
     attrs:
-      name: Break-glass login
-      title: Break-glass login
+      name: Sign in
+      title: Sign in
       designation: authentication
       authentication: none
   - model: authentik_stages_identification.identificationstage
@@ -28,3 +31,17 @@ entries:
     identifiers: { order: 30, target: !KeyOf flow, stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]] }
   - model: authentik_flows.flowstagebinding
     identifiers: { order: 100, target: !KeyOf flow, stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]] }
+
+  # Logout ends on this page: the executor redirects to plan.context["redirect"].
+  - model: authentik_policies_expression.expressionpolicy
+    id: after-logout
+    identifiers: { name: after-logout-to-sign-in }
+    attrs:
+      expression: |
+        context["flow_plan"].context["redirect"] = "https://local.authentik.internal:30443/if/flow/break-glass/"
+        return True
+  - model: authentik_policies.policybinding
+    identifiers:
+      order: 0
+      policy: !KeyOf after-logout
+      target: !Find [authentik_flows.flowstagebinding, [target, !Find [authentik_flows.flow, [slug, default-invalidation-flow]]], [stage, !Find [authentik_stages_user_logout.userlogoutstage, [name, default-invalidation-logout]]]]
