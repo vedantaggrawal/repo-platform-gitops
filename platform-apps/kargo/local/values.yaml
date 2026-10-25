@@ -1,3 +1,12 @@
+# TEMPORARY: locally built Kargo v1.11.8 + a UI login-callback patch that is being
+# proposed upstream (follow-up to akuity/kargo#7136). The image is side-loaded into
+# the kind nodes and isn't in any registry. Remove this block once upstream ships
+# the fix.
+image:
+  repository: ghcr.io/vedantaggrawal/kargo
+  tag: v1.11.8-ui-callback.1
+  pullPolicy: IfNotPresent
+
 # Kargo — local dev environment.
 #
 # Admin account login is enabled. The password hash + token signing key live in
