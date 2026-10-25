@@ -1,3 +1,5 @@
+# Gateway API CRD defaults (ref group/kind, PathPrefix "/" match) are written out:
+# Argo CD 2.10 diffs client-side and would show the server-side defaults as drift.
 # Staging ports while Cilium ingress still holds 443/80 on the node; the
 # cutover moves these to 443/80.
 apiVersion: gateway.networking.k8s.io/v1
@@ -14,7 +16,8 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - kind: Secret
+          - group: ""
+            kind: Secret
             name: platform-gateway-tls
       allowedRoutes:
         namespaces:
@@ -35,10 +38,16 @@ metadata:
   namespace: envoy-gateway-system
 spec:
   parentRefs:
-    - name: platform
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: platform
       sectionName: http
   rules:
-    - filters:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
         - type: RequestRedirect
           requestRedirect:
             scheme: https
