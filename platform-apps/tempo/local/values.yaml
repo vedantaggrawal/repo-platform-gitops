@@ -16,30 +16,8 @@ tempo:
   server:
     http_listen_port: 3200
     log_format: json
-  # Span metrics + service graph, remote-written to Mimir (multitenancy off,
-  # so no X-Scope-OrgID). Paths sit on the persistent volume. Grafana's
-  # service map reads these series via the Tempo datasource (serviceMap -> mimir).
-  metricsGenerator:
-    enabled: true
-    processor:
-      service_graphs: {}
-      # Per-tenant RED: dimensions come from the gateway span tags (JWT claims).
-      span_metrics:
-        dimensions: [x-tenant-id, x-tier]
-    storage:
-      path: /var/tempo/generator/wal
-      remote_write:
-        - url: http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push
-          # Exemplars link a latency/error spike straight to a trace in Grafana.
-          send_exemplars: true
-    traces_storage:
-      path: /var/tempo/generator/traces
-  overrides:
-    defaults:
-      metrics_generator:
-        processors:
-          - service-graphs
-          - span-metrics
+  # No metrics-generator: RED + service graph are produced pre-sampling by the
+  # otel-cluster spanmetrics/servicegraph connectors (tail sampling would bias them).
   storage:
     trace:
       backend: s3
