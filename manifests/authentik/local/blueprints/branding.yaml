@@ -29,6 +29,9 @@ entries:
     identifiers: { domain: authentik-default, default: true }
     attrs:
       attributes: { settings: { theme: { base: dark } } }
+      branding_title: eve
+      branding_logo: /static/dist/custom/logo.svg
+      branding_favicon: /static/dist/custom/favicon.svg
       branding_custom_css: |
         /* ===== AUTHENTIK GLASSMORPHISM THEME - V1.1 (Badge Fix) ===== */
 
