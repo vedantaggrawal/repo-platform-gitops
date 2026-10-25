@@ -1,7 +1,6 @@
 # Gateway API CRD defaults (ref group/kind, PathPrefix "/" match) are written out:
 # Argo CD 2.10 diffs client-side and would show the server-side defaults as drift.
-# Staging ports while Cilium ingress still holds 443/80 on the node; the
-# cutover moves these to 443/80.
+# Listeners bind the node's 443/80 (hostNetwork); kind maps host 30443/30080 to them.
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -12,7 +11,7 @@ spec:
   listeners:
     - name: https
       protocol: HTTPS
-      port: 10443
+      port: 443
       tls:
         mode: Terminate
         certificateRefs:
@@ -26,7 +25,7 @@ spec:
     # sectionName can't serve plain HTTP.
     - name: http
       protocol: HTTP
-      port: 10080
+      port: 80
       allowedRoutes:
         namespaces:
           from: Same
@@ -52,7 +51,5 @@ spec:
           requestRedirect:
             scheme: https
             # Public HTTPS port on the host (kind maps 30443 to the node's 443).
-            # Staging ports aren't host-mapped: until cutover this lands on Cilium,
-            # which serves the same hosts. In-cluster staging tests use 10443 directly.
             port: 30443
             statusCode: 301

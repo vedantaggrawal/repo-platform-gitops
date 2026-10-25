@@ -25,18 +25,10 @@ image:
 operator:
   replicas: 1
 
-# -- Cilium Ingress Controller (replaces Traefik) --
+# -- Ingress: off. Envoy Gateway (Gateway API) serves north-south on the
+# ingress-ready node's 443/80; routes live with each app. --
 ingressController:
-  enabled: true
-  default: true
-  loadbalancerMode: shared
-  enforceHttps: false
-  hostNetwork:
-    enabled: true
-    sharedListenerPort: 443
-    nodes:
-      matchLabels:
-        ingress-ready: "true"
+  enabled: false
 
 # -- Hubble Observability --
 hubble:
@@ -45,18 +37,9 @@ hubble:
     enabled: true
   ui:
     enabled: true
+    # Served by the HTTPRoute in manifests/routes/local/ (Envoy Gateway).
     ingress:
-      enabled: true
-      className: cilium
-      annotations:
-        cert-manager.io/cluster-issuer: platform-ca
-        cert-manager.io/usages: "digital signature,key encipherment,server auth"
-      hosts:
-        - local.hubble.internal
-      tls:
-        - secretName: hubble-ui-tls
-          hosts:
-            - local.hubble.internal
+      enabled: false
   metrics:
     enabled:
       - dns:query;rcode;ips;qtypes;rrtypes;labelsContext=source_namespace,source_workload,destination_namespace,destination_workload
