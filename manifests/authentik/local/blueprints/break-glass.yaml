@@ -32,16 +32,26 @@ entries:
   - model: authentik_flows.flowstagebinding
     identifiers: { order: 100, target: !KeyOf flow, stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]] }
 
-  # Logout ends on this page: the executor redirects to plan.context["redirect"].
-  - model: authentik_policies_expression.expressionpolicy
-    id: after-logout
+  # Logout ends on this page: a Redirect stage after the logout stage of the
+  # default invalidation flow (used by Authentik's own sign-out and, via the
+  # providers, by every app's sign-out).
+  - model: authentik_stages_redirect.redirectstage
+    id: to-sign-in
     identifiers: { name: after-logout-to-sign-in }
     attrs:
-      expression: |
-        context["flow_plan"].context["redirect"] = "https://local.authentik.internal:30443/if/flow/break-glass/"
-        return True
+      mode: flow
+      target_flow: !KeyOf flow
+      keep_context: false
+  - model: authentik_flows.flowstagebinding
+    identifiers: { order: 10, target: !Find [authentik_flows.flow, [slug, default-invalidation-flow]], stage: !KeyOf to-sign-in }
+
+  # Earlier attempt (a policy setting the plan's redirect) never fired; remove it.
   - model: authentik_policies.policybinding
+    state: absent
     identifiers:
       order: 0
-      policy: !KeyOf after-logout
+      policy: !Find [authentik_policies_expression.expressionpolicy, [name, after-logout-to-sign-in]]
       target: !Find [authentik_flows.flowstagebinding, [target, !Find [authentik_flows.flow, [slug, default-invalidation-flow]]], [stage, !Find [authentik_stages_user_logout.userlogoutstage, [name, default-invalidation-logout]]]]
+  - model: authentik_policies_expression.expressionpolicy
+    state: absent
+    identifiers: { name: after-logout-to-sign-in }
