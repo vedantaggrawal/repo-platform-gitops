@@ -330,3 +330,41 @@ extraObjects:
                 labels: {severity: warning, service: mimir, layer: telemetry}
                 annotations:
                   summary: Mimir discarding samples
+          - name: gateway-envoy
+            rules:
+              - alert: EnvoyUpstreamConnectionOverflow
+                expr: sum by (envoy_cluster_name) (increase(envoy_cluster_upstream_cx_overflow_total{namespace="envoy-gateway-system"}[5m]) + increase(envoy_cluster_upstream_rq_pending_overflow_total{namespace="envoy-gateway-system"}[5m])) > 0
+                labels: {severity: warning, service: envoy, layer: gateway}
+                annotations:
+                  summary: Envoy Gateway upstream connection or pending-request circuit breaker overflowing
+              - alert: EnvoyUpstream5xxRatioHigh
+                expr: sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_response_code_class="5"}[5m])) / sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system"}[5m])) > 0.05
+                for: 10m
+                labels: {severity: critical, service: envoy, layer: gateway}
+                annotations:
+                  summary: Envoy Gateway upstream 5xx ratio above 5% for 10m
+          - name: postgres-health
+            rules:
+              - alert: PostgresLockWaits
+                expr: max by (namespace, pod) (cnpg_backends_waiting_total) > 0
+                for: 5m
+                labels: {severity: warning, service: postgres, layer: data}
+                annotations:
+                  summary: Postgres backends waiting on locks for over 5m
+              - alert: PostgresDeadlocks
+                expr: sum by (namespace, pod, datname) (increase(cnpg_pg_stat_database_deadlocks_total[10m])) > 0
+                labels: {severity: warning, service: postgres, layer: data}
+                annotations:
+                  summary: Postgres deadlocks detected in the last 10m
+              - alert: PostgresLongTransaction
+                expr: max by (namespace, pod, datname) (cnpg_backends_max_tx_duration_seconds) > 300
+                for: 5m
+                labels: {severity: warning, service: postgres, layer: data}
+                annotations:
+                  summary: Postgres transaction open longer than 5m
+              - alert: PostgresReplicationLagHigh
+                expr: max by (namespace, pod) (cnpg_pg_replication_lag) > 30
+                for: 10m
+                labels: {severity: warning, service: postgres, layer: data}
+                annotations:
+                  summary: Postgres replica lag above 30s for 10m
