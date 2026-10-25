@@ -111,7 +111,7 @@ datasources:
             filterByTraceID: true
           tracesToMetrics:
             datasourceUid: mimir
-            tags: [{ key: service.name, value: service }]
+            tags: [{ key: service.name, value: service_name }]
           serviceMap:
             datasourceUid: mimir
           nodeGraph:

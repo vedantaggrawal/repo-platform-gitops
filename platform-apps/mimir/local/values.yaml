@@ -39,7 +39,7 @@ mimir:
       # Default 150k was hitting after adding cilium SMs. 1.5M gives
       # headroom for a small dev cluster; tune per-tenant in prod.
       max_global_series_per_user: 1500000
-      # Exemplar storage (off by default); fed by Tempo span-metrics.
+      # Exemplar storage (off by default); fed by otel-cluster spanmetrics.
       max_global_exemplars_per_user: 100000
     # Single-replica ingester + store-gateway: drop the ring replication
     # factor from the default 3, otherwise queries fail with
@@ -238,24 +238,24 @@ extraObjects:
             rules:
               - alert: GatewayErrorBudgetBurnFast
                 expr: |
-                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[1h])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[1h]))) > (14.4 * 0.001)
+                  (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[1h])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[1h]))) > (14.4 * 0.001)
                   and
-                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[5m])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[5m]))) > (14.4 * 0.001)
+                  (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[5m]))) > (14.4 * 0.001)
                 labels: {severity: critical, service: platform-gateway}
                 annotations:
                   summary: platform-gateway burning 99.9% availability budget at 14.4x (1h and 5m)
               - alert: GatewayErrorBudgetBurnSlow
                 expr: |
-                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[6h])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[6h]))) > (6 * 0.001)
+                  (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[6h])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[6h]))) > (6 * 0.001)
                   and
-                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[30m])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[30m]))) > (6 * 0.001)
+                  (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[30m])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[30m]))) > (6 * 0.001)
                 labels: {severity: warning, service: platform-gateway}
                 annotations:
                   summary: platform-gateway burning 99.9% availability budget at 6x (6h and 30m)
           - name: slo-tenant-api-latency
             rules:
               - alert: TenantApiLatencyP95High
-                expr: histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service="tenant-api"}[5m]))) > 0.3
+                expr: histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name="tenant-api"}[5m]))) > 300
                 for: 10m
                 labels: {severity: warning, service: tenant-api}
                 annotations:

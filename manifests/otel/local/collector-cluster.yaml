@@ -62,6 +62,21 @@ spec:
           # labels (job="kubelet", metrics_path=...) the mixin dashboards/rules use.
           # Keep the empty list: operator 0.158 errors on `config` without it.
           scrape_configs: []
+    # RED metrics and the service graph are derived from the unsampled stream
+    # (traces/in), before tail_sampling, so sampling does not bias them.
+    connectors:
+      forward/sample: {}
+      spanmetrics:
+        dimensions:
+          - name: x-tenant-id
+          - name: x-tier
+        exemplars:
+          enabled: true
+        histogram:
+          explicit:
+            buckets: [10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
+      servicegraph:
+        latency_histogram_buckets: [10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
     processors:
       memory_limiter:
         check_interval: 5s
@@ -115,11 +130,15 @@ spec:
         logs:
           encoding: json
       pipelines:
-        traces:
+        traces/in:
           receivers: [otlp]
-          processors: [memory_limiter, tail_sampling, batch]
+          processors: [memory_limiter]
+          exporters: [spanmetrics, servicegraph, forward/sample]
+        traces/sample:
+          receivers: [forward/sample]
+          processors: [tail_sampling, batch]
           exporters: [otlp/tempo]
         metrics:
-          receivers: [prometheus]
+          receivers: [prometheus, spanmetrics, servicegraph]
           processors: [memory_limiter, batch]
           exporters: [prometheusremotewrite/mimir]
