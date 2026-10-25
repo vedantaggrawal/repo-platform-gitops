@@ -19,7 +19,7 @@ spec:
       annotations:
         argocd.argoproj.io/sync-wave: '{{ "{{syncWave}}" }}'
     spec:
-      project: default
+      project: platform
       sources:
         - chart: '{{ "{{chart}}" }}'
           repoURL: '{{ "{{repoURL}}" }}'

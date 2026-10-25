@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.env }}-grafana-dashboards
   namespace: argocd
 spec:
-  project: default
+  project: platform
   source:
     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
     targetRevision: HEAD

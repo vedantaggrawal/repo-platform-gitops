@@ -1,0 +1,49 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+# Platform apps (AppSets, raw apps, root apps). Created before any Application
+# that references it. Shared by every env root on the cluster, rendered once.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+spec:
+  description: Platform-owned apps (cluster-admin scope)
+  sourceRepos:
+    - https://github.com/vedantaggrawal/repo-platform-gitops.git
+    - https://github.com/vedantaggrawal/repo-helm-chart.git
+    - https://github.com/vedantaggrawal/repo-app-gitops.git
+    - https://argoproj.github.io/argo-helm
+    - https://charts.external-secrets.io
+    - https://charts.goauthentik.io
+    - https://charts.jetstack.io
+    - https://charts.min.io/
+    - https://cloudnative-pg.github.io/charts
+    - https://grafana.github.io/helm-charts
+    - https://helm.cilium.io/
+    - https://helm.goharbor.io
+    - https://jellyfin.github.io/jellyfin-helm
+    - https://kubernetes-sigs.github.io/headlamp/
+    - https://kubernetes-sigs.github.io/metrics-server/
+    - https://meshery.io/charts/
+    - https://open-telemetry.github.io/opentelemetry-helm-charts
+    - https://openbao.github.io/openbao-helm
+    - https://prometheus-community.github.io/helm-charts
+    - https://traefik.github.io/charts
+    - ghcr.io/akuity/kargo-charts
+    - docker.io/envoyproxy
+  destinations:
+    - server: {{ .Values.cluster }}
+      namespace: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  roles:
+    - name: admin
+      description: Platform admins
+      policies:
+        - p, proj:platform:admin, applications, *, platform/*, allow
+      groups:
+        - platform-admins
+{{- end }}
