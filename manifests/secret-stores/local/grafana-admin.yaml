@@ -1,4 +1,4 @@
-# Grafana's local admin (break-glass; normal login is Keycloak SSO). ESO
+# Grafana's local admin (break-glass; normal login is Authentik SSO). ESO
 # generates the password once (refreshPolicy CreatedOnce) and owns Secret
 # grafana-admin. Lives in this non-ServerSideApply app because ESO custom
 # resources in the SSA platform apps crash Argo CD 2.10's diff.
