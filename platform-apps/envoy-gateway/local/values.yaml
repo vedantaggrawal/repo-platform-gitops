@@ -2,6 +2,11 @@
 # (not the platform AppSet: the chart's crds/ bundles CRDs owned by app-gateway-crds, so it
 # needs helm.skipCrds, which the AppSet template can't set per app).
 deployment:
+  pod:
+    annotations:
+      # EG reads its config at start and the chart has no config checksum: bump this
+      # when `config.envoyGateway` below changes so the controller restarts.
+      config-rev: "1"
   envoyGateway:
     resources:
       requests:
@@ -9,3 +14,14 @@ deployment:
         memory: 128Mi
       limits:
         memory: 512Mi
+config:
+  envoyGateway:
+    # Global rate limiting: EG creates the envoy-ratelimit Deployment once a backend is set.
+    rateLimit:
+      backend:
+        type: Redis
+        redis:
+          url: ratelimit-redis.envoy-gateway-system.svc.cluster.local:6379
+      # false = fail open: if the ratelimit service/Redis is unreachable, traffic passes
+      # (the default). true = such requests get a 500.
+      failClosed: false

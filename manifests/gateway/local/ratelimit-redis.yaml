@@ -1,0 +1,70 @@
+# Counter store for Envoy Gateway global rate limiting (wired in
+# platform-apps/envoy-gateway/local/values.yaml). Single replica, no persistence:
+# counters are ephemeral, losing them only resets the current windows.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratelimit-redis
+  namespace: envoy-gateway-system
+  labels:
+    app.kubernetes.io/name: ratelimit-redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ratelimit-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ratelimit-redis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: docker.io/valkey/valkey:9.1.2-alpine   # BSD-3; Redis 7.4+ is RSAL/SSPL
+          args: ["--save", "", "--appendonly", "no"]
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            tcpSocket:
+              port: redis
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratelimit-redis
+  namespace: envoy-gateway-system
+  labels:
+    app.kubernetes.io/name: ratelimit-redis
+spec:
+  selector:
+    app.kubernetes.io/name: ratelimit-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
