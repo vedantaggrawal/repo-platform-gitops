@@ -13,6 +13,22 @@ entries:
     attrs:
       attributes: { tenant_id: demo, tier: free }
 
+  # Per-tenant roles (access model: Argo CD AppProject roles, Grafana org roles,
+  # k8s RoleBindings bind to these names). Emitted in the `groups` claim by the
+  # built-in profile scope. tenant-demo stays: the tenant claim above reads it.
+  - model: authentik_core.group
+    identifiers: { name: tenant-demo-admin }
+    attrs:
+      attributes: { tenant_id: demo, role: admin }
+  - model: authentik_core.group
+    identifiers: { name: tenant-demo-dev }
+    attrs:
+      attributes: { tenant_id: demo, role: dev }
+  - model: authentik_core.group
+    identifiers: { name: tenant-demo-viewer }
+    attrs:
+      attributes: { tenant_id: demo, role: viewer }
+
   # Emits tenant_id + tier from the user's first group (by name) that has a
   # tenant_id attribute. No such group => no claims (fail closed: the gateway
   # must reject tokens without tenant_id).

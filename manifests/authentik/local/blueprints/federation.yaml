@@ -28,8 +28,9 @@ entries:
       expression: |
         ADMINS = [14919641]  # vedantaggrawal
         DEMO = [14919641]  # vedantaggrawal -> tenant-demo (demo-tenant.yaml)
+        DEMO_ADMINS = [14919641]  # vedantaggrawal -> tenant-demo-admin
         uid = info.get("id")
-        return {"groups": (["platform-admins"] if uid in ADMINS else []) + (["tenant-demo"] if uid in DEMO else [])}
+        return {"groups": (["platform-admins"] if uid in ADMINS else []) + (["tenant-demo"] if uid in DEMO else []) + (["tenant-demo-admin"] if uid in DEMO_ADMINS else [])}
 
   # First login: create the user, no prompts (username, name, email from GitHub).
   - model: authentik_flows.flow
