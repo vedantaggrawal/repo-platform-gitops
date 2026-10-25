@@ -52,23 +52,14 @@ api:
   # the rest of the platform (argocd, cert-manager).
   logFormat: JSON
 
-  # TLS terminates at the ingress; the API server speaks plain HTTP upstream but
+  # TLS terminates at the gateway; the API server speaks plain HTTP upstream but
   # still advertises https URLs to clients.
   tls:
     enabled: false
     terminatedUpstream: true
 
   ingress:
-    enabled: true
-    ingressClassName: cilium
-    # Cilium/Envoy does not treat ImplementationSpecific "/" as a wildcard, so
-    # only "/" matched and every /assets and /v1beta1 subpath 404'd (blank UI).
-    # Prefix makes "/" match all subpaths.
-    pathType: Prefix
-    tls:
-      enabled: true
-      selfSignedCert: true
-      secretName: kargo-api-ingress-cert
+    enabled: false
 
 controller:
   logFormat: JSON

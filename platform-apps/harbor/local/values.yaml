@@ -29,34 +29,20 @@
 # (secretKey/secret/JOBSERVICE_SECRET/REGISTRY_HTTP_SECRET must be exactly 16
 # chars, CSRF_KEY exactly 32 — hence hex 8 / hex 16.)
 #
-# UI + registry are exposed through the Cilium ingress at
+# UI + registry are exposed through the Envoy Gateway at
 # https://local.harbor.internal:30443 (kind maps container 443 -> host 30443).
-# cert-manager mints a self-signed cert via the `selfsigned` ClusterIssuer.
+# The Gateway holds the cert.
 # `docker login` against it needs the host in Docker's insecure-registries (or
 # the cert trusted), since the cert is self-signed.
 
 externalURL: https://local.harbor.internal:30443
 
 expose:
-  type: ingress
+  # No Ingress: the HTTPRoute in manifests/routes/local/harbor.yaml fronts
+  # core/portal directly. TLS terminates at the Gateway.
+  type: clusterIP
   tls:
-    enabled: true
-    # cert-manager owns the cert; `auto` would genCA on every render (drift).
-    certSource: secret
-    secret:
-      secretName: harbor-tls
-  ingress:
-    className: cilium
-    hosts:
-      core: local.harbor.internal
-    annotations:
-      cert-manager.io/cluster-issuer: platform-ca
-      cert-manager.io/usages: "digital signature,key encipherment,server auth"
-      # Drop the chart's nginx-specific defaults; meaningless on Cilium.
-      ingress.kubernetes.io/ssl-redirect: null
-      ingress.kubernetes.io/proxy-body-size: null
-      nginx.ingress.kubernetes.io/ssl-redirect: null
-      nginx.ingress.kubernetes.io/proxy-body-size: null
+    enabled: false
 
 # --- Secrets: all from harbor-secrets (see header) ---
 existingSecretAdminPassword: harbor-secrets

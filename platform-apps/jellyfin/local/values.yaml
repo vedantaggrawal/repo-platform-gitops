@@ -39,20 +39,7 @@ service:
   port: 8096
 
 ingress:
-  enabled: true
-  className: cilium
-  annotations:
-    cert-manager.io/cluster-issuer: platform-ca
-    cert-manager.io/usages: "digital signature,key encipherment,server auth"
-  hosts:
-    - host: local.jellyfin.internal
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: jellyfin-tls
-      hosts:
-        - local.jellyfin.internal
+  enabled: false
 
 # Run as non-root with a stable UID; fsGroup makes PVCs writable.
 podSecurityContext:
@@ -76,7 +63,7 @@ jellyfin:
     - name: TZ
       value: Europe/Amsterdam
 
-# Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+# Route on the Envoy Gateway.
 httpRoute:
   enabled: true
   parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
