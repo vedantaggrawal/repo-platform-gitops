@@ -1,0 +1,36 @@
+# Envoy data plane for the `eg` GatewayClass: one pod in hostNetwork on the
+# ingress-ready node, so listener ports bind directly on the node.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: platform
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      # Bind the listener port itself (no +10000 shift for ports < 1024).
+      useListenerPortAsContainerPort: true
+      envoyDeployment:
+        replicas: 1
+        # hostNetwork ports are host ports: a surge pod can't schedule next to
+        # the old one, so a rolling update would hang.
+        strategy:
+          type: Recreate
+        pod:
+          nodeSelector:
+            ingress-ready: "true"
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              template:
+                spec:
+                  hostNetwork: true
+                  dnsPolicy: ClusterFirstWithHostNet
+      envoyService:
+        type: ClusterIP
