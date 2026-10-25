@@ -268,3 +268,65 @@ extraObjects:
                 labels: {severity: warning, service: postgres}
                 annotations:
                   summary: Postgres connections above 80% of max_connections
+          - name: platform-capacity
+            rules:
+              - alert: PodPendingTooLong
+                expr: sum by (namespace, pod) (kube_pod_status_phase{phase="Pending"}) > 0
+                for: 5m
+                labels: {severity: warning, service: kubernetes, layer: scheduling}
+                annotations:
+                  summary: Pod Pending for over 5m
+              - alert: NodeMemoryRequestsHigh
+                expr: sum by (node) (kube_pod_container_resource_requests{resource="memory",node!=""}) / sum by (node) (kube_node_status_allocatable{resource="memory"}) > 0.85
+                for: 15m
+                labels: {severity: warning, service: kubernetes, layer: capacity}
+                annotations:
+                  summary: Node memory requests above 85% of allocatable
+              - alert: NodeCpuRequestsHigh
+                expr: sum by (node) (kube_pod_container_resource_requests{resource="cpu",node!=""}) / sum by (node) (kube_node_status_allocatable{resource="cpu"}) > 0.85
+                for: 15m
+                labels: {severity: warning, service: kubernetes, layer: capacity}
+                annotations:
+                  summary: Node CPU requests above 85% of allocatable
+              - alert: ContainerOOMKilled
+                expr: (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1) and on (namespace, pod, container) (increase(kube_pod_container_status_restarts_total[10m]) > 0)
+                labels: {severity: warning, service: kubernetes, layer: workload}
+                annotations:
+                  summary: A container OOMKilled in the last 10m
+              - alert: ArgoApplicationControllerRestarting
+                expr: increase(kube_pod_container_status_restarts_total{namespace="argocd",container="application-controller"}[30m]) > 0
+                labels: {severity: critical, service: argocd, layer: gitops}
+                annotations:
+                  summary: Argo CD application-controller restarted in the last 30m (OOM if ContainerOOMKilled also fires)
+              - alert: ContainerCpuThrottlingHigh
+                expr: sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{container!=""}[5m])) / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{container!=""}[5m])) > 0.25
+                for: 15m
+                labels: {severity: warning, service: kubernetes, layer: workload}
+                annotations:
+                  summary: A container CPU throttled in over 25% of periods
+          - name: telemetry-pipeline
+            rules:
+              - alert: OtelCollectorExportFailing
+                expr: sum by (exporter) (rate(otelcol_exporter_send_failed_spans_total[5m]) + rate(otelcol_exporter_send_failed_metric_points_total[5m]) + rate(otelcol_exporter_send_failed_log_records_total[5m])) > 0
+                for: 5m
+                labels: {severity: critical, service: otel-collector, layer: telemetry}
+                annotations:
+                  summary: OTel collector exporter failing to send
+              - alert: OtelCollectorQueueNearFull
+                expr: max by (exporter, pod) (otelcol_exporter_queue_size / otelcol_exporter_queue_capacity) > 0.8
+                for: 5m
+                labels: {severity: warning, service: otel-collector, layer: telemetry}
+                annotations:
+                  summary: OTel exporter queue above 80%
+              - alert: OtelCollectorReceiverRefusing
+                expr: sum by (receiver) (rate(otelcol_receiver_refused_spans_total[5m]) + rate(otelcol_receiver_refused_metric_points_total[5m]) + rate(otelcol_receiver_refused_log_records_total[5m])) > 0
+                for: 5m
+                labels: {severity: warning, service: otel-collector, layer: telemetry}
+                annotations:
+                  summary: OTel receiver refusing data (backpressure)
+              - alert: MimirDiscardingSamples
+                expr: sum by (reason) (rate(cortex_discarded_samples_total[5m])) > 0
+                for: 10m
+                labels: {severity: warning, service: mimir, layer: telemetry}
+                annotations:
+                  summary: Mimir discarding samples
