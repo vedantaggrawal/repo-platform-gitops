@@ -24,6 +24,9 @@ defaultRules:
 # Setting extraArgs replaces the chart's list, so its two filesystem excludes
 # are repeated here.
 prometheus-node-exporter:
+  prometheus:
+    monitor:
+      interval: 60s
   extraArgs:
     - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
     - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
@@ -34,6 +37,7 @@ prometheus-node-exporter:
 # apiserver_request_total/_count/_sum and the etcd _sum/_count stay.
 kubeApiServer:
   serviceMonitor:
+    interval: 60s
     # Replaces the chart default (le-thinning of request_duration), which is
     # moot once the whole bucket family is dropped.
     metricRelabelings:
@@ -43,6 +47,7 @@ kubeApiServer:
 
 kubelet:
   serviceMonitor:
+    interval: 60s
     probesMetricRelabelings:
       - action: drop
         sourceLabels: [__name__]
@@ -75,3 +80,10 @@ kubelet:
       - action: drop
         sourceLabels: [__name__]
         regex: (container_memory_failures_total|container_blkio_device_usage_total)
+
+# Ingest diet: all rules, dashboards and KPIs use >=5m rate windows, so 60s
+# scrapes lose nothing. Prometheus default is 30s.
+kube-state-metrics:
+  prometheus:
+    monitor:
+      interval: 60s
