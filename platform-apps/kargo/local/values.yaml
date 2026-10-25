@@ -4,7 +4,7 @@
 # the fix.
 image:
   repository: ghcr.io/vedantaggrawal/kargo
-  tag: v1.11.8-ui-callback.1
+  tag: v1.11.8-ui-callback.2
   pullPolicy: IfNotPresent
 
 # Kargo — local dev environment.
