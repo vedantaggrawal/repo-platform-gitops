@@ -2,6 +2,7 @@
 # (not the platform AppSet: the chart's crds/ bundles CRDs owned by app-gateway-crds, so it
 # needs helm.skipCrds, which the AppSet template can't set per app).
 deployment:
+  priorityClassName: platform-critical
   pod:
     annotations:
       # EG reads its config at start and the chart has no config checksum: bump this

@@ -11,6 +11,7 @@ metadata:
 spec:
   mode: statefulset
   replicas: 1
+  priorityClassName: platform-critical
   # The worker can fill up (demo workloads); this pipeline (traces, cluster
   # metrics, SLO inputs) must always schedule, so it may use the control-plane node.
   tolerations:
