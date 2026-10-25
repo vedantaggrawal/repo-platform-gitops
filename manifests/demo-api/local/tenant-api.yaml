@@ -1,0 +1,53 @@
+# tenant-api: tenant-scoped items on demo-db (RLS). The initContainer migrates as
+# the schema owner; the app runs as demo_app (NOBYPASSRLS, owns nothing).
+# OTel Python is injected by the operator (Instrumentation opentelemetry-operator/default).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tenant-api
+  namespace: kargo-demo-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: tenant-api}
+  template:
+    metadata:
+      labels: {app: tenant-api}
+      annotations:
+        instrumentation.opentelemetry.io/inject-python: "opentelemetry-operator/default"
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
+      initContainers:
+        - name: migrate
+          image: ghcr.io/vedantaggrawal/repo-app-tenant-api:sha-221d94e
+          command: ["python", "migrate.py"]
+          env:
+            - {name: PGHOST, value: demo-db-rw}
+            - {name: PGDATABASE, value: demo}
+            - {name: PGUSER, valueFrom: {secretKeyRef: {name: demo-db-owner, key: username}}}
+            - {name: PGPASSWORD, valueFrom: {secretKeyRef: {name: demo-db-owner, key: password}}}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+      containers:
+        - name: app
+          image: ghcr.io/vedantaggrawal/repo-app-tenant-api:sha-221d94e
+          ports: [{name: http, containerPort: 8080}]
+          env:
+            - {name: PGHOST, value: demo-db-rw}
+            - {name: PGDATABASE, value: demo}
+            - {name: PGUSER, valueFrom: {secretKeyRef: {name: demo-db-app, key: username}}}
+            - {name: PGPASSWORD, valueFrom: {secretKeyRef: {name: demo-db-app, key: password}}}
+            - {name: OTEL_SERVICE_NAME, value: tenant-api}
+          readinessProbe: {httpGet: {path: /healthz, port: http}}
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {memory: 256Mi}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenant-api
+  namespace: kargo-demo-test
+spec:
+  selector: {app: tenant-api}
+  ports: [{name: http, port: 8080, targetPort: http}]

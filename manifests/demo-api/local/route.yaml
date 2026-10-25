@@ -11,4 +11,4 @@ spec:
   hostnames: [local.demo-api.internal]
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
-      backendRefs: [{group: "", kind: Service, name: kargo-demo, port: 3000, weight: 1}]
+      backendRefs: [{group: "", kind: Service, name: tenant-api, port: 8080, weight: 1}]
