@@ -2,7 +2,8 @@
 # to it. The default sign-in page now has a username field (password login, e.g.
 # akadmin) and a "GitHub" button, so sign-out lands on the standard page and
 # nothing auto-redirects. These entries remove the old objects. Once applied,
-# this file can be deleted.
+# this file can be deleted: drop it from kustomization.yaml and remove the
+# orphaned "platform - break-glass login" blueprint instance in Authentik.
 version: 1
 metadata:
   name: platform - break-glass login
