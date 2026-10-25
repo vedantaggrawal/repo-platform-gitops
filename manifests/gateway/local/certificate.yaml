@@ -22,4 +22,5 @@ spec:
     - local.kargo.internal
     - local.minio.internal
     - local.openbao.internal
+    - local.shop.internal
     - local.webserver.internal
