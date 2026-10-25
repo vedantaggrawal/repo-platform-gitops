@@ -1,0 +1,40 @@
+# Canary health from the Cilium Envoy proxy (ingress/Gateway API), which carries
+# all canary traffic. Envoy names each backend "<listener>/<namespace>_<service>_<port>",
+# so the queries filter on the canary Service. Mimir needs no tenant header here.
+# Used by Rollouts (canary analysis steps) and Kargo stage verification.
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterAnalysisTemplate
+metadata:
+  name: http-canary
+spec:
+  args:
+    - name: namespace
+    - name: service          # the canary Service
+    - name: min-success-rate
+      value: "0.99"
+    - name: max-p95-ms
+      value: "500"
+  metrics:
+    - name: success-rate
+      interval: 1m
+      count: 5
+      failureLimit: 1
+      # No traffic yet (NaN) is not a failure.
+      successCondition: isNaN(result[0]) || result[0] >= {{args.min-success-rate}}
+      provider:
+        prometheus:
+          address: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
+          query: |
+            sum(rate(envoy_cluster_upstream_rq_xx_total{envoy_cluster_name=~".*/{{args.namespace}}_{{args.service}}_.*", envoy_response_code_class!="5"}[2m]))
+            /
+            sum(rate(envoy_cluster_upstream_rq_xx_total{envoy_cluster_name=~".*/{{args.namespace}}_{{args.service}}_.*"}[2m]))
+    - name: p95-latency-ms
+      interval: 1m
+      count: 5
+      failureLimit: 1
+      successCondition: isNaN(result[0]) || result[0] <= {{args.max-p95-ms}}
+      provider:
+        prometheus:
+          address: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
+          query: |
+            histogram_quantile(0.95, sum by (le) (rate(envoy_cluster_upstream_rq_time_bucket{envoy_cluster_name=~".*/{{args.namespace}}_{{args.service}}_.*"}[2m])))
