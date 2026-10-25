@@ -54,16 +54,8 @@ server:
   volumeMounts:
     - { name: branding, mountPath: /web/dist/custom, readOnly: true }
   ingress:
-    enabled: true
-    ingressClassName: cilium
-    annotations:
-      cert-manager.io/cluster-issuer: platform-ca
-      cert-manager.io/usages: "digital signature,key encipherment,server auth"
-    hosts: [local.authentik.internal]
-    tls:
-      - secretName: authentik-tls
-        hosts: [local.authentik.internal]
-  # Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+    enabled: false
+  # Route on the Envoy Gateway.
   route:
     main:
       enabled: true

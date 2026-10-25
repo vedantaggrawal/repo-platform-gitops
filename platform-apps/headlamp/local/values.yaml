@@ -10,22 +10,9 @@ serviceAccount:
   create: true
 
 ingress:
-  enabled: true
-  ingressClassName: cilium
-  annotations:
-    cert-manager.io/cluster-issuer: platform-ca
-    cert-manager.io/usages: "digital signature,key encipherment,server auth"
-  hosts:
-    - host: local.headlamp.internal
-      paths:
-        - path: /
-          type: Prefix
-  tls:
-    - secretName: headlamp-tls
-      hosts:
-        - local.headlamp.internal
+  enabled: false
 
-# Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+# Route on the Envoy Gateway.
 httpRoute:
   enabled: true
   parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
