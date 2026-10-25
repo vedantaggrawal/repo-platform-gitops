@@ -1,0 +1,54 @@
+# Demo app's Postgres (CloudNativePG), built for row-level security:
+#   demo_owner  owns the database and its tables; runs migrations. Never used by the app.
+#   demo_app    what the app connects as: no superuser, no BYPASSRLS, owns nothing, so
+#               policies (and FORCE ROW LEVEL SECURITY) always apply to it.
+# Tables, policies and grants belong to the app repo's migrations, not to this file.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: demo-db
+  annotations:
+    # SkipDryRun: the CRD comes from the cloudnative-pg platform app. Delete/Prune=false:
+    # Argo never deletes this Cluster (doing so drops the database and its credentials).
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Delete=false,Prune=false
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  bootstrap:
+    initdb:
+      database: demo
+      owner: demo_owner
+      secret:
+        name: demo-db-owner
+  managed:
+    roles:
+      # Declared too (initdb only creates it) so CNPG keeps these attributes reconciled.
+      - name: demo_owner
+        ensure: present
+        login: true
+        superuser: false
+        createdb: false
+        createrole: false
+        replication: false
+        bypassrls: false
+        passwordSecret:
+          name: demo-db-owner
+      - name: demo_app
+        ensure: present
+        login: true
+        superuser: false
+        createdb: false
+        createrole: false
+        replication: false
+        bypassrls: false
+        passwordSecret:
+          name: demo-db-app
+  storage:
+    size: 1Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 384Mi
