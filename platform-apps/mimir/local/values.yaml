@@ -333,16 +333,16 @@ extraObjects:
           - name: gateway-envoy
             rules:
               - alert: EnvoyUpstreamConnectionOverflow
-                expr: sum by (envoy_cluster_name) (increase(envoy_cluster_upstream_cx_overflow_total[5m]) + increase(envoy_cluster_upstream_rq_pending_overflow_total[5m])) > 0
+                expr: sum by (envoy_cluster_name) (increase(envoy_cluster_upstream_cx_overflow_total{namespace="envoy-gateway-system"}[5m]) + increase(envoy_cluster_upstream_rq_pending_overflow_total{namespace="envoy-gateway-system"}[5m])) > 0
                 labels: {severity: warning, service: envoy, layer: gateway}
                 annotations:
-                  summary: Envoy upstream connection or pending-request circuit breaker overflowing
+                  summary: Envoy Gateway upstream connection or pending-request circuit breaker overflowing
               - alert: EnvoyUpstream5xxRatioHigh
-                expr: sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total{envoy_response_code_class="5"}[5m])) / sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total[5m])) > 0.05
+                expr: sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_response_code_class="5"}[5m])) / sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system"}[5m])) > 0.05
                 for: 10m
                 labels: {severity: critical, service: envoy, layer: gateway}
                 annotations:
-                  summary: Envoy upstream 5xx ratio above 5% for 10m
+                  summary: Envoy Gateway upstream 5xx ratio above 5% for 10m
           - name: postgres-health
             rules:
               - alert: PostgresLockWaits
