@@ -73,11 +73,10 @@ hubble:
       annotations:
         grafana_folder: Cilium
 
-# -- Service Mesh (Gateway API + L7 + mTLS) --
+# -- Gateway API: off. Envoy Gateway is the Gateway API controller; Cilium's
+# would also need the CRDs before it starts, and Argo installs them later. --
 gatewayAPI:
-  enabled: true
-  hostNetwork:
-    enabled: true
+  enabled: false
 
 # L7 proxy is enabled by default, explicit for clarity
 l7Proxy: true
