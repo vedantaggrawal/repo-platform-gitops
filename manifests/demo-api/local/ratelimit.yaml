@@ -1,0 +1,29 @@
+# Per-tenant limits by subscription tier (global, counted in Valkey).
+# x-tenant-id / x-tier come from the JWT (SecurityPolicy claimToHeaders) after
+# client copies are stripped (ClientTrafficPolicy), so they can't be forged.
+# Distinct = one counter per tenant value. Over the limit: 429 + x-ratelimit-* headers.
+# Requests without a tier header (no valid JWT) never get here: jwt_authn rejects first.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: demo-api-tiers
+  namespace: kargo-demo-test
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: demo-api
+  rateLimit:
+    type: Global
+    global:
+      rules:
+        - clientSelectors:
+            - headers:
+                - {name: x-tier, type: Exact, value: free}
+                - {name: x-tenant-id, type: Distinct}
+          limit: {requests: 30, unit: Minute}
+        - clientSelectors:
+            - headers:
+                - {name: x-tier, type: Exact, value: pro}
+                - {name: x-tenant-id, type: Distinct}
+          limit: {requests: 300, unit: Minute}
