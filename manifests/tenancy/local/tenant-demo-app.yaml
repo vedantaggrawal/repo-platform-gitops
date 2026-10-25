@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tenant-demo-app
+  labels:
+    eve.io/tenant: demo
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: free-tier
+  namespace: tenant-demo-app
+spec:
+  hard:
+    cpu: "2"
+    memory: 4Gi
+    pods: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: tenant-demo-app
+spec:
+  limits:
+    - type: Container
+      defaultRequest: {cpu: 50m, memory: 64Mi}
+      default: {cpu: 250m, memory: 256Mi}
+      max: {cpu: "1", memory: 1Gi}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-viewer
+  namespace: tenant-demo-app
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: tenant-viewer}
+subjects:
+  - {apiGroup: rbac.authorization.k8s.io, kind: Group, name: "oidc:tenant-demo-viewer"}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-developer
+  namespace: tenant-demo-app
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: tenant-developer}
+subjects:
+  - {apiGroup: rbac.authorization.k8s.io, kind: Group, name: "oidc:tenant-demo-developer"}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tenant-admin
+  namespace: tenant-demo-app
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: tenant-admin}
+subjects:
+  - {apiGroup: rbac.authorization.k8s.io, kind: Group, name: "oidc:tenant-demo-admin"}
+---
+# Default-deny; shipped with the namespace so it is never open.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: tenant-demo-app
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-baseline
+  namespace: tenant-demo-app
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}

@@ -1,0 +1,115 @@
+# Tenant roles are composed via aggregationRule: *-base ClusterRoles carry the
+# rules and are labelled; tenant-{viewer,developer,admin} aggregate them.
+# Aggregated roles intentionally have no `rules` (controller-managed).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-viewer-base
+  labels:
+    rbac.eve.io/aggregate-to-tenant-viewer: "true"
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/status, services, endpoints, configmaps, events, persistentvolumeclaims, resourcequotas, limitranges, serviceaccounts]
+    verbs: [get, list, watch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, replicasets, daemonsets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies, ingresses]
+    verbs: [get, list, watch]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [httproutes]
+    verbs: [get, list, watch]
+  - apiGroups: [argoproj.io]
+    resources: [rollouts]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-developer-base
+  labels:
+    rbac.eve.io/aggregate-to-tenant-developer: "true"
+rules:
+  - apiGroups: [""]
+    resources: [services, configmaps]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get, list]
+  - apiGroups: [""]
+    resources: [pods/portforward]
+    verbs: [create]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [httproutes]
+    verbs: [create, update, patch, delete]
+  - apiGroups: [argoproj.io]
+    resources: [rollouts]
+    verbs: [create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-admin-base
+  labels:
+    rbac.eve.io/aggregate-to-tenant-admin: "true"
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [rolebindings, roles]
+    verbs: [get, list, watch]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [rolebindings]
+    verbs: [create, update, patch, delete]
+  # Escalation guard: may only bind the tenant-* roles.
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [clusterroles]
+    verbs: [bind]
+    resourceNames: [tenant-viewer, tenant-developer, tenant-admin]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-viewer
+aggregationRule:
+  clusterRoleSelectors:
+    - matchLabels:
+        rbac.eve.io/aggregate-to-tenant-viewer: "true"
+rules: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-developer
+aggregationRule:
+  clusterRoleSelectors:
+    - matchLabels:
+        rbac.eve.io/aggregate-to-tenant-viewer: "true"
+    - matchLabels:
+        rbac.eve.io/aggregate-to-tenant-developer: "true"
+rules: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-admin
+aggregationRule:
+  clusterRoleSelectors:
+    - matchLabels:
+        rbac.eve.io/aggregate-to-tenant-viewer: "true"
+    - matchLabels:
+        rbac.eve.io/aggregate-to-tenant-developer: "true"
+    - matchLabels:
+        rbac.eve.io/aggregate-to-tenant-admin: "true"
+rules: []
