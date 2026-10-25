@@ -50,6 +50,11 @@ spec:
       podMonitorSelector: {}
   config:
     receivers:
+      # Traces from otel-agent (tail sampling needs every span of a trace here).
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
       prometheus:
         config:
           # Every job comes from SMs/PMs via the TA. The native apiserver/kubelet/
@@ -63,7 +68,44 @@ spec:
         limit_percentage: 80
         spike_limit_percentage: 25
       batch: {}
+      # Keep errors, slow traces and 401/403/429; drop /healthz; 10% of the rest.
+      # Top-level policies are OR'd; a drop policy match always wins. Single
+      # replica only: all spans of a trace must reach one instance.
+      tail_sampling:
+        decision_wait: 10s
+        num_traces: 10000
+        policies:
+          - name: drop-healthz
+            type: drop
+            drop:
+              drop_sub_policy:
+                - name: healthz-route
+                  type: string_attribute
+                  string_attribute: {key: http.route, values: [/healthz]}
+                - name: healthz-path
+                  type: string_attribute
+                  string_attribute: {key: url.path, values: [/healthz]}
+          - name: errors
+            type: status_code
+            status_code: {status_codes: [ERROR]}
+          - name: slow
+            type: latency
+            latency: {threshold_ms: 500}
+          - name: rejections
+            type: ottl_condition
+            ottl_condition:
+              error_mode: ignore
+              span:
+                - 'attributes["http.response.status_code"] == 401 or attributes["http.response.status_code"] == 403 or attributes["http.response.status_code"] == 429 or attributes["http.status_code"] == 401 or attributes["http.status_code"] == 403 or attributes["http.status_code"] == 429'
+          - name: baseline
+            type: probabilistic
+            probabilistic: {sampling_percentage: 10}
     exporters:
+      # Sampled traces -> Tempo (native OTLP).
+      otlp/tempo:
+        endpoint: local-tempo.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
       prometheusremotewrite/mimir:
         endpoint: http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push
         headers:
@@ -73,6 +115,10 @@ spec:
         logs:
           encoding: json
       pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, tail_sampling, batch]
+          exporters: [otlp/tempo]
         metrics:
           receivers: [prometheus]
           processors: [memory_limiter, batch]
