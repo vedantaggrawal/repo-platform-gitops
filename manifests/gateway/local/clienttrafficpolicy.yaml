@@ -2,6 +2,8 @@
 # claims. Early header mutation runs before the HTTP filters, so any client copy is
 # dropped first; claimToHeaders then sets them. A route-level RequestHeaderModifier
 # would run after the JWT filter and delete the legitimate values.
+# Client trace context is untrusted at the public edge: a caller could join or
+# pollute another tenant's trace. Drop it so Envoy starts a fresh trace here.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
@@ -12,4 +14,15 @@ spec:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: platform}
   headers:
     earlyRequestHeaders:
-      remove: [x-tenant-id, x-tier]
+      remove:
+        - x-tenant-id
+        - x-tier
+        - traceparent
+        - tracestate
+        - baggage
+        - b3
+        - x-b3-traceid
+        - x-b3-spanid
+        - x-b3-parentspanid
+        - x-b3-sampled
+        - x-b3-flags
