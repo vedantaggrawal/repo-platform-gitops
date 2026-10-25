@@ -5,17 +5,17 @@ metadata:
   name: {{ .Values.env }}-envoy-gateway
   namespace: argocd
   annotations:
-    # After gateway-crds (wave -5).
+    # After envoy-gateway-crds (wave -5).
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   sources:
     - chart: gateway-helm
       repoURL: docker.io/envoyproxy
-      targetRevision: "v1.6.7"   # keep in step with app-gateway-crds.yaml
+      targetRevision: "v1.6.7"   # keep in step with envoy-gateway-crds
       helm:
-        # crds/ holds the Gateway API CRDs and Envoy Gateway's own;
-        # app-gateway-crds.yaml owns both.
+        # crds/ holds the Gateway API CRDs (Terraform owns them) and Envoy
+        # Gateway's own (the envoy-gateway-crds app owns them).
         skipCrds: true
         valueFiles:
           - $values/platform-apps/envoy-gateway/{{ .Values.env }}/values.yaml
