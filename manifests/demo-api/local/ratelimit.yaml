@@ -19,11 +19,11 @@ spec:
       rules:
         - clientSelectors:
             - headers:
-                - {name: x-tier, type: Exact, value: free}
-                - {name: x-tenant-id, type: Distinct}
+                - {name: x-tier, type: Exact, value: free, invert: false}
+                - {name: x-tenant-id, type: Distinct, invert: false}
           limit: {requests: 30, unit: Minute}
         - clientSelectors:
             - headers:
-                - {name: x-tier, type: Exact, value: pro}
-                - {name: x-tenant-id, type: Distinct}
+                - {name: x-tier, type: Exact, value: pro, invert: false}
+                - {name: x-tenant-id, type: Distinct, invert: false}
           limit: {requests: 300, unit: Minute}
