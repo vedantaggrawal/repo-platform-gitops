@@ -2498,3 +2498,10 @@ entries:
             --ak-social-separator-text: "Continue with";
         }
         body { --ak-global--background-image: var(--ak-flow-background) !important; background: var(--ak-flow-background) !important; }
+
+  # Sign-in heading. Authentik's built-in blueprint also sets this title and an
+  # Authentik upgrade resets it; re-apply by touching this file after upgrades.
+  - model: authentik_flows.flow
+    identifiers: { slug: default-authentication-flow }
+    attrs:
+      title: "Welcome to freedom"
