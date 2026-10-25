@@ -11,6 +11,57 @@ spec:
   # Hot restart is unused on Kubernetes (pods are replaced), so turn it off.
   extraArgs:
     - --disable-hot-restart
+  # Access logs: JSON on stdout, picked up by the otel-agent filelog receiver
+  # and shipped to Loki. With no `type`, the setting covers every route plus
+  # the listener when no route matches, so rejected requests are logged too.
+  # x-tenant-id / x-tier are logged as-sent (empty "-" before auth sets them).
+  telemetry:
+    accessLog:
+      settings:
+        - format:
+            type: JSON
+            json:
+              start_time: "%START_TIME%"
+              method: "%REQ(:METHOD)%"
+              path: "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%"
+              authority: "%REQ(:AUTHORITY)%"
+              protocol: "%PROTOCOL%"
+              response_code: "%RESPONSE_CODE%"
+              response_flags: "%RESPONSE_FLAGS%"
+              response_code_details: "%RESPONSE_CODE_DETAILS%"
+              duration_ms: "%DURATION%"
+              upstream_host: "%UPSTREAM_HOST%"
+              bytes_received: "%BYTES_RECEIVED%"
+              bytes_sent: "%BYTES_SENT%"
+              x_request_id: "%REQ(X-REQUEST-ID)%"
+              trace_id: "%TRACE_ID%"
+              x_tenant_id: "%REQ(X-TENANT-ID)%"
+              x_tier: "%REQ(X-TIER)%"
+              downstream_remote_address: "%DOWNSTREAM_REMOTE_ADDRESS%"
+              sni: "%REQUESTED_SERVER_NAME%"
+          sinks:
+            - type: File
+              file:
+                path: /dev/stdout
+    # Sample everything while traffic is test-only.
+    tracing:
+      samplingRate: 100
+      provider:
+        type: OpenTelemetry
+        serviceName: platform-gateway
+        backendRefs:
+          - name: otel-agent-collector
+            namespace: opentelemetry-operator
+            port: 4317
+      customTags:
+        x-tenant-id:
+          type: RequestHeader
+          requestHeader:
+            name: x-tenant-id
+        x-tier:
+          type: RequestHeader
+          requestHeader:
+            name: x-tier
   provider:
     type: Kubernetes
     kubernetes:
