@@ -1,0 +1,45 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-gateway-crds
+  namespace: argocd
+  annotations:
+    # Before the gateway controller (wave 1) and anything that creates routes.
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  project: default
+  sources:
+    # Gateway API CRDs (standard channel).
+    - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+      targetRevision: HEAD
+      path: manifests/gateway-crds/{{ .Values.env }}
+    # Envoy Gateway's own CRDs only; the chart can also render Gateway API
+    # CRDs, which the source above owns.
+    - chart: gateway-crds-helm
+      repoURL: docker.io/envoyproxy
+      targetRevision: "v1.6.7"   # keep in step with app-envoy-gateway.yaml
+      helm:
+        parameters:
+          - name: crds.gatewayAPI.enabled
+            value: "false"
+          - name: crds.envoyGateway.enabled
+            value: "true"
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: envoy-gateway-system
+  syncPolicy:
+    automated:
+      # Never prune CRDs: removing one deletes all of its objects.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
