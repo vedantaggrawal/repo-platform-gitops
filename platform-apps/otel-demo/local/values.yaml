@@ -19,6 +19,14 @@ default:
 
 # Laptop sizing
 components:
+  # Optional extras (AI chatbot, MCP server, docs site) don't fit next to the
+  # platform on the laptop worker; the shop, its services and Kafka stay.
+  chatbot:
+    enabled: false
+  mcp:
+    enabled: false
+  telemetry-docs:
+    enabled: false
   load-generator:
     envOverrides:
       - name: LOCUST_USERS
