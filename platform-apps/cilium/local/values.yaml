@@ -21,9 +21,19 @@ nodePort:
 image:
   pullPolicy: IfNotPresent
 
-# Operator
+# Operator (one block: a duplicate `operator:` key silently replaced this one)
 operator:
   replicas: 1
+  # Restart on config change; otherwise a stale operator keeps old settings
+  # (e.g. it kept recreating the ingress CiliumEnvoyConfig after ingress was off).
+  rollOutPods: true
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Restart agents/envoy when cilium-config changes (Helm upgrades only edit the ConfigMap).
+rollOutCiliumPods: true
 
 # -- Ingress: off. Envoy Gateway (Gateway API) serves north-south on the
 # ingress-ready node's 443/80; routes live with each app. --
@@ -76,13 +86,8 @@ prometheus:
   serviceMonitor:
     enabled: true
 
-operator:
-  prometheus:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-
 envoy:
+  rollOutPods: true
   prometheus:
     enabled: true
     serviceMonitor:
