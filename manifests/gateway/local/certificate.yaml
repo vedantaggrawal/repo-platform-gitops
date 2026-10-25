@@ -13,6 +13,7 @@ spec:
   dnsNames:
     - local.argocd.internal
     - local.authentik.internal
+    - local.demo-api.internal
     - local.grafana.internal
     - local.harbor.internal
     - local.headlamp.internal

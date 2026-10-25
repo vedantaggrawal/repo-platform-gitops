@@ -1,0 +1,15 @@
+# x-tenant-id / x-tier are trusted headers set by the JWT filter from verified
+# claims. Early header mutation runs before the HTTP filters, so any client copy is
+# dropped first; claimToHeaders then sets them. A route-level RequestHeaderModifier
+# would run after the JWT filter and delete the legitimate values.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: strip-trusted-headers
+  namespace: envoy-gateway-system
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: platform}
+  headers:
+    earlyRequestHeaders:
+      remove: [x-tenant-id, x-tier]
