@@ -24,3 +24,9 @@ ingress:
     - secretName: headlamp-tls
       hosts:
         - local.headlamp.internal
+
+# Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+httpRoute:
+  enabled: true
+  parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
+  hostnames: [local.headlamp.internal]
