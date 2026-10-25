@@ -1,57 +1,25 @@
-# Break-glass password login (akadmin, or any user), and the signed-out landing
-# page, at https://local.authentik.internal:30443/if/flow/break-glass/
-# After any logout Authentik lands here instead of the normal sign-in (which
-# auto-redirects to GitHub and would sign you straight back in). The GitHub
-# button is added in secrets.yaml (where the source lives).
-# The default sign-in page goes straight to GitHub (see the github blueprint in
-# secrets.yaml); this flow keeps a password path for recovery and for linking
-# GitHub to an account the first time (Settings > Connected services).
+# Retired: the separate "break-glass" sign-in flow and the post-logout redirect
+# to it. The default sign-in page now has a username field (password login, e.g.
+# akadmin) and a "GitHub" button, so sign-out lands on the standard page and
+# nothing auto-redirects. These entries remove the old objects. Once applied,
+# this file can be deleted: drop it from kustomization.yaml and remove the
+# orphaned "platform - break-glass login" blueprint instance in Authentik.
 version: 1
 metadata:
   name: platform - break-glass login
 entries:
-  - model: authentik_flows.flow
-    id: flow
-    identifiers: { slug: break-glass }
-    attrs:
-      name: Sign in
-      title: Sign in
-      designation: authentication
-      authentication: none
-  - model: authentik_stages_identification.identificationstage
-    id: identification
-    identifiers: { name: break-glass-identification }
-    attrs:
-      user_fields: [username]
   - model: authentik_flows.flowstagebinding
-    identifiers: { order: 10, target: !KeyOf flow, stage: !KeyOf identification }
-  - model: authentik_flows.flowstagebinding
-    identifiers: { order: 20, target: !KeyOf flow, stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]] }
-  - model: authentik_flows.flowstagebinding
-    identifiers: { order: 30, target: !KeyOf flow, stage: !Find [authentik_stages_authenticator_validate.authenticatorvalidatestage, [name, default-authentication-mfa-validation]] }
-  - model: authentik_flows.flowstagebinding
-    identifiers: { order: 100, target: !KeyOf flow, stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]] }
-
-  # Logout ends on this page: a Redirect stage after the logout stage of the
-  # default invalidation flow (used by Authentik's own sign-out and, via the
-  # providers, by every app's sign-out).
-  - model: authentik_stages_redirect.redirectstage
-    id: to-sign-in
-    identifiers: { name: after-logout-to-sign-in }
-    attrs:
-      mode: flow
-      target_flow: !KeyOf flow
-      keep_context: false
-  - model: authentik_flows.flowstagebinding
-    identifiers: { order: 10, target: !Find [authentik_flows.flow, [slug, default-invalidation-flow]], stage: !KeyOf to-sign-in }
-
-  # Earlier attempt (a policy setting the plan's redirect) never fired; remove it.
-  - model: authentik_policies.policybinding
     state: absent
     identifiers:
-      order: 0
-      policy: !Find [authentik_policies_expression.expressionpolicy, [name, after-logout-to-sign-in]]
-      target: !Find [authentik_flows.flowstagebinding, [target, !Find [authentik_flows.flow, [slug, default-invalidation-flow]]], [stage, !Find [authentik_stages_user_logout.userlogoutstage, [name, default-invalidation-logout]]]]
-  - model: authentik_policies_expression.expressionpolicy
+      order: 10
+      target: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      stage: !Find [authentik_stages_redirect.redirectstage, [name, after-logout-to-sign-in]]
+  - model: authentik_stages_redirect.redirectstage
     state: absent
     identifiers: { name: after-logout-to-sign-in }
+  - model: authentik_flows.flow
+    state: absent
+    identifiers: { slug: break-glass }
+  - model: authentik_stages_identification.identificationstage
+    state: absent
+    identifiers: { name: break-glass-identification }
