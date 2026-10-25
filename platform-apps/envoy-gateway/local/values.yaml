@@ -1,0 +1,11 @@
+# Envoy Gateway controller, deployed by argocd-apps/templates/app-envoy-gateway.yaml
+# (not the platform AppSet: the chart's crds/ bundles the Gateway API CRDs, so it
+# needs helm.skipCrds, which the AppSet template can't set per app).
+deployment:
+  envoyGateway:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi

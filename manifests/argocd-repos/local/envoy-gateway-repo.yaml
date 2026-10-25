@@ -1,0 +1,14 @@
+# Envoy Gateway's public OCI Helm registry (Docker Hub). Same reason as
+# kargo-charts-repo.yaml: Argo CD v2.10 needs enableOCI for a bare registry URL.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: envoy-gateway-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: envoy-gateway
+  type: helm
+  url: docker.io/envoyproxy
+  enableOCI: "true"
