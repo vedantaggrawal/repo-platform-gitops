@@ -1,0 +1,60 @@
+# Demo tenant + the API provider the gateway validates tokens against.
+# Issuer: https://local.authentik.internal:30443/application/o/eve-demo-api/
+# JWKS:   https://local.authentik.internal:30443/application/o/eve-demo-api/jwks/
+# Token (JWT, RS256): sub, aud=eve-demo-api, tenant_id, tier (no profile/groups).
+version: 1
+metadata:
+  name: platform - demo tenant
+entries:
+  # Tenant = a group carrying tenant_id/tier attributes. Membership comes from
+  # the github-groups mapping (federation.yaml), so JIT users get it on login.
+  - model: authentik_core.group
+    identifiers: { name: tenant-demo }
+    attrs:
+      attributes: { tenant_id: demo, tier: free }
+
+  # Emits tenant_id + tier from the user's first group (by name) that has a
+  # tenant_id attribute. No such group => no claims (fail closed: the gateway
+  # must reject tokens without tenant_id).
+  - model: authentik_providers_oauth2.scopemapping
+    id: scope-tenant
+    identifiers: { name: tenant }
+    attrs:
+      scope_name: tenant
+      description: Tenant id and tier
+      expression: |
+        for group in request.user.groups.all().order_by("name"):
+            tenant_id = group.attributes.get("tenant_id")
+            if tenant_id:
+                return {"tenant_id": tenant_id, "tier": group.attributes.get("tier", "free")}
+        return {}
+
+  # Public client (PKCE). client_credentials is deliberately absent: in 2026.8
+  # it needs the provider's client secret (token/client_credentials.py) and runs
+  # as a generated service user with no groups, hence no tenant claim. Machine
+  # clients get their own confidential provider + tenant group later.
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-eve-demo-api
+    identifiers: { name: eve-demo-api }
+    attrs:
+      client_type: public
+      client_id: eve-demo-api
+      grant_types: [authorization_code, refresh_token]
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      # RSA keypair => RS256; public key served at the JWKS URL above.
+      signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      # Access token is a JWT carrying the id_token claims.
+      include_claims_in_id_token: true
+      access_token_validity: minutes=10
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+        # Claim-less; the refresh_token grant requires this scope (token/refresh_token.py).
+        - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-offline_access]]
+        - !KeyOf scope-tenant
+      redirect_uris:
+        # CLI testing: any localhost port
+        - { matching_mode: regex, url: '^http://localhost:[0-9]+/callback$' }
+  - model: authentik_core.application
+    identifiers: { slug: eve-demo-api }
+    attrs: { name: Eve demo API, provider: !KeyOf provider-eve-demo-api }

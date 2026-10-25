@@ -27,7 +27,9 @@ entries:
     attrs:
       expression: |
         ADMINS = [14919641]  # vedantaggrawal
-        return {"groups": ["platform-admins"] if info.get("id") in ADMINS else []}
+        DEMO = [14919641]  # vedantaggrawal -> tenant-demo (demo-tenant.yaml)
+        uid = info.get("id")
+        return {"groups": (["platform-admins"] if uid in ADMINS else []) + (["tenant-demo"] if uid in DEMO else [])}
 
   # First login: create the user, no prompts (username, name, email from GitHub).
   - model: authentik_flows.flow

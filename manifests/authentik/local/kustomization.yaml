@@ -8,7 +8,7 @@ resources:
 # applied by Authentik's worker when a file is added or its content changes.
 configMapGenerator:
   - name: authentik-blueprints
-    files: [blueprints/apps.yaml, blueprints/break-glass.yaml, blueprints/federation.yaml, blueprints/branding.yaml]
+    files: [blueprints/apps.yaml, blueprints/break-glass.yaml, blueprints/federation.yaml, blueprints/branding.yaml, blueprints/demo-tenant.yaml]
     options:
       disableNameSuffixHash: true   # the chart mounts it by this exact name
   # Logo and favicon, mounted on the server at /web/dist/custom and served at
