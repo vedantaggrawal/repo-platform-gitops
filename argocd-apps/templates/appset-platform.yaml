@@ -33,6 +33,15 @@ spec:
       destination:
         server: {{ .Values.cluster }}
         namespace: '{{ "{{namespace}}" }}'
+      # Fields set by the API server or cert controllers, not by charts:
+      # without this they diff forever and self-heal re-applies every reconcile.
+      ignoreDifferences:
+        - group: '*'
+          kind: '*'
+          jqPathExpressions:
+            - '.spec.template.spec.containers[]?.resources | select(. == {})'
+            - '.spec.template.spec.initContainers[]?.resources | select(. == {})'
+            - '.webhooks[]?.clientConfig.caBundle'
       syncPolicy:
         automated:
           prune: {{ .Values.prune }}
