@@ -71,7 +71,7 @@ core:
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 138Mi
     limits:
       memory: 512Mi
 jobservice:
@@ -117,7 +117,7 @@ trivy:
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 73Mi
     limits:
       memory: 1Gi
 
@@ -127,7 +127,7 @@ database:
     resources:
       requests:
         cpu: 100m
-        memory: 256Mi
+        memory: 157Mi
       limits:
         memory: 512Mi
 
