@@ -1,4 +1,6 @@
-enabled: "true"
+# Paused 2026-10-25: the kind worker rebooted under memory pressure with the demo
+# running. Re-enable after adding capacity (more Docker memory or a 2nd worker).
+enabled: "false"
 chart: opentelemetry-demo
 repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
 targetRevision: "0.42.6"
