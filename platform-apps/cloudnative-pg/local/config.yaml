@@ -3,5 +3,5 @@ chart: cloudnative-pg
 repoURL: https://cloudnative-pg.github.io/charts
 targetRevision: "0.29.1"
 namespace: cnpg-system
-# Operator + CRDs before consumers (Keycloak's Postgres Cluster).
+# Operator + CRDs before consumers (Authentik's Postgres Cluster).
 syncWave: "-1"
