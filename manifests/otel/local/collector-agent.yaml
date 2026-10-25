@@ -1,6 +1,7 @@
 # otel-agent — per-node DaemonSet. Replaces Alloy pipelines 3 (pod-log tail) and
 # 4 (OTLP receiver). Tails /var/log/pods and receives OTLP on 4317/4318, then
-# fans out: logs -> Loki (native OTLP), traces -> Tempo, OTLP metrics -> Mimir.
+# fans out: logs -> Loki (native OTLP), traces -> otel-cluster (tail sampling), OTLP
+# metrics -> Mimir.
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
@@ -96,9 +97,9 @@ spec:
         endpoint: http://local-loki-gateway.monitoring.svc.cluster.local/otlp
         headers:
           X-Scope-OrgID: anonymous
-      # Traces -> Tempo (native OTLP).
-      otlp/tempo:
-        endpoint: local-tempo.monitoring.svc.cluster.local:4317
+      # Traces -> otel-cluster, which tail-samples and forwards to Tempo.
+      otlp/cluster:
+        endpoint: otel-cluster-collector.opentelemetry-operator.svc.cluster.local:4317
         tls:
           insecure: true
       # OTLP app metrics -> Mimir (Prometheus remote_write).
@@ -120,7 +121,7 @@ spec:
         traces:
           receivers: [otlp]
           processors: [memory_limiter, k8sattributes, batch]
-          exporters: [otlp/tempo]
+          exporters: [otlp/cluster]
         metrics:
           receivers: [otlp]
           processors: [memory_limiter, k8sattributes, batch]
