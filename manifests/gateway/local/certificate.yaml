@@ -1,0 +1,24 @@
+# Edge cert for the Gateway's HTTPS listener: every local.<app>.internal host.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: platform-gateway
+  namespace: envoy-gateway-system
+spec:
+  secretName: platform-gateway-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: platform-ca
+  dnsNames:
+    - local.argocd.internal
+    - local.authentik.internal
+    - local.grafana.internal
+    - local.harbor.internal
+    - local.headlamp.internal
+    - local.hubble.internal
+    - local.jellyfin.internal
+    - local.kargo.internal
+    - local.minio.internal
+    - local.openbao.internal
+    - local.webserver.internal

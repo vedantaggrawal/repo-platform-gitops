@@ -1,0 +1,47 @@
+# Staging ports while Cilium ingress still holds 443/80 on the node; the
+# cutover moves these to 443/80.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: platform
+  namespace: envoy-gateway-system
+spec:
+  gatewayClassName: eg
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 10443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: platform-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    # Only the redirect below attaches here, so app routes without a
+    # sectionName can't serve plain HTTP.
+    - name: http
+      protocol: HTTP
+      port: 10080
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-redirect
+  namespace: envoy-gateway-system
+spec:
+  parentRefs:
+    - name: platform
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            # Public HTTPS port on the host (kind maps 30443 to the node's 443).
+            port: 30443
+            statusCode: 301
