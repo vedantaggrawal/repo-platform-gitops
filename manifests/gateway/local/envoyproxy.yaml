@@ -89,6 +89,7 @@ spec:
             spec:
               template:
                 spec:
+                  priorityClassName: platform-critical
                   hostNetwork: true
                   dnsPolicy: ClusterFirstWithHostNet
       envoyService:
