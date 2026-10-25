@@ -4,7 +4,7 @@ chart: kargo
 # manifests/argocd-repos/local so this repoURL resolves. Argo CD v2.10 will not
 # auto-detect a bare ghcr.io/... URL as OCI without that registration.
 repoURL: ghcr.io/akuity/kargo-charts
-targetRevision: "1.11.2"
+targetRevision: "1.11.8"
 namespace: kargo
 # After cert-manager (-2): Kargo mints its own self-signed API/webhook certs
 # through cert-manager, so the CRDs and controller must be up first.
