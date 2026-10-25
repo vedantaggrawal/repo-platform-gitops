@@ -16,8 +16,26 @@ tempo:
   server:
     http_listen_port: 3200
     log_format: json
+  # Span metrics + service graph, remote-written to Mimir (multitenancy off,
+  # so no X-Scope-OrgID). Paths sit on the persistent volume. Grafana's
+  # service map reads these series via the Tempo datasource (serviceMap -> mimir).
   metricsGenerator:
-    enabled: false
+    enabled: true
+    processor:
+      service_graphs: {}
+      span_metrics: {}
+    storage:
+      path: /var/tempo/generator/wal
+      remote_write:
+        - url: http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push
+    traces_storage:
+      path: /var/tempo/generator/traces
+  overrides:
+    defaults:
+      metrics_generator:
+        processors:
+          - service-graphs
+          - span-metrics
   storage:
     trace:
       backend: s3
@@ -42,9 +60,9 @@ tempo:
   resources:
     requests:
       cpu: 200m
-      memory: 384Mi
+      memory: 512Mi
     limits:
-      memory: 384Mi
+      memory: 512Mi
 
 persistence:
   enabled: true
