@@ -27,7 +27,9 @@ grafana.ini:
     auth_url: https://local.authentik.internal:30443/application/o/authorize/
     token_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/token/
     api_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/userinfo/
-    signout_redirect_url: https://local.authentik.internal:30443/application/o/grafana/end-session/
+    # Sign-out is local, like Argo CD and Kargo: back to Grafana's own login page
+    # (auto-login off there). Signing out of everything is done in Authentik.
+    signout_redirect_url: https://local.grafana.internal:30443/login?disableAutoLogin=true
     login_attribute_path: preferred_username
     email_attribute_path: email
     groups_attribute_path: groups
