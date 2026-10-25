@@ -46,6 +46,13 @@ server:
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits: { memory: 1Gi }
+  # Logo/favicon (ConfigMap authentik-branding, manifests/authentik/local/branding/),
+  # served at /static/dist/custom/<file>. Optional: the server starts without it.
+  volumes:
+    - name: branding
+      configMap: { name: authentik-branding, optional: true }
+  volumeMounts:
+    - { name: branding, mountPath: /web/dist/custom, readOnly: true }
   ingress:
     enabled: true
     ingressClassName: cilium
