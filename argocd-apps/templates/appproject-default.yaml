@@ -1,0 +1,17 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+# Locked: nothing may be added here by accident. Last wave, after every app
+# has moved to `platform` / `tenant-demo`. Never pruned if removed from git.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "100"
+    argocd.argoproj.io/sync-options: Delete=false
+spec:
+  description: Locked; use platform or a tenant project
+  sourceRepos: []
+  destinations: []
+  clusterResourceWhitelist: []
+{{- end }}
