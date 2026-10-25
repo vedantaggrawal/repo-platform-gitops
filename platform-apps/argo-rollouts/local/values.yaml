@@ -1,0 +1,18 @@
+# Argo Rollouts: canary/blue-green for app workloads. Traffic is split through the
+# Gateway API (Cilium has it enabled) by the official plugin, downloaded by the
+# controller at start and verified against its sha256. Dashboard off: no UI that
+# isn't behind SSO.
+controller:
+  trafficRouterPlugins:
+    - name: argoproj-labs/gatewayAPI
+      location: https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.17.0/gatewayapi-plugin-linux-arm64
+      sha256: 5221279f7bf2c9b2c0ff6ed7ff12718ecce1d4892f1ff5e5224bb723cfd0fd92
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 256Mi }
+providerRBAC:
+  enabled: true
+  providers:
+    gatewayAPI: true
+dashboard:
+  enabled: false
