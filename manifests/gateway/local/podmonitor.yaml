@@ -1,0 +1,17 @@
+# Envoy proxy stats (listener/cluster/http: per-route RED, overflows, rate-limit
+# outcomes) for the platform Gateway. The OTel target allocator discovers every
+# PodMonitor and ships the series to Mimir.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: platform-gateway-envoy
+  namespace: envoy-gateway-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: proxy
+      gateway.envoyproxy.io/owning-gateway-name: platform
+  podMetricsEndpoints:
+    - port: metrics
+      path: /stats/prometheus
+      interval: 30s
