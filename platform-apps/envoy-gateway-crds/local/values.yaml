@@ -1,0 +1,7 @@
+# Only Envoy Gateway's own CRDs. The Gateway API CRDs (standard, v1.4.1) are
+# installed by Terraform and must not be owned by an app that can prune them.
+crds:
+  gatewayAPI:
+    enabled: false
+  envoyGateway:
+    enabled: true

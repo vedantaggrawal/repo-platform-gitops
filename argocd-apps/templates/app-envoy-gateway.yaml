@@ -1,0 +1,48 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-envoy-gateway
+  namespace: argocd
+  annotations:
+    # After envoy-gateway-crds (wave -5).
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - chart: gateway-helm
+      repoURL: docker.io/envoyproxy
+      targetRevision: "v1.6.7"   # keep in step with envoy-gateway-crds
+      helm:
+        # crds/ holds the Gateway API CRDs (Terraform owns them) and Envoy
+        # Gateway's own (the envoy-gateway-crds app owns them).
+        skipCrds: true
+        valueFiles:
+          - $values/platform-apps/envoy-gateway/{{ .Values.env }}/values.yaml
+    - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: envoy-gateway-system
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+  # Same fields the platform AppSet ignores: the chart's webhook caBundle is
+  # injected at runtime.
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+{{- end }}
