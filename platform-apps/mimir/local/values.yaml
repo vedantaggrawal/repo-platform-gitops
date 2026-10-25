@@ -22,10 +22,12 @@ mimir:
       backend: s3
       s3:
         bucket_name: mimir-blocks
+    # Rules come only from git: ConfigMap mimir-rules mounted at
+    # <directory>/<tenant>/<file> (tenant "anonymous", multitenancy off).
     ruler_storage:
-      backend: s3
-      s3:
-        bucket_name: mimir-ruler
+      backend: local
+      local:
+        directory: /etc/mimir-rules
     alertmanager_storage:
       backend: s3
       s3:
@@ -152,7 +154,16 @@ compactor:
       value: 900MiB
 
 ruler:
-  enabled: false
+  enabled: true
+  resources: *resourcesSmall
+  extraVolumes:
+    - name: rules
+      configMap:
+        name: mimir-rules
+  extraVolumeMounts:
+    - name: rules
+      mountPath: /etc/mimir-rules/anonymous
+      readOnly: true
 
 overrides_exporter:
   enabled: false
@@ -179,3 +190,49 @@ metaMonitoring:
     enabled: true
   grafanaAgent:
     enabled: false
+
+# Ruler rule files (local storage), tenant "anonymous". Edit here; Argo rolls it.
+extraObjects:
+  - |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: mimir-rules
+      namespace: monitoring
+    data:
+      slo.yaml: |
+        groups:
+          - name: slo-gateway-availability
+            rules:
+              - alert: GatewayErrorBudgetBurnFast
+                expr: |
+                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[1h])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[1h]))) > (14.4 * 0.001)
+                  and
+                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[5m])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[5m]))) > (14.4 * 0.001)
+                labels: {severity: critical, service: platform-gateway}
+                annotations:
+                  summary: platform-gateway burning 99.9% availability budget at 14.4x (1h and 5m)
+              - alert: GatewayErrorBudgetBurnSlow
+                expr: |
+                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[6h])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[6h]))) > (6 * 0.001)
+                  and
+                  (sum(rate(traces_spanmetrics_calls_total{service="platform-gateway",status_code=~".*ERROR"}[30m])) / sum(rate(traces_spanmetrics_calls_total{service="platform-gateway"}[30m]))) > (6 * 0.001)
+                labels: {severity: warning, service: platform-gateway}
+                annotations:
+                  summary: platform-gateway burning 99.9% availability budget at 6x (6h and 30m)
+          - name: slo-tenant-api-latency
+            rules:
+              - alert: TenantApiLatencyP95High
+                expr: histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{service="tenant-api"}[5m]))) > 0.3
+                for: 10m
+                labels: {severity: warning, service: tenant-api}
+                annotations:
+                  summary: tenant-api p95 latency above 300ms for 10m
+          - name: postgres-capacity
+            rules:
+              - alert: PostgresConnectionsHigh
+                expr: sum by (namespace, pod) (cnpg_backends_total) / max by (namespace, pod) (cnpg_pg_settings_setting{name="max_connections"}) > 0.8
+                for: 10m
+                labels: {severity: warning, service: postgres}
+                annotations:
+                  summary: Postgres connections above 80% of max_connections
