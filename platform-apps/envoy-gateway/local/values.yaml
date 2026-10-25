@@ -1,5 +1,5 @@
 # Envoy Gateway controller, deployed by argocd-apps/templates/app-envoy-gateway.yaml
-# (not the platform AppSet: the chart's crds/ bundles the Gateway API CRDs, so it
+# (not the platform AppSet: the chart's crds/ bundles CRDs owned by app-gateway-crds, so it
 # needs helm.skipCrds, which the AppSet template can't set per app).
 deployment:
   envoyGateway:
