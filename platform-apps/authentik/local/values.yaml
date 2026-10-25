@@ -63,6 +63,13 @@ server:
     tls:
       - secretName: authentik-tls
         hosts: [local.authentik.internal]
+  # Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+  route:
+    main:
+      enabled: true
+      parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
+      hostnames: [local.authentik.internal]
+      matches: [{path: {type: PathPrefix, value: /}}]
 
 postgresql:
   enabled: false

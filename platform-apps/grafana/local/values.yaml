@@ -128,6 +128,13 @@ ingress:
       hosts:
         - local.grafana.internal
 
+# Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+route:
+  main:
+    enabled: true
+    parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
+    hostnames: [local.grafana.internal]
+
 # Standalone chart doesn't ship a ServiceMonitor by default — Alloy now
 # scrapes Grafana via explicit prometheus.scrape, so leave SM off.
 serviceMonitor:

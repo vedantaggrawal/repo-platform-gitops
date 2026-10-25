@@ -124,6 +124,12 @@ server:
       - secretName: openbao-tls
         hosts:
           - local.openbao.internal
+  # Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+  gateway:
+    httpRoute:
+      enabled: true
+      parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
+      hosts: [local.openbao.internal]
 
 extraObjects:
   # Generates the static unseal key once (32 random bytes); exits if present.
