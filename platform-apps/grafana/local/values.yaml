@@ -118,19 +118,9 @@ datasources:
             enabled: true
 
 ingress:
-  enabled: true
-  ingressClassName: cilium
-  annotations:
-    cert-manager.io/cluster-issuer: platform-ca
-    cert-manager.io/usages: "digital signature,key encipherment,server auth"
-  hosts:
-    - local.grafana.internal
-  tls:
-    - secretName: grafana-tls
-      hosts:
-        - local.grafana.internal
+  enabled: false
 
-# Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+# Route on the Envoy Gateway.
 route:
   main:
     enabled: true

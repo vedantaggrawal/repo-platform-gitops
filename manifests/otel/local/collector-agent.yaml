@@ -9,6 +9,7 @@ metadata:
   namespace: opentelemetry-operator
 spec:
   mode: daemonset
+  priorityClassName: platform-critical
   # contrib distro: the operator-default opentelemetry-collector-k8s image omits
   # prometheusremotewrite (OTLP-only exporters); contrib bundles filelog,
   # prometheus receiver, k8sattributes and prometheusremotewrite.

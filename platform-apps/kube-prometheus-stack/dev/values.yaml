@@ -28,3 +28,50 @@ prometheus-node-exporter:
     - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
     - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
     - --no-collector.nfsd
+
+# Series diet: histogram families no dashboard, rule or KPI references
+# (verified against all grafana_dashboard ConfigMaps and the Mimir ruler).
+# apiserver_request_total/_count/_sum and the etcd _sum/_count stay.
+kubeApiServer:
+  serviceMonitor:
+    # Replaces the chart default (le-thinning of request_duration), which is
+    # moot once the whole bucket family is dropped.
+    metricRelabelings:
+      - action: drop
+        sourceLabels: [__name__]
+        regex: (etcd_request_duration_seconds_bucket|apiserver_request_duration_seconds_bucket|apiserver_request_sli_duration_seconds_bucket|apiserver_request_body_size_bytes_bucket|apiserver_response_sizes_bucket|apiserver_watch_cache_read_wait_seconds_bucket|apiserver_watch_events_sizes_bucket)
+
+kubelet:
+  serviceMonitor:
+    probesMetricRelabelings:
+      - action: drop
+        sourceLabels: [__name__]
+        regex: prober_probe_duration_seconds_bucket
+    metricRelabelings:
+      - action: drop
+        sourceLabels: [__name__]
+        regex: kubelet_runtime_operations_duration_seconds_bucket
+    # Replaces the chart default list: its entries are repeated, then the
+    # extra drops (container_memory_failures_total, container_blkio_*).
+    cAdvisorMetricRelabelings:
+      - action: drop
+        sourceLabels: [__name__]
+        regex: container_cpu_(cfs_throttled_seconds_total|load_average_10s|system_seconds_total|user_seconds_total)
+      - action: drop
+        sourceLabels: [__name__]
+        regex: container_fs_(io_current|io_time_seconds_total|io_time_weighted_seconds_total|reads_merged_total|sector_reads_total|sector_writes_total|writes_merged_total)
+      - action: drop
+        sourceLabels: [__name__]
+        regex: container_memory_(mapped_file|swap)
+      - action: drop
+        sourceLabels: [__name__]
+        regex: container_(file_descriptors|tasks_state|threads_max)
+      - action: drop
+        sourceLabels: [__name__]
+        regex: container_spec.*
+      - action: drop
+        sourceLabels: [id, pod]
+        regex: .+;
+      - action: drop
+        sourceLabels: [__name__]
+        regex: (container_memory_failures_total|container_blkio_device_usage_total)

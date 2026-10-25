@@ -24,7 +24,7 @@ server:
     config: |
       ui = true
       listener "tcp" {
-        tls_disable     = 1        # TLS terminates at the ingress
+        tls_disable     = 1        # TLS terminates at the gateway
         address         = "[::]:8200"
         cluster_address = "[::]:8201"
       }
@@ -112,19 +112,8 @@ server:
       mountPath: /openbao/unseal
       readOnly: true
   ingress:
-    enabled: true
-    ingressClassName: cilium
-    annotations:
-      cert-manager.io/cluster-issuer: platform-ca
-      cert-manager.io/usages: "digital signature,key encipherment,server auth"
-    hosts:
-      - host: local.openbao.internal
-        paths: []
-    tls:
-      - secretName: openbao-tls
-        hosts:
-          - local.openbao.internal
-  # Staging route on the Envoy Gateway; the Ingress stays until the cutover.
+    enabled: false
+  # Route on the Envoy Gateway.
   gateway:
     httpRoute:
       enabled: true

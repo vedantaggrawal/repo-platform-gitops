@@ -1,0 +1,27 @@
+# Scheduling tiers. Preemption evicts lower tiers first when the worker is full.
+# Pods without a class (e.g. otel-demo, whose chart has no priorityClassName knob)
+# get 0, below all three, so they are the first to go. system-node-critical /
+# system-cluster-critical (kube-system, Cilium) stay above these.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: platform-critical
+value: 1000000
+globalDefault: false
+description: Telemetry collectors and the gateway data/control plane; must always schedule.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: platform
+value: 100000
+globalDefault: false
+description: Platform services that should outrank demo workloads.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: workload
+value: 1000
+globalDefault: false
+description: Demo and tenant workloads; first to be preempted.
