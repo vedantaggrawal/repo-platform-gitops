@@ -19,7 +19,7 @@ spec:
       securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
       initContainers:
         - name: migrate
-          image: ghcr.io/vedantaggrawal/repo-app-tenant-api:sha-221d94e
+          image: ghcr.io/vedantaggrawal/repo-app-tenant-api:sha-c88b00d
           command: ["python", "migrate.py"]
           env:
             - {name: PGHOST, value: demo-db-rw}
@@ -29,7 +29,7 @@ spec:
           securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
       containers:
         - name: app
-          image: ghcr.io/vedantaggrawal/repo-app-tenant-api:sha-221d94e
+          image: ghcr.io/vedantaggrawal/repo-app-tenant-api:sha-c88b00d
           ports: [{name: http, containerPort: 8080}]
           env:
             - {name: PGHOST, value: demo-db-rw}
@@ -37,6 +37,9 @@ spec:
             - {name: PGUSER, valueFrom: {secretKeyRef: {name: demo-db-app, key: username}}}
             - {name: PGPASSWORD, valueFrom: {secretKeyRef: {name: demo-db-app, key: password}}}
             - {name: OTEL_SERVICE_NAME, value: tenant-api}
+            # The app instruments psycopg itself with the SQL commenter (traceparent in
+            # every statement); the operator's auto hook would instrument first and win.
+            - {name: OTEL_PYTHON_DISABLED_INSTRUMENTATIONS, value: psycopg}
           readinessProbe: {httpGet: {path: /healthz, port: http}}
           resources:
             requests: {cpu: 50m, memory: 96Mi}
