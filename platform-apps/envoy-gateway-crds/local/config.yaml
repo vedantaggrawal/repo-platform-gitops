@@ -1,8 +1,0 @@
-enabled: "true"
-chart: gateway-crds-helm
-repoURL: docker.io/envoyproxy
-# v1.6 is the last line supporting Kubernetes 1.31 and Gateway API 1.4 (EOL
-# 2026-05). Bump to the current line when the cluster is rebuilt on >=1.33.
-targetRevision: "v1.6.7"
-namespace: envoy-gateway-system
-syncWave: "-5"
