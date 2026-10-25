@@ -1,0 +1,32 @@
+# Bundled backends are off: telemetry goes to the platform collector (Tempo, Mimir, Loki).
+jaeger:
+  enabled: false
+prometheus:
+  enabled: false
+grafana:
+  enabled: false
+opensearch:
+  enabled: false
+
+# Bundled collector off. Every component builds its OTLP endpoint from
+# $(OTEL_COLLECTOR_NAME):4317|4318, so one override re-points all of them.
+opentelemetry-collector:
+  enabled: false
+default:
+  envOverrides:
+    - name: OTEL_COLLECTOR_NAME
+      value: otel-agent-collector.opentelemetry-operator.svc.cluster.local
+
+# Laptop sizing
+components:
+  load-generator:
+    envOverrides:
+      - name: LOCUST_USERS
+        value: "2"
+      - name: LOCUST_SPAWN_RATE
+        value: "0.2"
+      - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+        value: "false"
+    resources:
+      limits:
+        memory: 400Mi

@@ -1,0 +1,6 @@
+enabled: "true"
+chart: opentelemetry-demo
+repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+targetRevision: "0.42.6"
+namespace: otel-demo
+syncWave: "0"
