@@ -10,6 +10,8 @@ metadata:
     argocd.argoproj.io/sync-wave: "-20"
 spec:
   description: Platform-owned apps (cluster-admin scope)
+  # Every chart repo in use by platform apps. A new platform chart repo must be
+  # added here, or its app fails to sync (default is locked).
   sourceRepos:
     - https://github.com/vedantaggrawal/repo-platform-gitops.git
     - https://github.com/vedantaggrawal/repo-helm-chart.git
@@ -21,6 +23,7 @@ spec:
     - https://charts.min.io/
     - https://cloudnative-pg.github.io/charts
     - https://grafana.github.io/helm-charts
+    - https://grafana-community.github.io/helm-charts
     - https://helm.cilium.io/
     - https://helm.goharbor.io
     - https://jellyfin.github.io/jellyfin-helm
