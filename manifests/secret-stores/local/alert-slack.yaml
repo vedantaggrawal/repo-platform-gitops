@@ -1,0 +1,18 @@
+# Delivers the Slack webhook (OpenBao platform/alerting/slack) to Mimir's
+# Alertmanager, which reads it via api_url_file. Absent until the human sets
+# tfvar alert_slack_webhook; the alertmanager pod mount is then optional.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: alert-slack
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 5m
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: alert-slack
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/alerting/slack }

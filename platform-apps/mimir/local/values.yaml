@@ -64,12 +64,44 @@ _resourcesSmall: &resourcesSmall
     memory: 128Mi
 
 alertmanager:
-  # Replaces the kube-prom-stack-bundled Alertmanager. Mimir's tenant-aware
-  # Alertmanager reads config from S3 (mimir-alertmanager bucket, already
-  # created by the MinIO Job). Default empty config — add receivers + routes
-  # here when alerting is needed.
+  # Replaces the kube-prom-stack-bundled Alertmanager. Tenant config would live
+  # in S3 (mimir-alertmanager bucket); with none (multitenancy off, tenant
+  # "anonymous") the fallbackConfig below applies, so routing is declarative.
   enabled: true
   replicas: 1
+  # Slack webhook is read from a file (never in config): Secret alert-slack,
+  # delivered by ESO from OpenBao platform/alerting/slack. Optional so the pod
+  # starts before the human sets tfvar alert_slack_webhook.
+  extraVolumes:
+    - name: alert-slack
+      secret:
+        secretName: alert-slack
+        optional: true
+  extraVolumeMounts:
+    - name: alert-slack
+      mountPath: /etc/alertmanager-secrets/slack
+      readOnly: true
+  fallbackConfig: |
+    route:
+      receiver: "null"
+      group_by: [alertname, namespace, service]
+      routes:
+        - matchers: [severity="critical"]
+          receiver: slack
+          repeat_interval: 1h
+        - matchers: [severity="warning"]
+          receiver: slack
+          repeat_interval: 4h
+        - matchers: [severity="info"]
+          receiver: "null"
+    receivers:
+      - name: "null"
+      - name: slack
+        slack_configs:
+          - api_url_file: /etc/alertmanager-secrets/slack/webhook_url
+            send_resolved: true
+            title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ "\n" }}{{ end }}'
   persistentVolume:
     size: 1Gi
     storageClass: standard
