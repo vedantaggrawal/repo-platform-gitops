@@ -53,6 +53,9 @@ spec:
           - name: otel-agent-collector
             namespace: opentelemetry-operator
             port: 4317
+            group: ""
+            kind: Service
+        port: 4317
       customTags:
         x-tenant-id:
           type: RequestHeader
@@ -90,3 +93,7 @@ spec:
                   dnsPolicy: ClusterFirstWithHostNet
       envoyService:
         type: ClusterIP
+        externalTrafficPolicy: Local
+  logging:
+    level:
+      default: warn
