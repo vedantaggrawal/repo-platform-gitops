@@ -1,0 +1,25 @@
+# JWT auth for the demo API. Requests without a valid token get 401.
+# The tenant headers come only from verified claims: the gateway's
+# ClientTrafficPolicy strips client-supplied copies first (see
+# manifests/gateway/local/clienttrafficpolicy.yaml).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: demo-api
+  namespace: kargo-demo-test
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: demo-api}
+  jwt:
+    providers:
+      - name: authentik
+        issuer: https://local.authentik.internal:30443/application/o/eve-demo-api/
+        audiences: [eve-demo-api]
+        remoteJWKS:
+          # In-cluster Service over http: no CA needed in Envoy. With no backendRefs,
+          # Envoy resolves host:port from the URI. Port 80 is the Service's http port.
+          uri: http://local-authentik-server.authentik.svc.cluster.local/application/o/eve-demo-api/jwks/
+          cacheDuration: 300s
+        claimToHeaders:
+          - {claim: tenant_id, header: x-tenant-id}
+          - {claim: tier, header: x-tier}
