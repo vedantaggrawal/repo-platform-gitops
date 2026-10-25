@@ -128,12 +128,13 @@ ingester:
     size: 5Gi
     storageClass: standard
   # WAL replay on startup needs far more than steady state: at 1280Mi the
-  # ingester OOMKilled ~26% into replay and never became Ready, so Mimir
-  # ingested nothing. request == limit so the scheduler reserves it.
+  # ingester OOMKilled ~26% into replay and never became Ready. Keep the 4Gi
+  # limit for replay bursts; request 2Gi (measured peak incl. a replay: 1.33Gi
+  # at ~360k series, 2026-10-25) so the worker isn't over-reserved.
   resources:
     requests:
       cpu: 250m
-      memory: 4096Mi
+      memory: 2048Mi
     limits:
       memory: 4096Mi
 
@@ -270,6 +271,14 @@ extraObjects:
                   summary: Postgres connections above 80% of max_connections
           - name: platform-capacity
             rules:
+              # kind's local-path volumes expose no per-PVC stats (no CSI), so watch
+              # the node filesystem that holds every PVC (/var).
+              - alert: NodeDiskFillingUp
+                expr: (node_filesystem_avail_bytes{mountpoint="/var"} / node_filesystem_size_bytes{mountpoint="/var"} < 0.15) and predict_linear(node_filesystem_avail_bytes{mountpoint="/var"}[6h], 24 * 3600) < 0
+                for: 30m
+                labels: {severity: warning, service: node, layer: storage}
+                annotations:
+                  summary: Node /var (holds all PVCs) under 15% free and full within 24h
               - alert: PodPendingTooLong
                 expr: sum by (namespace, pod) (kube_pod_status_phase{phase="Pending"}) > 0
                 for: 5m
@@ -332,6 +341,14 @@ extraObjects:
                   summary: Mimir discarding samples
           - name: gateway-envoy
             rules:
+              # Per-route latency from Envoy; streaming routes (watch/WebSocket UIs)
+              # hold requests open by design and are excluded from the SLI.
+              - alert: GatewayLatencyP95High
+                expr: histogram_quantile(0.95, sum by (le, envoy_cluster_name) (rate(envoy_cluster_upstream_rq_time_bucket{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*"}[10m]))) > 500
+                for: 15m
+                labels: {severity: warning, service: envoy, layer: gateway}
+                annotations:
+                  summary: Gateway route p95 above 500ms for 15m (streaming routes excluded)
               - alert: EnvoyUpstreamConnectionOverflow
                 expr: sum by (envoy_cluster_name) (increase(envoy_cluster_upstream_cx_overflow_total{namespace="envoy-gateway-system"}[5m]) + increase(envoy_cluster_upstream_rq_pending_overflow_total{namespace="envoy-gateway-system"}[5m])) > 0
                 labels: {severity: warning, service: envoy, layer: gateway}
