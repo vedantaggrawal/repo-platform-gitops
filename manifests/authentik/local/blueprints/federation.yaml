@@ -4,7 +4,7 @@
 #   github-authentication. Both flows require the allowlist (all policies must pass).
 # - Accounts are keyed by GitHub's numeric user id (immutable; logins can be
 #   renamed and re-registered). Look one up: https://api.github.com/users/<login>
-# - ALLOWED: may log in. ADMINS: get group platform-admins (admin in every app and
+# - ALLOWED: may log in. ROLES: platform groups (platform-admins = admin in every app and
 #   in Authentik); re-synced on every login, so removing an id here takes effect
 #   at that account's next login.
 # The GitHub source itself (with its credentials) is in secrets.yaml.
@@ -26,11 +26,12 @@ entries:
     identifiers: { name: github-groups }
     attrs:
       expression: |
-        ADMINS = [14919641]  # vedantaggrawal
-        DEMO = [14919641]  # vedantaggrawal -> tenant-demo (demo-tenant.yaml)
-        DEMO_ADMINS = [14919641]  # vedantaggrawal -> tenant-demo-admin
-        uid = info.get("id")
-        return {"groups": (["platform-admins"] if uid in ADMINS else []) + (["tenant-demo"] if uid in DEMO else []) + (["tenant-demo-admin"] if uid in DEMO_ADMINS else [])}
+        # Platform roles by GitHub id. Tenant roles are not here: tenant
+        # admins manage them in Authentik (demo-tenant.yaml).
+        ROLES = {
+            14919641: ["platform-admins"],  # vedantaggrawal
+        }
+        return {"groups": ROLES.get(info.get("id"), [])}
 
   # First login: create the user, no prompts (username, name, email from GitHub).
   - model: authentik_flows.flow
