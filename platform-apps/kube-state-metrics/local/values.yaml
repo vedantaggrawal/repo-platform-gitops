@@ -18,3 +18,7 @@ prometheus:
     # ServiceMonitor: discovered by Alloy's prometheus.operator.servicemonitors
     # block. CRDs come from the prometheus-operator-crds app (no controller).
     enabled: true
+    http:
+      # Keep KSM's own namespace/pod labels (the object's) instead of renaming
+      # them to exported_* and stamping the scrape target's (monitoring).
+      honorLabels: true
