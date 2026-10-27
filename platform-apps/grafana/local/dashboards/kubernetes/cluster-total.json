@@ -1,6 +1,4 @@
 {
-  "__inputs": [],
-  "__requires": [],
   "annotations": {
     "list": [
       {
@@ -18,7 +16,6 @@
   "gnetId": null,
   "graphTooltip": 0,
   "hideControls": false,
-  "id": null,
   "links": [],
   "panels": [
     {
