@@ -12,6 +12,8 @@ kubeEtcd:
   enabled: false
 kubeProxy:
   enabled: false
+coreDns:
+  enabled: false   # scraped by the collector's own ServiceMonitor (manifests/otel)
 
 defaultRules:
   disabled:
@@ -36,6 +38,10 @@ prometheus-node-exporter:
 # (verified against all grafana_dashboard ConfigMaps and the Mimir ruler).
 # apiserver_request_total/_count/_sum and the etcd _sum/_count stay.
 kubeApiServer:
+  # Off: the OTel collector scrapes this directly now (manifests/otel); a second
+  # scrape would make Mimir discard duplicate samples. The relabelings below stay
+  # as the reference for the collector config.
+  enabled: false
   serviceMonitor:
     interval: 60s
     # Replaces the chart default (le-thinning of request_duration), which is
@@ -46,6 +52,10 @@ kubeApiServer:
         regex: (etcd_request_duration_seconds_bucket|apiserver_request_duration_seconds_bucket|apiserver_request_sli_duration_seconds_bucket|apiserver_request_body_size_bytes_bucket|apiserver_response_sizes_bucket|apiserver_watch_cache_read_wait_seconds_bucket|apiserver_watch_events_sizes_bucket)
 
 kubelet:
+  # Off: the OTel collector scrapes this directly now (manifests/otel); a second
+  # scrape would make Mimir discard duplicate samples. The relabelings below stay
+  # as the reference for the collector config.
+  enabled: false
   serviceMonitor:
     interval: 60s
     probesMetricRelabelings:
