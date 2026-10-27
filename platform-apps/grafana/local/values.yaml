@@ -129,8 +129,11 @@ route:
 
 # Standalone chart doesn't ship a ServiceMonitor by default — Alloy now
 # scrapes Grafana via explicit prometheus.scrape, so leave SM off.
+# Grafana's own metrics (requests, datasource calls, login failures): scraped by
+# the OTel target allocator; rules alert on down/errors/latency.
 serviceMonitor:
-  enabled: false
+  enabled: true
+  interval: 60s
 
 # Admin credentials from a Secret the chart doesn't render. Without this the
 # chart generates a random password on every render (its `lookup` is empty
