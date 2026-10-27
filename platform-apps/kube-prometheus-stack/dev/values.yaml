@@ -87,3 +87,18 @@ kube-state-metrics:
   prometheus:
     monitor:
       interval: 60s
+
+# This cluster's metrics go to Mimir: the OpenTelemetry target allocator scrapes
+# the ServiceMonitors this chart renders (kubelet, apiserver, coredns,
+# node-exporter, kube-state-metrics), and the shared Grafana loads its
+# dashboards. Nothing queries the chart's own Prometheus, Alertmanager or
+# Grafana, which cost about 1.7Gi together, so they are off. The operator stays:
+# it manages the kubelet Service that the kubelet ServiceMonitor selects.
+prometheus:
+  enabled: false
+alertmanager:
+  enabled: false
+grafana:
+  enabled: false
+  # Dashboard ConfigMaps are rendered only with Grafana on, unless forced.
+  forceDeployDashboards: true
