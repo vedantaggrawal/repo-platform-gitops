@@ -1,6 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  annotations:
+    grafana_folder: Platform
   name: saturation-overview-dashboard
   namespace: monitoring
   labels:
