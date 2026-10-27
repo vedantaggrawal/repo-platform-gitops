@@ -6,12 +6,28 @@ version: 1
 metadata:
   name: platform - demo tenant
 entries:
-  # Tenant = a group carrying tenant_id/tier attributes. Membership comes from
-  # the github-groups mapping (federation.yaml), so JIT users get it on login.
+  # Tenant admins manage their own tenant's membership in Authentik (self-serve).
+  # The role is held by the tenant-demo-admin group; the object permissions on
+  # each tenant-demo* group below scope it to this tenant. Picking a user needs
+  # view_user, which Authentik only grants per user or globally, so tenant
+  # admins can list all users (all are allowlisted GitHub accounts, see
+  # federation.yaml). Memberships added here are not source-linked, so GitHub
+  # login sync leaves them alone.
+  - model: authentik_rbac.role
+    id: role-tenant-demo-admin
+    identifiers: { name: tenant-demo-admin }
+    attrs:
+      permissions: [authentik_core.view_user]
+
+  # Tenant = a group carrying tenant_id/tier attributes.
   - model: authentik_core.group
     identifiers: { name: tenant-demo }
     attrs:
       attributes: { tenant_id: demo, tier: free }
+    permissions:
+      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
 
   # Per-tenant roles (access model: Argo CD AppProject roles, Grafana org roles,
   # k8s RoleBindings bind to these names). Emitted in the `groups` claim by the
@@ -20,14 +36,27 @@ entries:
     identifiers: { name: tenant-demo-admin }
     attrs:
       attributes: { tenant_id: demo, role: admin }
+      roles: [!KeyOf role-tenant-demo-admin]
+    permissions:
+      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
   - model: authentik_core.group
     identifiers: { name: tenant-demo-dev }
     attrs:
       attributes: { tenant_id: demo, role: dev }
+    permissions:
+      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
   - model: authentik_core.group
     identifiers: { name: tenant-demo-viewer }
     attrs:
       attributes: { tenant_id: demo, role: viewer }
+    permissions:
+      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
 
   # Emits tenant_id + tier from the user's first group (by name) that has a
   # tenant_id attribute. No such group => no claims (fail closed: the gateway
