@@ -13,6 +13,7 @@ The project's current opinions (what we do and why) live in `.claude/rules/`. To
 - `platform-apps/<app>/<env>/`: one upstream Helm chart per app.
   - `config.yaml`: chart, repoURL, targetRevision, namespace, syncWave, enabled.
   - `values.yaml`: chart values.
+  - `grafana/<env>/dashboards/`: dashboards owned by Grafana Git Sync (UI edits arrive as PRs).
   - No raw manifests here.
 - `manifests/<name>/<env>/`: raw manifests (CRs, ESO, CNPG, glue), each dir deployed by one `argocd-apps/templates/app-*.yaml` (check its `path:`).
 - `network-policies/<env>/`: CiliumNetworkPolicies.
