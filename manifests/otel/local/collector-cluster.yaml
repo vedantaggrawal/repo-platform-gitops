@@ -62,11 +62,53 @@ spec:
             endpoint: 0.0.0.0:4317
       prometheus:
         config:
-          # Every job comes from SMs/PMs via the TA. The native apiserver/kubelet/
-          # cadvisor/coredns jobs duplicated the kube-prometheus-stack SMs, whose
-          # labels (job="kubelet", metrics_path=...) the mixin dashboards/rules use.
-          # Keep the empty list: operator 0.158 errors on `config` without it.
-          scrape_configs: []
+          # Jobs come from ServiceMonitors/PodMonitors via the TA, except the kubelet:
+          # it has no Service without prometheus-operator, so it is scraped here by
+          # node discovery. Labels match the kube-prometheus-stack ServiceMonitor the
+          # mixin dashboards and rules were written for (job="kubelet", metrics_path, node).
+          scrape_configs:
+            - job_name: kubelet
+              scheme: https
+              kubernetes_sd_configs: [{role: node}]
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tls_config: {ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt, insecure_skip_verify: true}
+              honor_labels: true
+              relabel_configs:
+                - {source_labels: [__meta_kubernetes_node_name], target_label: node}
+                - {source_labels: [__metrics_path__], target_label: metrics_path}
+              metric_relabel_configs:
+                - {source_labels: [__name__], regex: kubelet_runtime_operations_duration_seconds_bucket, action: drop}
+            - job_name: kubelet-cadvisor
+              scheme: https
+              metrics_path: /metrics/cadvisor
+              kubernetes_sd_configs: [{role: node}]
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tls_config: {ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt, insecure_skip_verify: true}
+              honor_labels: true
+              relabel_configs:
+                - {target_label: job, replacement: kubelet}
+                - {source_labels: [__meta_kubernetes_node_name], target_label: node}
+                - {source_labels: [__metrics_path__], target_label: metrics_path}
+              metric_relabel_configs:
+                - {source_labels: [__name__], regex: 'container_cpu_(cfs_throttled_seconds_total|load_average_10s|system_seconds_total|user_seconds_total)', action: drop}
+                - {source_labels: [__name__], regex: 'container_fs_(io_current|io_time_seconds_total|io_time_weighted_seconds_total|reads_merged_total|sector_reads_total|sector_writes_total|writes_merged_total)', action: drop}
+                - {source_labels: [__name__], regex: 'container_memory_(mapped_file|swap)', action: drop}
+                - {source_labels: [__name__], regex: 'container_(file_descriptors|tasks_state|threads_max)', action: drop}
+                - {source_labels: [__name__], regex: 'container_spec.*', action: drop}
+                - {source_labels: [__name__], regex: '(container_memory_failures_total|container_blkio_device_usage_total)', action: drop}
+            - job_name: kubelet-probes
+              scheme: https
+              metrics_path: /metrics/probes
+              kubernetes_sd_configs: [{role: node}]
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              tls_config: {ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt, insecure_skip_verify: true}
+              honor_labels: true
+              relabel_configs:
+                - {target_label: job, replacement: kubelet}
+                - {source_labels: [__meta_kubernetes_node_name], target_label: node}
+                - {source_labels: [__metrics_path__], target_label: metrics_path}
+              metric_relabel_configs:
+                - {source_labels: [__name__], regex: prober_probe_duration_seconds_bucket, action: drop}
     # RED metrics and the service graph are derived from the unsampled stream
     # (traces/in), before tail_sampling, so sampling does not bias them.
     connectors:
