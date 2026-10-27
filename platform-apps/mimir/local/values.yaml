@@ -533,13 +533,6 @@ extraObjects:
                 labels: {severity: warning, service: kubernetes, layer: platform}
                 annotations:
                   summary: "DaemonSet rollout is stuck."
-              - alert: KubeJobFailed
-                expr: |
-                  kube_job_failed{job="kube-state-metrics", namespace=~".*"} > 0
-                for: 15m
-                labels: {severity: warning, service: kubernetes, layer: platform}
-                annotations:
-                  summary: "Job failed to complete."
               - alert: KubeContainerWaiting
                 expr: |
                   sum by (namespace, pod, container, cluster) (kube_pod_container_status_waiting_reason{job="kube-state-metrics", namespace=~".*"}) > 0
