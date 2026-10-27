@@ -1,0 +1,25 @@
+# Kubernetes API server metrics (job="apiserver"), as kube-prometheus-stack
+# scraped them; the heavy histograms are dropped as before.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apiserver
+  namespace: monitoring
+spec:
+  jobLabel: component
+  namespaceSelector:
+    matchNames: [default]
+  selector:
+    matchLabels: {component: apiserver, provider: kubernetes}
+  endpoints:
+    - port: https
+      scheme: https
+      interval: 60s
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        serverName: kubernetes
+      metricRelabelings:
+        - action: drop
+          sourceLabels: [__name__]
+          regex: (etcd_request_duration_seconds_bucket|apiserver_request_duration_seconds_bucket|apiserver_request_sli_duration_seconds_bucket|apiserver_request_body_size_bytes_bucket|apiserver_response_sizes_bucket|apiserver_watch_cache_read_wait_seconds_bucket|apiserver_watch_events_sizes_bucket)

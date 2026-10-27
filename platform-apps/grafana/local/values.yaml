@@ -56,9 +56,9 @@ sidecar:
   dashboards:
     enabled: true
     searchNamespace: ALL
-    # Folders: ConfigMaps land in "Kubernetes" (the kube-prometheus-stack set)
-    # unless annotated grafana_folder: <name>. Git Sync owns "platform-dashboards".
-    defaultFolderName: Kubernetes
+    # Folders come from the grafana_folder annotation on each ConfigMap (the
+    # kube-prometheus-stack chart stamps Kubernetes, Cilium stamps Cilium).
+    # Git Sync owns "platform-dashboards".
     folderAnnotation: grafana_folder
     provider:
       foldersFromFilesStructure: true
@@ -140,6 +140,12 @@ route:
 serviceMonitor:
   enabled: true
   interval: 60s
+  # The Kubernetes-style apiserver histograms and the feature-toggle gauge are
+  # ~2.3k of Grafana's ~6k series and nothing alerts on them.
+  metricRelabelings:
+    - action: drop
+      sourceLabels: [__name__]
+      regex: grafana_(apiserver_.*|feature_toggles_info)
 
 # Admin credentials from a Secret the chart doesn't render. Without this the
 # chart generates a random password on every render (its `lookup` is empty
@@ -147,14 +153,21 @@ serviceMonitor:
 # changed on every sync of this repo.
 # State lives in the grafana-db CNPG cluster (users, preferences, the Git Sync
 # repository object). CNPG writes the DSN into Secret grafana-db-app.
+# Discrete fields: Grafana rejects the postgresql:// scheme of the CNPG uri key.
 env:
   GF_DATABASE_TYPE: postgres
+  GF_DATABASE_HOST: grafana-db-rw.monitoring:5432
+  GF_DATABASE_NAME: grafana
   GF_DATABASE_SSL_MODE: require
 envValueFrom:
-  GF_DATABASE_URL:
+  GF_DATABASE_USER:
     secretKeyRef:
       name: grafana-db-app
-      key: uri
+      key: username
+  GF_DATABASE_PASSWORD:
+    secretKeyRef:
+      name: grafana-db-app
+      key: password
 admin:
   existingSecret: grafana-admin
   userKey: admin-user
