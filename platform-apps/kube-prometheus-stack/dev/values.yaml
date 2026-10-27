@@ -110,8 +110,8 @@ alertmanager:
   enabled: false
 grafana:
   enabled: false
-  # Dashboard ConfigMaps are rendered only with Grafana on, unless forced.
-  forceDeployDashboards: true
+  # The Kubernetes dashboards live in Git Sync (platform-apps/grafana/local/dashboards/kubernetes).
+  forceDeployDashboards: false
   sidecar:
     dashboards:
       # Grafana's sidecar puts these in the Kubernetes folder.
