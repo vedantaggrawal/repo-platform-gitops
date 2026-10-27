@@ -352,7 +352,7 @@ extraObjects:
                 for: 10m
                 labels: {severity: warning, service: grafana, layer: observability}
                 annotations:
-                  summary: Grafana datasource plugin {{ $labels.plugin_id }} returning >5% query errors
+                  summary: A Grafana datasource plugin returns >5% query errors (see plugin_id)
               - alert: GrafanaHttpP95High
                 # Streaming and datasource-proxied handlers are as slow as the backend; excluded.
                 expr: histogram_quantile(0.95, sum by (le) (rate(grafana_http_request_duration_seconds_bucket{handler!~"/api/live/.*|/api/ds/query|/api/datasources/proxy/.*"}[10m]))) > 2
