@@ -140,6 +140,12 @@ route:
 serviceMonitor:
   enabled: true
   interval: 60s
+  # The Kubernetes-style apiserver histograms and the feature-toggle gauge are
+  # ~2.3k of Grafana's ~6k series and nothing alerts on them.
+  metricRelabelings:
+    - action: drop
+      sourceLabels: [__name__]
+      regex: grafana_(apiserver_.*|feature_toggles_info)
 
 # Admin credentials from a Secret the chart doesn't render. Without this the
 # chart generates a random password on every render (its `lookup` is empty
