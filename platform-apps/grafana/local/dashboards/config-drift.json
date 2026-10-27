@@ -1,0 +1,109 @@
+{
+  "title": "Config Drift \u2014 per app (dynamic)",
+  "uid": "config-drift",
+  "tags": [
+    "config-drift"
+  ],
+  "schemaVersion": 39,
+  "version": 11,
+  "refresh": "",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "app",
+        "type": "query",
+        "label": "App",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": {
+          "label": "service_namespace",
+          "stream": "",
+          "type": 1,
+          "refId": "LokiVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(service_namespace)",
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "refresh": 2,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "App: $app",
+      "repeat": "app",
+      "repeatDirection": "v",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "type": "table",
+      "title": "$app \u2014 drift across envs (differing cells down a column)",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count by (env,OidcConfig_Authority,KeycloakConfig_Url,OidcConfig_ClientId,KeycloakConfig_ClientId,TmfApi_GatewayOAuth_ClientId,OandSI_OAuth_ClientId,HealthCheck_Enabled,UseRealData,Serilog_WriteTo_1_Args_serverUrl,Database_ConnectionString,Database_MaxPoolSize,Payments_Provider,Payments_WebhookUrl,Payments_RetryCount,FeatureManagement_EnableNewCheckout) (count_over_time({service_name=\"config-drift\", service_namespace=\"$app\"} [1m]))",
+          "queryType": "instant"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "indexByName": {
+              "env": 0
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
