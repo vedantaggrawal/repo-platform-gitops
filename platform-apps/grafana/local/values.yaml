@@ -145,6 +145,16 @@ serviceMonitor:
 # chart generates a random password on every render (its `lookup` is empty
 # under Argo CD's `helm template`), so Grafana restarted and its admin password
 # changed on every sync of this repo.
+# State lives in the grafana-db CNPG cluster (users, preferences, the Git Sync
+# repository object). CNPG writes the DSN into Secret grafana-db-app.
+env:
+  GF_DATABASE_TYPE: postgres
+  GF_DATABASE_SSL_MODE: require
+envValueFrom:
+  GF_DATABASE_URL:
+    secretKeyRef:
+      name: grafana-db-app
+      key: uri
 admin:
   existingSecret: grafana-admin
   userKey: admin-user
