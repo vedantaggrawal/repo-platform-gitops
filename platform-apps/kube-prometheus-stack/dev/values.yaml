@@ -102,6 +102,11 @@ grafana:
   enabled: false
   # Dashboard ConfigMaps are rendered only with Grafana on, unless forced.
   forceDeployDashboards: true
+  sidecar:
+    dashboards:
+      # Grafana's sidecar puts these in the Kubernetes folder.
+      annotations:
+        grafana_folder: Kubernetes
 
 # The standalone kube-state-metrics app already exports these series to Mimir
 # with the same job label; a second copy only doubled them.
