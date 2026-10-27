@@ -1,0 +1,25 @@
+# Grafana's database. Grafana kept sqlite inside its pod, so users, preferences
+# and the Git Sync repository object vanished on every restart. CNPG creates the
+# `grafana` database and the `grafana-db-app` Secret Grafana reads its DSN from.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: grafana-db
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Delete=false,Prune=false
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  bootstrap:
+    initdb:
+      database: grafana
+      owner: grafana
+  storage:
+    size: 1Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 384Mi
