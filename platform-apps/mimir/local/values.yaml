@@ -339,6 +339,27 @@ extraObjects:
                 labels: {severity: warning, service: mimir, layer: telemetry}
                 annotations:
                   summary: Mimir discarding samples
+          - name: grafana
+            rules:
+              - alert: GrafanaDown
+                expr: absent_over_time(grafana_build_info[10m])
+                for: 5m
+                labels: {severity: critical, service: grafana, layer: observability}
+                annotations:
+                  summary: Grafana has reported no metrics for 10m
+              - alert: GrafanaDatasourceErrorRate
+                expr: sum by (plugin_id) (rate(grafana_plugin_request_duration_seconds_count{endpoint="queryData",status="error"}[10m])) / sum by (plugin_id) (rate(grafana_plugin_request_duration_seconds_count{endpoint="queryData"}[10m])) > 0.05
+                for: 10m
+                labels: {severity: warning, service: grafana, layer: observability}
+                annotations:
+                  summary: Grafana datasource plugin {{ $labels.plugin_id }} returning >5% query errors
+              - alert: GrafanaHttpP95High
+                # Streaming and datasource-proxied handlers are as slow as the backend; excluded.
+                expr: histogram_quantile(0.95, sum by (le) (rate(grafana_http_request_duration_seconds_bucket{handler!~"/api/live/.*|/api/ds/query|/api/datasources/proxy/.*"}[10m]))) > 2
+                for: 15m
+                labels: {severity: warning, service: grafana, layer: observability}
+                annotations:
+                  summary: Grafana HTTP p95 above 2s for 15m
           - name: gateway-envoy
             rules:
               # Per-route latency from Envoy; streaming routes (watch/WebSocket UIs)
