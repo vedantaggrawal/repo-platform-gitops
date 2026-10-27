@@ -56,6 +56,12 @@ sidecar:
   dashboards:
     enabled: true
     searchNamespace: ALL
+    # Folders: ConfigMaps land in "Kubernetes" (the kube-prometheus-stack set)
+    # unless annotated grafana_folder: <name>. Git Sync owns "platform-dashboards".
+    defaultFolderName: Kubernetes
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: true
   datasources:
     # Datasources are provisioned statically below, so sidecar discovery is
     # off. With searchNamespace: ALL it imported the dev kube-prometheus-stack
