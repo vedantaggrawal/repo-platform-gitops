@@ -8,6 +8,12 @@ entries:
   - model: authentik_core.group
     identifiers: { name: platform-admins }
     attrs: { is_superuser: true }   # members also administer Authentik itself
+  # Platform engineers (deploy/operate platform apps) and read-only platform
+  # viewers; apps map these in their OIDC role config.
+  - model: authentik_core.group
+    identifiers: { name: platform-dev }
+  - model: authentik_core.group
+    identifiers: { name: platform-viewer }
 
   # Shared settings for public clients (PKCE, no secret).
   - model: authentik_providers_oauth2.oauth2provider
