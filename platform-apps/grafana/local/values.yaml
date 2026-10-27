@@ -37,12 +37,13 @@ grafana.ini:
     role_attribute_strict: false
     allow_sign_up: true
 
+# Grafana 13 on Postgres with Git Sync and ~20 dashboards peaks above 400Mi.
 resources:
   requests:
     cpu: 200m
-    memory: 384Mi
+    memory: 768Mi
   limits:
-    memory: 384Mi
+    memory: 768Mi
 
 # ServiceAccount with Service access so Loki and Mimir resolve via DNS works
 # the same; no special perms needed for the standalone Grafana.
