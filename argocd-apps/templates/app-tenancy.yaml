@@ -15,6 +15,13 @@ spec:
   destination:
     server: {{ .Values.cluster }}
     namespace: default
+  # Aggregated ClusterRoles (aggregationRule set) get their rules filled in by the
+  # clusterrole-aggregation controller; git leaves them empty, so ignore them.
+  ignoreDifferences:
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+      jqPathExpressions:
+        - 'select(.aggregationRule != null) | .rules'
   syncPolicy:
     automated:
       prune: {{ .Values.prune }}
