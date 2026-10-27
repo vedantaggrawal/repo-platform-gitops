@@ -8,6 +8,7 @@
       "grafana_dashboard": "1"
     },
     "annotations": {
+      "grafana_folder": "Platform",
       "config-drift/note": "Sections auto-repeat per $app (service_namespace label). Columns are a union of app schemas; add new flattened fields here as apps gain them."
     }
   },
