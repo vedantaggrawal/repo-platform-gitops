@@ -19,6 +19,8 @@ spec:
     automated:
       prune: {{ .Values.prune }}
       selfHeal: true
+      # The path holds only a README now: let Argo prune the ConfigMaps it still tracks.
+      allowEmpty: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
