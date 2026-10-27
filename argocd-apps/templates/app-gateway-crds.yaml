@@ -8,7 +8,7 @@ metadata:
     # Before the gateway controller (wave 1) and anything that creates routes.
     argocd.argoproj.io/sync-wave: "-5"
 spec:
-  project: default
+  project: platform
   sources:
     # Gateway API CRDs (standard channel).
     - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git

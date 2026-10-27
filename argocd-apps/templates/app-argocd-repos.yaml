@@ -9,7 +9,7 @@ metadata:
     # registration exists before charts that depend on it are pulled.
     argocd.argoproj.io/sync-wave: "-10"
 spec:
-  project: default
+  project: platform
   source:
     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
     targetRevision: HEAD

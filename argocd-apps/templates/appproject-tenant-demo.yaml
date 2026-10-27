@@ -1,0 +1,47 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+# Tenant "demo": namespaced resources only, in its own namespaces. Quota,
+# limits and network policy stay with the platform. Roles bind to the
+# Authentik groups tenant-demo-{admin,dev,viewer} (OIDC `groups` claim).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: tenant-demo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+spec:
+  description: Tenant demo
+  sourceRepos:
+    - https://github.com/vedantaggrawal/repo-app-gitops.git
+    - https://github.com/vedantaggrawal/repo-helm-chart.git
+    # Kargo-managed stage apps (appset-kargo-demo.yaml)
+    - https://github.com/vedantaggrawal/kargo-demo
+  destinations:
+    - server: {{ .Values.cluster }}
+      namespace: 'tenant-demo-*'
+    - server: {{ .Values.cluster }}
+      namespace: 'kargo-demo-*'
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    - { group: '', kind: ResourceQuota }
+    - { group: '', kind: LimitRange }
+    - { group: networking.k8s.io, kind: NetworkPolicy }
+    - { group: cilium.io, kind: CiliumNetworkPolicy }
+    - { group: rbac.authorization.k8s.io, kind: Role }
+    - { group: rbac.authorization.k8s.io, kind: RoleBinding }
+  roles:
+    - name: admin
+      policies:
+        - p, proj:tenant-demo:admin, applications, *, tenant-demo/*, allow
+      groups: [tenant-demo-admin]
+    - name: dev
+      policies:
+        - p, proj:tenant-demo:dev, applications, get, tenant-demo/*, allow
+        - p, proj:tenant-demo:dev, applications, sync, tenant-demo/*, allow
+        - p, proj:tenant-demo:dev, logs, get, tenant-demo/*, allow
+      groups: [tenant-demo-dev]
+    - name: viewer
+      policies:
+        - p, proj:tenant-demo:viewer, applications, get, tenant-demo/*, allow
+      groups: [tenant-demo-viewer]
+{{- end }}

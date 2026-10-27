@@ -9,7 +9,7 @@ metadata:
     # Instrumentation CRDs and the admission webhook exist before these CRs apply.
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  project: default
+  project: platform
   source:
     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
     targetRevision: HEAD

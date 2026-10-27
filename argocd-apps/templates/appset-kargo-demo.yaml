@@ -1,0 +1,33 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+# Kargo demo stage apps (was applied by hand; adopted here). Kargo promotes
+# via the authorized-stage annotation.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kargo-demo
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - stage: test
+          - stage: uat
+          - stage: prod
+  template:
+    metadata:
+      name: 'kargo-demo-{{ "{{stage}}" }}'
+      annotations:
+        kargo.akuity.io/authorized-stage: 'kargo-demo:{{ "{{stage}}" }}'
+    spec:
+      project: tenant-demo
+      source:
+        repoURL: https://github.com/vedantaggrawal/kargo-demo
+        targetRevision: 'stage/{{ "{{stage}}" }}'
+        path: .
+      destination:
+        server: {{ .Values.cluster }}
+        namespace: 'kargo-demo-{{ "{{stage}}" }}'
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+{{- end }}
