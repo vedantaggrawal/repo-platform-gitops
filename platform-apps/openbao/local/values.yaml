@@ -24,14 +24,16 @@ server:
     config: |
       ui = true
       listener "tcp" {
+        telemetry {
+          unauthenticated_metrics_access = true   # the ServiceMonitor scrapes /v1/sys/metrics without a token
+        }
         tls_disable     = 1        # TLS terminates at the gateway
         address         = "[::]:8200"
         cluster_address = "[::]:8201"
       }
       telemetry {
         prometheus_retention_time = "60s"
-        disable_hostname         = true
-        unauthenticated_metrics_access = true
+        disable_hostname          = true
       }
       storage "pebbledb" {
         path = "/openbao/data/pebbledb"
