@@ -133,6 +133,18 @@ spec:
       # Metric allowlist: keep only names a dashboard, rule or the fleet KPI set reads (83% of series fed
       # nothing on 2026-10-28). Generated: bin/metrics-contract <repo> --allowlist; the merge gate checks drift.
       # Re-enable a metric by referencing it in a dashboard/rule or listing it in harness/metrics-allowlist-extra.txt.
+      # cAdvisor/KSM trims (measured 2026-10-31): every pod reports 10 interfaces (eth0 + kernel tunnel stubs
+      # erspan0/gre0/sit0/…; hostNetwork pods add cilium_*/lxc*), so container_network_* was 1,318 series per
+      # family for 92 pods; only eth0 carries traffic. kube_pod_status_phase emits 5 phases per pod, 4 always 0;
+      # dashboards/rules only read phase=~"..." > 0 sums, so the zeros carry nothing.
+      filter/trim:
+        error_mode: ignore
+        metrics:
+          datapoint:
+            # nil guard: a datapoint without an interface label is kept, never dropped by accident.
+            - 'IsMatch(metric.name, "^container_network_") and attributes["interface"] != nil and attributes["interface"] != "eth0"'
+            # The prometheus receiver emits double datapoints; post-merge check: count(kube_pod_status_phase == 0) must be 0.
+            - 'metric.name == "kube_pod_status_phase" and value_double == 0.0'
       filter/allowlist:
         error_mode: ignore
         metrics:
@@ -230,5 +242,5 @@ spec:
           exporters: [otlp/tempo]
         metrics:
           receivers: [prometheus, spanmetrics, servicegraph]
-          processors: [memory_limiter, filter/allowlist, batch]
+          processors: [memory_limiter, filter/allowlist, filter/trim, batch]
           exporters: [prometheusremotewrite/mimir]
