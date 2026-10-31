@@ -191,6 +191,27 @@
           "type": "object"
         }
       }
+    },
+    "generatorRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
     }
   },
   "properties": {
@@ -279,6 +300,186 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/externalSecret"
+      }
+    },
+    "clusterExternalSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "externalSecret"
+        ],
+        "anyOf": [
+          {
+            "required": [
+              "namespaces"
+            ]
+          },
+          {
+            "required": [
+              "namespaceSelectors"
+            ]
+          }
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "namespaces": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "namespaceSelectors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            }
+          },
+          "refreshTime": {
+            "type": "string"
+          },
+          "syncWave": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "labels": {
+            "type": "object"
+          },
+          "annotations": {
+            "type": "object"
+          },
+          "externalSecret": {
+            "$ref": "#/$defs/externalSecretBase"
+          }
+        }
+      }
+    },
+    "pushSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "data"
+        ],
+        "not": {
+          "required": [
+            "secret",
+            "generatorRef"
+          ]
+        },
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "stores": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/storeRef"
+            }
+          },
+          "secret": {
+            "type": "string",
+            "minLength": 1
+          },
+          "generatorRef": {
+            "$ref": "#/$defs/generatorRef"
+          },
+          "updatePolicy": {
+            "enum": [
+              "Replace",
+              "IfNotExists"
+            ]
+          },
+          "deletionPolicy": {
+            "enum": [
+              "Delete",
+              "None"
+            ]
+          },
+          "refreshInterval": {
+            "type": "string"
+          },
+          "syncWave": {
+            "type": [
+              "string",
+              "integer"
+            ]
+          },
+          "labels": {
+            "type": "object"
+          },
+          "annotations": {
+            "type": "object"
+          },
+          "data": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "anyOf": [
+                {
+                  "required": [
+                    "remoteKey"
+                  ]
+                },
+                {
+                  "required": [
+                    "match"
+                  ]
+                }
+              ],
+              "properties": {
+                "secretKey": {
+                  "type": "string"
+                },
+                "remoteKey": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "property": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object"
+                },
+                "conversionStrategy": {
+                  "enum": [
+                    "None",
+                    "ReverseUnicode"
+                  ]
+                },
+                "match": {
+                  "type": "object",
+                  "required": [
+                    "remoteRef"
+                  ]
+                }
+              }
+            }
+          },
+          "template": {
+            "$ref": "#/$defs/template"
+          },
+          "extraSpec": {
+            "type": "object"
+          }
+        }
       }
     }
   }

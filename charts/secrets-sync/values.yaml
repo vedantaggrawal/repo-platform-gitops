@@ -1,5 +1,5 @@
 # secrets-sync: ESO resources from values. Every list below is independent; combine freely.
-# See examples/ for one file per pattern. PushSecret, ClusterExternalSecret and seeds arrive in follow-up PRs.
+# See examples/ for one file per pattern. The seed pattern arrives in a follow-up PR.
 
 global:
   # Default store for every ExternalSecret / PushSecret that does not set its own.
@@ -19,7 +19,9 @@ global:
     syncWaves:
       generators: "-2"
       seeds: "-2"
+      pushSecrets: "-1"
       externalSecrets: "0"
+      clusterExternalSecrets: "0"
     # Lets the first sync pass when the ESO CRDs are applied in the same wave.
     skipDryRunOnMissingResource: true
 
@@ -56,3 +58,31 @@ externalSecrets: []
 #   dataFrom:                                # ESO shape, passed through (extract | find | sourceRef.generatorRef, rewrite)
 #     - extract: { key: platform/grafana/admin }
 #   extraSpec: {}                            # deep-merged last, for anything not modelled above
+
+# ClusterExternalSecrets (external-secrets.io/v1): the same ExternalSecret shape fanned out to namespaces.
+clusterExternalSecrets: []
+# - name: platform-ca
+#   namespaces: [argocd, kargo]              # or namespaceSelectors: [{ matchLabels: {…} }]
+#   refreshTime: 1h
+#   externalSecret:                          # same keys as an externalSecrets[] item (name = target name)
+#     name: platform-ca
+#     data: [{ secretKey: ca.crt, remoteRef: { key: platform/ca, property: ca.crt } }]
+
+# PushSecrets (external-secrets.io/v1alpha1): Kubernetes Secret (or generator) → store.
+pushSecrets: []
+# - name: platform-ca
+#   namespace: cert-manager
+#   stores: [{ kind: ClusterSecretStore, name: openbao }]   # optional, overrides [global.store]
+#   secret: platform-ca                      # source Secret name; or generatorRef: { apiVersion, kind, name }
+#   updatePolicy: Replace                    # Replace | IfNotExists
+#   deletionPolicy: None                     # Delete | None
+#   refreshInterval: 1h
+#   data:                                    # sugar: one item per remote key; or ESO `match` items passed through
+#     - remoteKey: platform/ca               # whole Secret → one remote key (keys become properties)
+#     - secretKey: ca.crt                    # one Secret key → one remote property
+#       remoteKey: platform/ca
+#       property: ca.crt
+#       metadata: {}                         # provider-specific
+#       conversionStrategy: None             # None | ReverseUnicode
+#   template: {}                             # ESO template applied before pushing
+#   extraSpec: {}
