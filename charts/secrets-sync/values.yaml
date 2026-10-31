@@ -1,5 +1,5 @@
 # secrets-sync: ESO resources from values. Every list below is independent; combine freely.
-# See examples/ for one file per pattern. The seed pattern arrives in a follow-up PR.
+# See examples/ for one file per pattern and README.md for the combination matrix.
 
 global:
   # Default store for every ExternalSecret / PushSecret that does not set its own.
@@ -86,3 +86,28 @@ pushSecrets: []
 #       conversionStrategy: None             # None | ReverseUnicode
 #   template: {}                             # ESO template applied before pushing
 #   extraSpec: {}
+
+# Seeds: generate once → push to the store only if absent → consume from the store.
+# This is the platform pattern for passwords that must never be in Git and never rotate by accident.
+seeds: []
+# - name: demo-db-roles                      # PushSecret name; seed Secret is <name>-seed
+#   namespace: demo
+#   remoteKey: platform/demo-db/roles        # one remote key; each seed key becomes a property
+#   store: { kind: ClusterSecretStore, name: openbao }   # optional
+#   generator:                               # one generator, called once per key (omit with generatorRef)
+#     kind: Password
+#     outputKey: password                    # field the generator emits (Password → password, UUID → uuid)
+#     spec: { length: 48, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
+#   generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: existing }
+#   keys: [owner_password, app_password]
+#   seedTemplate: {}                         # optional target.template on the seed ExternalSecret (e.g. add a fixed username)
+#   push: { updatePolicy: IfNotExists, deletionPolicy: None, refreshInterval: 1h }
+#   consumers:                               # ExternalSecrets fed from the remote key
+#     - name: demo-db-owner
+#       keys: [owner_password]               # default: all seed keys
+#       type: kubernetes.io/basic-auth       # target.template.type
+#       labels: { cnpg.io/reload: "true" }   # target.template.metadata.labels
+#       annotations: {}
+#       data: { username: demo_owner, password: "{{ .owner_password }}" }   # target.template.data; omit → keys delivered as-is
+#       refreshInterval: 1h
+#       namespace: ""
