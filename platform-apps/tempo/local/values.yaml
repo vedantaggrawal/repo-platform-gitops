@@ -54,5 +54,8 @@ persistence:
 service:
   type: ClusterIP
 
+# Scraped by the otel-cluster target allocator (any ServiceMonitor). 60s like every platform target;
+# the collector allowlist admits tempo_* names only once a dashboard or rule references them.
 serviceMonitor:
-  enabled: false
+  enabled: true
+  interval: 60s
