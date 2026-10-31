@@ -1,9 +1,0 @@
-{{- range .Values.generators }}
----
-apiVersion: {{ .apiVersion | default "generators.external-secrets.io/v1alpha1" }}
-kind: {{ required "generators[].kind is required (Password, UUID, …)" .kind }}
-metadata:
-  {{- include "secrets-sync.metadata" (dict "root" $ "item" . "class" "generators" "name" (required "generators[].name is required" .name)) | nindent 2 }}
-spec:
-  {{- toYaml (.spec | default dict) | nindent 2 }}
-{{- end }}
