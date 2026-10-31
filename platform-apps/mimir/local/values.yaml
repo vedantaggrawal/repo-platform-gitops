@@ -402,17 +402,41 @@ extraObjects:
           - name: otel-pipeline
             rules:
               - alert: OtelExporterSendFailures
-                expr: sum by (pod, exporter) (rate({__name__=~"otelcol_exporter_send_failed_(metric_points|log_records|spans)_total"}[5m])) > 0
+                expr: sum by (pod, exporter) (rate(otelcol_exporter_send_failed_metric_points_total[5m])) > 0
                 for: 5m
-                labels: {severity: critical, service: otel, layer: observability}
+                labels: {severity: critical, service: otel, layer: observability, signal: metrics}
                 annotations:
-                  summary: A collector exporter keeps failing to send (see pod, exporter); telemetry is being dropped after retries
+                  summary: A collector exporter keeps failing to send metrics (see pod, exporter); telemetry is being dropped after retries
+              - alert: OtelExporterSendFailures
+                expr: sum by (pod, exporter) (rate(otelcol_exporter_send_failed_log_records_total[5m])) > 0
+                for: 5m
+                labels: {severity: critical, service: otel, layer: observability, signal: logs}
+                annotations:
+                  summary: A collector exporter keeps failing to send logs (see pod, exporter); telemetry is being dropped after retries
+              - alert: OtelExporterSendFailures
+                expr: sum by (pod, exporter) (rate(otelcol_exporter_send_failed_spans_total[5m])) > 0
+                for: 5m
+                labels: {severity: critical, service: otel, layer: observability, signal: spans}
+                annotations:
+                  summary: A collector exporter keeps failing to send spans (see pod, exporter); telemetry is being dropped after retries
               - alert: OtelReceiverRefused
-                expr: sum by (pod, receiver) (rate({__name__=~"otelcol_receiver_refused_(metric_points|log_records|spans)_total"}[5m])) > 0
+                expr: sum by (pod, receiver) (rate(otelcol_receiver_refused_metric_points_total[5m])) > 0
                 for: 5m
-                labels: {severity: warning, service: otel, layer: observability}
+                labels: {severity: warning, service: otel, layer: observability, signal: metrics}
                 annotations:
-                  summary: A collector refuses data at the receiver (memory limiter or back-pressure); raise limits or shed load
+                  summary: A collector refuses metrics at the receiver (memory limiter or back-pressure); raise limits or shed load
+              - alert: OtelReceiverRefused
+                expr: sum by (pod, receiver) (rate(otelcol_receiver_refused_log_records_total[5m])) > 0
+                for: 5m
+                labels: {severity: warning, service: otel, layer: observability, signal: logs}
+                annotations:
+                  summary: A collector refuses logs at the receiver (memory limiter or back-pressure); raise limits or shed load
+              - alert: OtelReceiverRefused
+                expr: sum by (pod, receiver) (rate(otelcol_receiver_refused_spans_total[5m])) > 0
+                for: 5m
+                labels: {severity: warning, service: otel, layer: observability, signal: spans}
+                annotations:
+                  summary: A collector refuses spans at the receiver (memory limiter or back-pressure); raise limits or shed load
               - alert: OtelExporterQueueFull
                 expr: max by (pod, exporter) (otelcol_exporter_queue_size / otelcol_exporter_queue_capacity) > 0.8
                 for: 5m
