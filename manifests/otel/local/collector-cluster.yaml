@@ -154,7 +154,7 @@ spec:
               not (IsMatch(name, "^(:node_memory_MemAvailable_bytes:sum)$")
               or IsMatch(name, "^(OR)$")
               or IsMatch(name, "^(apiserver_request|apiserver_request:availability30d|apiserver_request_total)$")
-              or IsMatch(name, "^(argocd_app_info|argocd_app_reconcile|argocd_app_reconcile_count|argocd_app_sync|argocd_app_sync_total)$")
+              or IsMatch(name, "^(argocd_app_info|argocd_app_reconcile|argocd_app_reconcile_count|argocd_app_sync|argocd_app_sync_total|argocd_git_request_duration_seconds|argocd_git_request_duration_seconds_bucket)$")
               or IsMatch(name, "^(cilium_version)$")
               or IsMatch(name, "^(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits|cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests|cluster:namespace:pod_memory:active:kube_pod_container_resource_limits|cluster:namespace:pod_memory:active:kube_pod_container_resource_requests|cluster:node_cpu:ratio_rate5m|cluster_quantile:apiserver_request_slo_duration_seconds:histogram_quantile)$")
               or IsMatch(name, "^(cnpg_backends|cnpg_backends_max_tx_duration_seconds|cnpg_backends_total|cnpg_backends_waiting|cnpg_backends_waiting_total|cnpg_pg_replication_lag|cnpg_pg_settings_setting|cnpg_pg_stat_database_deadlocks|cnpg_pg_stat_database_deadlocks_total)$")
