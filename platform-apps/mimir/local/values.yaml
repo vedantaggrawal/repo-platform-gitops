@@ -428,7 +428,7 @@ extraObjects:
                 annotations:
                   summary: "Loki receives fewer than 1 line per second for 10m; agent, network or ingester problem"
               - alert: LokiDiscards
-                expr: sum by (reason) (rate({__name__=~"loki_discarded_samples_total"}[5m])) > 0
+                expr: sum by (reason) (rate(loki_discarded_samples_total[5m])) > 0
                 for: 5m
                 labels: {severity: warning, service: loki, layer: observability}
                 annotations:
