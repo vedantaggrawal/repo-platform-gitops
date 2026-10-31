@@ -1,0 +1,31 @@
+# Seed with a fixed username next to the generated password (the minio-init pattern), an existing
+# generator, a UUID output key, and a consumer that takes every key as-is (no template).
+generators:
+  - name: shared-password
+    kind: Password
+    namespace: monitoring-storage
+    spec: { length: 32, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
+seeds:
+  - name: minio-root
+    namespace: monitoring-storage
+    remoteKey: platform/minio/root
+    generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: shared-password }
+    keys: [password]
+    seedTemplate:
+      data:
+        username: minio-root
+        password: "{{ .password }}"
+    consumers:
+      - name: minio-root
+  - name: tenant-api-token
+    namespace: kargo-demo-test
+    remoteKey: platform/tenant-api/token
+    generator:
+      kind: UUID
+      outputKey: uuid
+      spec: {}
+    keys: [token]
+    push: { updatePolicy: Replace, deletionPolicy: Delete, refreshInterval: 24h }
+    consumers:
+      - name: tenant-api-token
+        refreshInterval: 5m

@@ -212,6 +212,53 @@
           "minLength": 1
         }
       }
+    },
+    "consumer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "type": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "esLabels": {
+          "type": "object"
+        },
+        "esAnnotations": {
+          "type": "object"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "refreshInterval": {
+          "type": "string"
+        }
+      }
     }
   },
   "properties": {
@@ -478,6 +525,105 @@
           },
           "extraSpec": {
             "type": "object"
+          }
+        }
+      }
+    },
+    "seeds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "remoteKey",
+          "keys"
+        ],
+        "not": {
+          "required": [
+            "generator",
+            "generatorRef"
+          ]
+        },
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "remoteKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "store": {
+            "$ref": "#/$defs/storeRef"
+          },
+          "generator": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "outputKey": {
+                "type": "string"
+              },
+              "spec": {
+                "type": "object"
+              }
+            }
+          },
+          "generatorRef": {
+            "$ref": "#/$defs/generatorRef"
+          },
+          "keys": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "seedTemplate": {
+            "$ref": "#/$defs/template"
+          },
+          "push": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "updatePolicy": {
+                "enum": [
+                  "Replace",
+                  "IfNotExists"
+                ]
+              },
+              "deletionPolicy": {
+                "enum": [
+                  "Delete",
+                  "None"
+                ]
+              },
+              "refreshInterval": {
+                "type": "string"
+              }
+            }
+          },
+          "labels": {
+            "type": "object"
+          },
+          "annotations": {
+            "type": "object"
+          },
+          "consumers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/consumer"
+            }
           }
         }
       }
