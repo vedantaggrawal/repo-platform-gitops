@@ -28,6 +28,11 @@ server:
         address         = "[::]:8200"
         cluster_address = "[::]:8201"
       }
+      telemetry {
+        prometheus_retention_time = "60s"
+        disable_hostname         = true
+        unauthenticated_metrics_access = true
+      }
       storage "pebbledb" {
         path = "/openbao/data/pebbledb"
       }
@@ -198,3 +203,9 @@ extraObjects:
     metadata:
       name: bao-config
       namespace: openbao
+
+# Scraped by the otel-cluster target allocator (any ServiceMonitor), 60s like every platform target.
+serverTelemetry:
+  serviceMonitor:
+    enabled: true
+    interval: 60s
