@@ -1,0 +1,18 @@
+# A standalone generator and an ExternalSecret that materialises it once (no store involved).
+generators:
+  - name: webhook-token
+    kind: Password
+    namespace: platform
+    spec: { length: 40, digits: 10, symbols: 0, noUpper: true, allowRepeat: true }
+externalSecrets:
+  - name: webhook-token
+    namespace: platform
+    store: false
+    refreshPolicy: CreatedOnce
+    target:
+      template:
+        data:
+          token: "{{ .password }}"
+    dataFrom:
+      - sourceRef:
+          generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: webhook-token }

@@ -44,12 +44,21 @@ mimir:
     # Single-replica ingester + store-gateway: drop the ring replication
     # factor from the default 3, otherwise queries fail with
     # "too many unhealthy instances in the ring".
+    # Heartbeats: the chart renders 2m/10m (ingester) and 1m/10m (store-gateway), sized for
+    # production network blips. This cluster runs on a laptop that sleeps: after a suspend
+    # longer than the timeout every ring reader sees a stale heartbeat and pushes/queries fail
+    # until the next heartbeat (up to 2 min, 3 episodes on 2026-10-31). Mimir's own defaults,
+    # 15s/1m, keep dead-instance detection and cut the post-resume outage to ≤15s.
     ingester:
       ring:
         replication_factor: 1
+        heartbeat_period: 15s
+        heartbeat_timeout: 1m
     store_gateway:
       sharding_ring:
         replication_factor: 1
+        heartbeat_period: 15s
+        heartbeat_timeout: 1m
 
 global:
   # MinIO user credentials from OpenBao (ExternalSecret in manifests/minio-init).
@@ -360,6 +369,35 @@ extraObjects:
                 labels: {severity: warning, service: grafana, layer: observability}
                 annotations:
                   summary: Grafana HTTP p95 above 2s for 15m
+          # Mimir's own health. 2026-10-31: the single ingester left the ring three times after
+          # host sleep (heartbeat timeout) and nothing paged; pushes returned 500 for minutes.
+          - name: mimir-health
+            rules:
+              - alert: MimirIngesterUnhealthyInRing
+                expr: max(cortex_ring_members{name="ingester",state="Unhealthy"}) > 0
+                for: 1m
+                labels: {severity: critical, service: mimir, layer: observability}
+                annotations:
+                  summary: An ingester is Unhealthy in the ring; with RF 1 every push fails until it heartbeats again
+              - alert: MimirPushFailures
+                expr: sum(rate(cortex_request_duration_seconds_count{route="api_v1_push",status_code=~"5.."}[5m])) > 0.5
+                for: 2m
+                labels: {severity: critical, service: mimir, layer: observability}
+                annotations:
+                  summary: Remote-write pushes are failing with 5xx (>0.5/s for 2m); metrics are being lost
+              - alert: MimirNoIngest
+                # Dead man's switch for the metrics pipeline: the platform never pushes fewer than ~200 samples/s.
+                expr: sum(rate(cortex_distributor_received_samples_total[5m])) < 50
+                for: 10m
+                labels: {severity: critical, service: mimir, layer: observability}
+                annotations:
+                  summary: Mimir receives almost no samples for 10m; collector, network or ring problem
+              - alert: MimirRulerEvaluationFailures
+                expr: sum by (rule_group) (increase(cortex_prometheus_rule_evaluation_failures_total[10m])) > 0
+                for: 10m
+                labels: {severity: warning, service: mimir, layer: observability}
+                annotations:
+                  summary: A rule group keeps failing evaluation (see rule_group); alerts in it are blind
           # kubernetes-mixin recording rules the Kubernetes dashboards use (from the
           # kube-prometheus-stack chart, which no longer evaluates them here). Only
           # rules whose source metrics exist on this cluster.

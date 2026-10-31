@@ -1,0 +1,79 @@
+{
+  "uid": "mimir-health",
+  "title": "Mimir health",
+  "tags": ["observability", "mimir"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    { "type": "row", "title": "Ring and ingest path", "id": 1, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false },
+    {
+      "type": "stat", "title": "Ingesters in the ring by state", "id": 2,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "none", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [ { "matcher": { "id": "byName", "options": "Unhealthy" }, "properties": [ { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } ] } ] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value_and_name" },
+      "targets": [ { "refId": "A", "expr": "max by (state) (cortex_ring_members{name=\"ingester\"})", "legendFormat": "{{state}}" } ]
+    },
+    {
+      "type": "stat", "title": "Memberlist members seen", "id": 3,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "none" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "textMode": "value" },
+      "targets": [ { "refId": "A", "expr": "min(memberlist_client_cluster_members_count)", "legendFormat": "min across members" } ]
+    },
+    {
+      "type": "stat", "title": "Ingester head series", "id": 4,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "none", "textMode": "value" },
+      "targets": [ { "refId": "A", "expr": "sum(cortex_ingester_memory_series)", "legendFormat": "series" } ]
+    },
+    {
+      "type": "stat", "title": "Ingest samples/s", "id": 5,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 50 } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "value" },
+      "targets": [ { "refId": "A", "expr": "sum(rate(cortex_distributor_received_samples_total[5m]))", "legendFormat": "samples/s" } ]
+    },
+    {
+      "type": "timeseries", "title": "Push requests/s by status class (distributor)", "id": 6,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [ { "matcher": { "id": "byName", "options": "5xx" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] } ] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(cortex_request_duration_seconds_count{route=\"api_v1_push\",status_code=~\"2..\"}[5m]))", "legendFormat": "2xx" },
+        { "refId": "B", "expr": "sum(rate(cortex_request_duration_seconds_count{route=\"api_v1_push\",status_code=~\"4..\"}[5m]))", "legendFormat": "4xx" },
+        { "refId": "C", "expr": "sum(rate(cortex_request_duration_seconds_count{route=\"api_v1_push\",status_code=~\"5..\"}[5m]))", "legendFormat": "5xx" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Ingester ring: unhealthy members", "id": 7,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "fieldConfig": { "defaults": { "unit": "none", "min": 0 }, "overrides": [] },
+      "targets": [ { "refId": "A", "expr": "max(cortex_ring_members{name=\"ingester\",state=\"Unhealthy\"})", "legendFormat": "unhealthy ingesters" } ]
+    },
+    { "type": "row", "title": "Ruler and discards", "id": 8, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 }, "collapsed": false },
+    {
+      "type": "timeseries", "title": "Rule evaluation failures / 10m", "id": 9,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "targets": [ { "refId": "A", "expr": "sum by (rule_group) (increase(cortex_prometheus_rule_evaluation_failures_total[10m])) > 0", "legendFormat": "{{rule_group}}" } ]
+    },
+    {
+      "type": "timeseries", "title": "Discarded samples/s by reason", "id": 10,
+      "datasource": { "type": "prometheus", "uid": "mimir" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+      "targets": [ { "refId": "A", "expr": "sum by (reason) (rate(cortex_discarded_samples_total[5m]))", "legendFormat": "{{reason}}" } ]
+    }
+  ]
+}

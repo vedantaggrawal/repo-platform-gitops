@@ -1,0 +1,13 @@
+apiVersion: v2
+name: secrets-sync
+description: >-
+  External Secrets Operator resources from values: ExternalSecrets and generators (this version);
+  PushSecret, ClusterExternalSecret and the seed pattern follow. No Secret data in Git.
+type: application
+version: 0.1.0
+# External Secrets Operator API versions this chart renders (ESO v2.13):
+# external-secrets.io/v1 (ExternalSecret, ClusterExternalSecret), external-secrets.io/v1alpha1 (PushSecret),
+# generators.external-secrets.io/v1alpha1.
+appVersion: "2.13.0"
+kubeVersion: ">=1.25.0-0"
+keywords: [external-secrets, pushsecret, externalsecret, openbao, vault]
