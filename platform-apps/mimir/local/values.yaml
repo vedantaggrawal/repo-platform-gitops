@@ -44,12 +44,21 @@ mimir:
     # Single-replica ingester + store-gateway: drop the ring replication
     # factor from the default 3, otherwise queries fail with
     # "too many unhealthy instances in the ring".
+    # Heartbeats: the chart renders 2m/10m (ingester) and 1m/10m (store-gateway), sized for
+    # production network blips. This cluster runs on a laptop that sleeps: after a suspend
+    # longer than the timeout every ring reader sees a stale heartbeat and pushes/queries fail
+    # until the next heartbeat (up to 2 min, 3 episodes on 2026-10-31). Mimir's own defaults,
+    # 15s/1m, keep dead-instance detection and cut the post-resume outage to ≤15s.
     ingester:
       ring:
         replication_factor: 1
+        heartbeat_period: 15s
+        heartbeat_timeout: 1m
     store_gateway:
       sharding_ring:
         replication_factor: 1
+        heartbeat_period: 15s
+        heartbeat_timeout: 1m
 
 global:
   # MinIO user credentials from OpenBao (ExternalSecret in manifests/minio-init).
