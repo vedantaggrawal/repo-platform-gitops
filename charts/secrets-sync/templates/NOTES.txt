@@ -1,0 +1,3 @@
+secrets-sync {{ .Chart.Version }}: {{ len .Values.generators }} generator(s), {{ len .Values.externalSecrets }} ExternalSecret(s),
+{{ len .Values.clusterExternalSecrets }} ClusterExternalSecret(s), {{ len .Values.pushSecrets }} PushSecret(s), {{ len .Values.seeds }} seed(s).
+Default store: {{ .Values.global.store.kind }}/{{ .Values.global.store.name }}. Nothing secret is rendered: values hold names, keys and templates only.

@@ -1,0 +1,22 @@
+# The seed pattern as used by manifests/demo-db/local/secrets.yaml: generate two passwords once,
+# keep them in OpenBao (never overwritten), deliver them as basic-auth Secrets CNPG reloads on change.
+seeds:
+  - name: demo-db-roles
+    namespace: demo
+    remoteKey: platform/demo-db/roles
+    generator:
+      name: demo-db-password
+      kind: Password
+      spec: { length: 48, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
+    keys: [owner_password, app_password]
+    consumers:
+      - name: demo-db-owner
+        keys: [owner_password]
+        type: kubernetes.io/basic-auth
+        labels: { cnpg.io/reload: "true" }
+        data: { username: demo_owner, password: "{{ .owner_password }}" }
+      - name: demo-db-app
+        keys: [app_password]
+        type: kubernetes.io/basic-auth
+        labels: { cnpg.io/reload: "true" }
+        data: { username: demo_app, password: "{{ .app_password }}" }
