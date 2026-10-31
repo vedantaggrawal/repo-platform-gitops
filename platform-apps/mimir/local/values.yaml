@@ -419,6 +419,40 @@ extraObjects:
                 labels: {severity: warning, service: otel, layer: observability}
                 annotations:
                   summary: A collector export queue is above 80 percent for 5m; the backend is slow or down and data will be dropped when it fills
+          - name: loki-health
+            rules:
+              - alert: LokiNoIngest
+                expr: sum(rate(loki_distributor_lines_received_total[5m])) < 1
+                for: 10m
+                labels: {severity: critical, service: loki, layer: observability}
+                annotations:
+                  summary: "Loki receives fewer than 1 line per second for 10m; agent, network or ingester problem"
+              - alert: LokiDiscards
+                expr: sum by (reason) (rate({__name__=~"loki_discarded_samples_total"}[5m])) > 0
+                for: 5m
+                labels: {severity: warning, service: loki, layer: observability}
+                annotations:
+                  summary: "Loki discards log lines (see reason: rate limit, too old, stream limit); raise limits or fix the sender"
+              - alert: LokiPushErrors
+                expr: sum(rate(loki_request_duration_seconds_count{route=~"loki_api_v1_push|otlp_v1_logs|/logproto.Pusher/Push",status_code=~"5.."}[5m])) / sum(rate(loki_request_duration_seconds_count{route=~"loki_api_v1_push|otlp_v1_logs|/logproto.Pusher/Push"}[5m])) > 0.01
+                for: 5m
+                labels: {severity: critical, service: loki, layer: observability}
+                annotations:
+                  summary: More than 1 percent of log pushes fail with 5xx for 5m
+          - name: tempo-health
+            rules:
+              - alert: TempoDiscards
+                expr: sum by (reason) (rate(tempo_discarded_spans_total[5m])) > 0
+                for: 5m
+                labels: {severity: warning, service: tempo, layer: observability}
+                annotations:
+                  summary: "Tempo discards spans (see reason: trace too large, live traces exceeded); raise limits or sample harder"
+              - alert: TempoFlushOrCompactionErrors
+                expr: sum(increase(tempo_ingester_failed_flushes_total[15m])) + sum(increase(tempodb_compaction_errors_total[15m])) > 0
+                for: 15m
+                labels: {severity: warning, service: tempo, layer: observability}
+                annotations:
+                  summary: Tempo ingester flushes or compactions keep failing; check object storage
           # kubernetes-mixin recording rules the Kubernetes dashboards use (from the
           # kube-prometheus-stack chart, which no longer evaluates them here). Only
           # rules whose source metrics exist on this cluster.
