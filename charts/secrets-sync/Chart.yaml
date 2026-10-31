@@ -1,8 +1,8 @@
 apiVersion: v2
 name: secrets-sync
 description: >-
-  External Secrets Operator resources from values: ExternalSecrets and generators (this version);
-  PushSecret, ClusterExternalSecret and the seed pattern follow. No Secret data in Git.
+  External Secrets Operator resources from values: ExternalSecrets, ClusterExternalSecrets, PushSecrets and
+  generators (this version); the seed pattern follows. No Secret data in Git.
 type: application
 version: 0.1.0
 # External Secrets Operator API versions this chart renders (ESO v2.13):

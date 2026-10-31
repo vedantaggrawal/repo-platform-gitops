@@ -67,3 +67,34 @@ Args: dict "root" . "item" <item>. Returns YAML.
 {{- if $it.extraSpec }}{{- $spec = mergeOverwrite $spec (deepCopy $it.extraSpec) -}}{{- end -}}
 {{- toYaml $spec -}}
 {{- end -}}
+
+{{/*
+PushSecret spec from a pushSecrets[] item. Args: dict "root" . "item" <item>. Returns YAML.
+*/}}
+{{- define "secrets-sync.pushSecretSpec" -}}
+{{- $root := .root -}}{{- $it := .item -}}
+{{- $spec := dict "refreshInterval" ($it.refreshInterval | default $root.Values.global.refreshInterval)
+                  "updatePolicy" ($it.updatePolicy | default "Replace")
+                  "deletionPolicy" ($it.deletionPolicy | default "None") -}}
+{{- $stores := list -}}
+{{- range ($it.stores | default (list $root.Values.global.store)) }}{{- $stores = append $stores (dict "kind" (.kind | default "SecretStore") "name" .name) -}}{{- end -}}
+{{- $_ := set $spec "secretStoreRefs" $stores -}}
+{{- if $it.generatorRef }}{{- $_ := set $spec "selector" (dict "generatorRef" $it.generatorRef) -}}
+{{- else }}{{- $_ := set $spec "selector" (dict "secret" (dict "name" ($it.secret | default $it.name))) -}}{{- end -}}
+{{- $data := list -}}
+{{- range ($it.data | default list) }}
+{{- if hasKey . "match" }}{{- $data = append $data . -}}
+{{- else }}
+{{- $ref := dict "remoteKey" .remoteKey -}}{{- if .property }}{{- $_ := set $ref "property" .property -}}{{- end -}}
+{{- $match := dict "remoteRef" $ref -}}{{- if .secretKey }}{{- $_ := set $match "secretKey" .secretKey -}}{{- end -}}
+{{- $d := dict "match" $match -}}
+{{- if .metadata }}{{- $_ := set $d "metadata" .metadata -}}{{- end -}}
+{{- if .conversionStrategy }}{{- $_ := set $d "conversionStrategy" .conversionStrategy -}}{{- end -}}
+{{- $data = append $data $d -}}
+{{- end -}}
+{{- end -}}
+{{- $_ := set $spec "data" $data -}}
+{{- if $it.template }}{{- $_ := set $spec "template" $it.template -}}{{- end -}}
+{{- if $it.extraSpec }}{{- $spec = mergeOverwrite $spec (deepCopy $it.extraSpec) -}}{{- end -}}
+{{- toYaml $spec -}}
+{{- end -}}
