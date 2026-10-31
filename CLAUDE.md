@@ -17,3 +17,4 @@ The project's current opinions (what we do and why) live in `.claude/rules/`. To
   - No raw manifests here.
 - `manifests/<name>/<env>/`: raw manifests (CRs, ESO, CNPG, glue), each dir deployed by one `argocd-apps/templates/app-*.yaml` (check its `path:`).
 - `network-policies/<env>/`: CiliumNetworkPolicies.
+- `charts/<name>/`: Helm charts owned by this repo (e.g. `secrets-sync`), consumed by `app-*.yaml` apps via `path:` with per-env values under `manifests/<name>/<env>/values.yaml`. Each chart ships `examples/` that must render and validate.
