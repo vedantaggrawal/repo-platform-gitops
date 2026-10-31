@@ -130,6 +130,47 @@ spec:
         limit_percentage: 80
         spike_limit_percentage: 25
       batch: {}
+      # Metric allowlist: keep only names a dashboard, rule or the fleet KPI set reads (83% of series fed
+      # nothing on 2026-10-28). Generated: bin/metrics-contract <repo> --allowlist; the merge gate checks drift.
+      # Re-enable a metric by referencing it in a dashboard/rule or listing it in harness/metrics-allowlist-extra.txt.
+      filter/allowlist:
+        error_mode: ignore
+        metrics:
+          metric:
+            # BEGIN generated: bin/metrics-contract --allowlist (regenerate, do not edit)
+            - >-
+              not (IsMatch(name, "^(:node_memory_MemAvailable_bytes:sum)$")
+              or IsMatch(name, "^(OR)$")
+              or IsMatch(name, "^(apiserver_request:availability30d)$")
+              or IsMatch(name, "^(argocd_app_info|argocd_app_reconcile_count|argocd_app_sync_total)$")
+              or IsMatch(name, "^(cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits|cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests|cluster:namespace:pod_memory:active:kube_pod_container_resource_limits|cluster:namespace:pod_memory:active:kube_pod_container_resource_requests|cluster:node_cpu:ratio_rate5m|cluster_quantile:apiserver_request_slo_duration_seconds:histogram_quantile)$")
+              or IsMatch(name, "^(cnpg_backends_max_tx_duration_seconds|cnpg_backends_total|cnpg_backends_waiting_total|cnpg_pg_replication_lag|cnpg_pg_settings_setting|cnpg_pg_stat_database_deadlocks_total)$")
+              or IsMatch(name, "^(code_resource:apiserver_request_total:rate5m)$")
+              or IsMatch(name, "^(container_cpu_usage_seconds_total|container_memory_working_set_bytes|container_network_receive_bytes_total|container_network_receive_packets_dropped_total|container_network_receive_packets_total|container_network_transmit_bytes_total|container_network_transmit_packets_dropped_total|container_network_transmit_packets_total|container_oom_events_total)$")
+              or IsMatch(name, "^(coredns_cache_entries|coredns_cache_hits_total|coredns_cache_misses_total|coredns_cache_size|coredns_dns_do_requests_total|coredns_dns_request_count_total|coredns_dns_request_do_count_total|coredns_dns_request_duration_seconds_bucket|coredns_dns_request_size_bytes_bucket|coredns_dns_request_type_count_total|coredns_dns_requests_total|coredns_dns_response_rcode_count_total|coredns_dns_response_size_bytes_bucket|coredns_dns_responses_total)$")
+              or IsMatch(name, "^(cortex_discarded_exemplars_total|cortex_discarded_samples_total|cortex_distributor_received_samples_total|cortex_ingester_active_series|cortex_ingester_memory_series|cortex_request_duration_seconds_count|cortex_request_duration_seconds_sum)$")
+              or IsMatch(name, "^(envoy_cluster_upstream_cx_overflow_total|envoy_cluster_upstream_rq_pending_overflow_total|envoy_cluster_upstream_rq_retry_overflow_total|envoy_cluster_upstream_rq_time_bucket|envoy_cluster_upstream_rq_total|envoy_cluster_upstream_rq_xx_total|envoy_http_downstream_rq_xx_total)$")
+              or IsMatch(name, "^(go_goroutines)$")
+              or IsMatch(name, "^(grafana_build_info|grafana_http_request_duration_seconds_bucket|grafana_plugin_request_duration_seconds_count)$")
+              or IsMatch(name, "^(instance:node_cpu_utilisation:rate5m|instance:node_load1_per_cpu:ratio|instance:node_memory_utilisation:ratio|instance:node_network_receive_bytes_excluding_lo:rate5m|instance:node_network_receive_drop_excluding_lo:rate5m|instance:node_network_transmit_bytes_excluding_lo:rate5m|instance:node_network_transmit_drop_excluding_lo:rate5m|instance:node_num_cpu:sum|instance:node_vmstat_pgmajfault:rate5m|instance_device:node_disk_io_time_seconds:rate5m|instance_device:node_disk_io_time_weighted_seconds:rate5m)$")
+              or IsMatch(name, "^(kube_daemonset_status_current_number_scheduled|kube_daemonset_status_desired_number_scheduled|kube_daemonset_status_number_available|kube_daemonset_status_number_misscheduled|kube_daemonset_status_updated_number_scheduled|kube_deployment_spec_replicas|kube_deployment_status_replicas_available|kube_deployment_status_replicas_updated|kube_namespace_status_phase|kube_node_info|kube_node_status_allocatable|kube_node_status_capacity|kube_node_status_condition|kube_pod_container_resource_limits|kube_pod_container_resource_requests|kube_pod_container_status_last_terminated_reason|kube_pod_container_status_restarts_total|kube_pod_container_status_waiting_reason|kube_pod_info|kube_pod_owner|kube_pod_status_phase|kube_replicaset_owner|kube_resourcequota|kube_statefulset_status_replicas|kube_statefulset_status_replicas_ready|kube_statefulset_status_replicas_updated)$")
+              or IsMatch(name, "^(kubelet_cgroup_manager_duration_seconds_bucket|kubelet_cgroup_manager_duration_seconds_count|kubelet_node_config_error|kubelet_node_name|kubelet_pleg_relist_duration_seconds_bucket|kubelet_pleg_relist_duration_seconds_count|kubelet_pleg_relist_interval_seconds_bucket|kubelet_pod_start_duration_seconds_bucket|kubelet_pod_start_duration_seconds_count|kubelet_pod_worker_duration_seconds_bucket|kubelet_pod_worker_duration_seconds_count|kubelet_running_container_count|kubelet_running_containers|kubelet_running_pod_count|kubelet_running_pods|kubelet_runtime_operations_duration_seconds_bucket|kubelet_runtime_operations_errors_total|kubelet_runtime_operations_total|kubelet_volume_stats_available_bytes|kubelet_volume_stats_capacity_bytes|kubelet_volume_stats_inodes|kubelet_volume_stats_inodes_used)$")
+              or IsMatch(name, "^(namespace_cpu:kube_pod_container_resource_limits:sum|namespace_cpu:kube_pod_container_resource_requests:sum|namespace_memory:kube_pod_container_resource_limits:sum|namespace_memory:kube_pod_container_resource_requests:sum|namespace_workload_pod:kube_pod_owner:relabel)$")
+              or IsMatch(name, "^(node:node_cpu_utilization:ratio_rate5m|node_cpu_seconds_total|node_disk_io_time_seconds_total|node_disk_io_time_weighted_seconds_total|node_disk_read_bytes_total|node_disk_written_bytes_total|node_exporter_build_info|node_filesystem_avail_bytes|node_filesystem_size_bytes|node_load1|node_load15|node_load5|node_memory_Buffers_bytes|node_memory_Cached_bytes|node_memory_MemAvailable_bytes|node_memory_MemFree_bytes|node_memory_MemTotal_bytes|node_memory_Slab_bytes|node_namespace_pod:kube_pod_info:|node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate|node_netstat_TcpExt_TCPSynRetrans|node_netstat_Tcp_OutSegs|node_netstat_Tcp_RetransSegs|node_time_seconds|node_vmstat_oom_kill|node_vmstat_pgmajfault)$")
+              or IsMatch(name, "^(otelcol_exporter_queue_capacity|otelcol_exporter_queue_size|otelcol_exporter_send_failed_log_records_total|otelcol_exporter_send_failed_metric_points_total|otelcol_exporter_send_failed_spans_total|otelcol_receiver_refused_log_records_total|otelcol_receiver_refused_metric_points_total|otelcol_receiver_refused_spans_total)$")
+              or IsMatch(name, "^(process_cpu_seconds_total|process_resident_memory_bytes)$")
+              or IsMatch(name, "^(prometheus)$")
+              or IsMatch(name, "^(rest_client_request_duration_seconds_bucket|rest_client_requests_total)$")
+              or IsMatch(name, "^(scrape_duration_seconds|scrape_samples_scraped|scrape_series_added)$")
+              or IsMatch(name, "^(storage_operation_duration_seconds_bucket|storage_operation_duration_seconds_count|storage_operation_errors_total)$")
+              or IsMatch(name, "^(traces_service_graph_request_total|traces_span_metrics_calls_total|traces_span_metrics_duration_milliseconds_bucket)$")
+              or IsMatch(name, "^(up)$")
+              or IsMatch(name, "^(volume_manager_total_volumes)$")
+              or IsMatch(name, "^(workqueue_adds_total|workqueue_depth|workqueue_queue_duration_seconds_bucket)$")
+              or IsMatch(name, "^(cortex_discarded_.*)$")
+              or IsMatch(name, "^(otelcol_.*)$")
+              or IsMatch(name, "^(traces_.*)$"))
+            # END generated
       # Keep errors, slow traces and 401/403/429; drop /healthz; 10% of the rest.
       # Top-level policies are OR'd; a drop policy match always wins. Single
       # replica only: all spans of a trace must reach one instance.
@@ -187,5 +228,5 @@ spec:
           exporters: [otlp/tempo]
         metrics:
           receivers: [prometheus, spanmetrics, servicegraph]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, filter/allowlist, batch]
           exporters: [prometheusremotewrite/mimir]
