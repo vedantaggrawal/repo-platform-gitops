@@ -4,3 +4,8 @@
 
 # The ClusterSecretStore lives in manifests/secret-stores (an app without
 # ServerSideApply): ESO custom resources in this SSA app crash Argo CD 2.10.2's diff.
+
+# Scraped by the otel-cluster target allocator (any ServiceMonitor), 60s like every platform target.
+serviceMonitor:
+  enabled: true
+  interval: 60s
