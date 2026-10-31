@@ -30,6 +30,11 @@ blueprints:
   configMaps: [authentik-blueprints]
 
 worker:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 60s
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits: { memory: 1Gi }
@@ -43,6 +48,12 @@ worker:
     - { name: blueprint-github, mountPath: /blueprints/mounted/github, readOnly: true }
 
 server:
+  # Scraped by the otel-cluster target allocator (any ServiceMonitor), 60s like every platform target.
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 60s
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits: { memory: 1Gi }
@@ -65,17 +76,3 @@ server:
 
 postgresql:
   enabled: false
-
-# Scraped by the otel-cluster target allocator (any ServiceMonitor), 60s like every platform target.
-server:
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-      interval: 60s
-worker:
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-      interval: 60s
