@@ -3,6 +3,12 @@
 # controller at start and verified against its sha256. Dashboard off: no UI that
 # isn't behind SSO.
 controller:
+  # Scraped by the otel-cluster target allocator (any ServiceMonitor), 60s like every platform target.
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 60s
   trafficRouterPlugins:
     - name: argoproj-labs/gatewayAPI
       location: https://github.com/argoproj-labs/rollouts-plugin-trafficrouter-gatewayapi/releases/download/v0.17.0/gatewayapi-plugin-linux-arm64
@@ -16,11 +22,3 @@ providerRBAC:
     gatewayAPI: true
 dashboard:
   enabled: false
-
-# Scraped by the otel-cluster target allocator (any ServiceMonitor), 60s like every platform target.
-controller:
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: true
-      interval: 60s
