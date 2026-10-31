@@ -398,6 +398,27 @@ extraObjects:
                 labels: {severity: warning, service: mimir, layer: observability}
                 annotations:
                   summary: A rule group keeps failing evaluation (see rule_group); alerts in it are blind
+          # Collector pipeline: data lost between scrape and storage never shows up anywhere else.
+          - name: otel-pipeline
+            rules:
+              - alert: OtelExporterSendFailures
+                expr: sum by (pod, exporter) (rate({__name__=~"otelcol_exporter_send_failed_(metric_points|log_records|spans)_total"}[5m])) > 0
+                for: 5m
+                labels: {severity: critical, service: otel, layer: observability}
+                annotations:
+                  summary: A collector exporter keeps failing to send (see pod, exporter); telemetry is being dropped after retries
+              - alert: OtelReceiverRefused
+                expr: sum by (pod, receiver) (rate({__name__=~"otelcol_receiver_refused_(metric_points|log_records|spans)_total"}[5m])) > 0
+                for: 5m
+                labels: {severity: warning, service: otel, layer: observability}
+                annotations:
+                  summary: A collector refuses data at the receiver (memory limiter or back-pressure); raise limits or shed load
+              - alert: OtelExporterQueueFull
+                expr: max by (pod, exporter) (otelcol_exporter_queue_size / otelcol_exporter_queue_capacity) > 0.8
+                for: 5m
+                labels: {severity: warning, service: otel, layer: observability}
+                annotations:
+                  summary: A collector export queue is above 80 percent for 5m; the backend is slow or down and data will be dropped when it fills
           # kubernetes-mixin recording rules the Kubernetes dashboards use (from the
           # kube-prometheus-stack chart, which no longer evaluates them here). Only
           # rules whose source metrics exist on this cluster.

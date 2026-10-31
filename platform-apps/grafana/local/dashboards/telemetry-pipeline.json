@@ -1,0 +1,474 @@
+{
+  "uid": "telemetry-pipeline",
+  "title": "Telemetry pipeline",
+  "tags": [
+    "observability",
+    "otel",
+    "pipeline"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Collectors: in and out",
+      "id": 1,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Received per receiver (items/s)",
+      "id": 2,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pod, receiver) (rate(otelcol_receiver_accepted_metric_points_total[5m]))",
+          "legendFormat": "{{pod}} {{receiver}} metrics"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (pod, receiver) (rate(otelcol_receiver_accepted_log_records_total[5m]))",
+          "legendFormat": "{{pod}} {{receiver}} logs"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (pod, receiver) (rate(otelcol_receiver_accepted_spans_total[5m]))",
+          "legendFormat": "{{pod}} {{receiver}} spans"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Refused or failed at the receiver (items/s): should be 0",
+      "id": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pod, receiver) (rate({__name__=~\"otelcol_receiver_(refused|failed)_metric_points_total\"}[5m]))",
+          "legendFormat": "{{pod}} {{receiver}} metrics"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (pod, receiver) (rate({__name__=~\"otelcol_receiver_(refused|failed)_log_records_total\"}[5m]))",
+          "legendFormat": "{{pod}} {{receiver}} logs"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (pod, receiver) (rate({__name__=~\"otelcol_receiver_(refused|failed)_spans_total\"}[5m]))",
+          "legendFormat": "{{pod}} {{receiver}} spans"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Exported per exporter (items/s)",
+      "id": 4,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_metric_points_total[5m]))",
+          "legendFormat": "{{exporter}} metrics"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_log_records_total[5m]))",
+          "legendFormat": "{{exporter}} logs"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_sent_spans_total[5m]))",
+          "legendFormat": "{{exporter}} spans"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Export failures (items/s): should be 0",
+      "id": 5,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_metric_points_total[5m]))",
+          "legendFormat": "{{exporter}} metrics"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_log_records_total[5m]))",
+          "legendFormat": "{{exporter}} logs"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (exporter) (rate(otelcol_exporter_send_failed_spans_total[5m]))",
+          "legendFormat": "{{exporter}} spans"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Exporter queue fill (size / capacity)",
+      "id": 6,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (pod, exporter) (otelcol_exporter_queue_size / otelcol_exporter_queue_capacity)",
+          "legendFormat": "{{pod}} {{exporter}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Collector memory (RSS)",
+      "id": 7,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (pod) (otelcol_process_memory_rss)",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory limiter: accepted items/s (drops show up as receiver refused)",
+      "id": 8,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (pod) (rate(otelcol_processor_memory_limiter_accepted_metric_points_total[5m]))",
+          "legendFormat": "{{pod}} metrics"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (pod) (rate(otelcol_processor_memory_limiter_accepted_log_records_total[5m]))",
+          "legendFormat": "{{pod}} logs"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (pod) (rate(otelcol_processor_memory_limiter_accepted_spans_total[5m]))",
+          "legendFormat": "{{pod}} spans"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Shaping: allowlist and sampling",
+      "id": 9,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "Datapoints dropped by filter (per filter, /s)",
+      "id": 10,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (filter) (rate(otelcol_processor_filter_datapoints_filtered_total[5m]))",
+          "legendFormat": "{{filter}}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Share of scraped datapoints kept",
+      "id": 11,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(otelcol_exporter_sent_metric_points_total{exporter=\"prometheusremotewrite/mimir\",pod=\"otel-cluster-collector-0\"}[5m])) / sum(rate(otelcol_receiver_accepted_metric_points_total{pod=\"otel-cluster-collector-0\"}[5m]))",
+          "legendFormat": "kept"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Traces sampled (tail sampling)",
+      "id": 12,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(otelcol_processor_tail_sampling_global_count_traces_sampled_total{sampled=\"true\"}[15m])) / sum(rate(otelcol_processor_tail_sampling_new_trace_id_received_total[15m]))",
+          "legendFormat": "sampled"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Sampling decisions by policy (traces/s)",
+      "id": 13,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (policy, sampled) (rate(otelcol_processor_tail_sampling_count_traces_sampled_total[5m]))",
+          "legendFormat": "{{policy}} sampled={{sampled}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Mimir: samples discarded by reason (/s)",
+      "id": 14,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (reason) (rate(cortex_discarded_samples_total[5m]))",
+          "legendFormat": "{{reason}}"
+        }
+      ]
+    }
+  ]
+}
