@@ -1,6 +1,0 @@
-enabled: "false"
-chart: cert-manager
-repoURL: https://charts.jetstack.io
-targetRevision: "v1.17.4"
-namespace: cert-manager
-syncWave: "-2"

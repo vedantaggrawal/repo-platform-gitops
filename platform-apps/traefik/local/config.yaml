@@ -1,6 +1,0 @@
-enabled: "false"
-chart: traefik
-repoURL: https://traefik.github.io/charts
-targetRevision: "33.2.1"
-namespace: traefik
-syncWave: "-1"

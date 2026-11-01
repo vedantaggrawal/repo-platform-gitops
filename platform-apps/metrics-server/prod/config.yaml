@@ -1,6 +1,0 @@
-enabled: "true"
-chart: metrics-server
-repoURL: https://kubernetes-sigs.github.io/metrics-server/
-targetRevision: "3.11.0"
-namespace: kube-system
-syncWave: "-2"
