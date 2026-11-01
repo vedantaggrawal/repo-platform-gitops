@@ -36,6 +36,7 @@ spec:
     - https://traefik.github.io/charts
     - ghcr.io/akuity/kargo-charts
     - docker.io/envoyproxy
+    - https://redhat-cop.github.io/vault-config-operator
   destinations:
     - server: {{ .Values.cluster }}
       namespace: '*'
