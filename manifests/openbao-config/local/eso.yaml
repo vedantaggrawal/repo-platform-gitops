@@ -1,0 +1,38 @@
+# External Secrets Operator's access to OpenBao, as vault-config-operator resources. The same policy
+# and role exist from OpenBao's self-init today; these CRs adopt them (PUT semantics) and become the
+# source of truth, so the self-init stanza can shrink to the bootstrap (kubernetes auth + bao-config).
+# Every CR authenticates as ServiceAccount openbao/bao-config through the bao-config Kubernetes auth role.
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: eso
+  namespace: openbao
+spec:
+  authentication:
+    path: kubernetes
+    role: bao-config
+    serviceAccount:
+      name: bao-config
+  # Read platform secrets and push generated ones. PushSecret writes custom_metadata first, so
+  # metadata needs create/update; no delete, so PushSecrets keep deletionPolicy None.
+  policy: |
+    path "secret/data/platform/*"     { capabilities = ["create", "read", "update"] }
+    path "secret/metadata/platform/*" { capabilities = ["create", "read", "update", "list"] }
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: KubernetesAuthEngineRole
+metadata:
+  name: eso
+  namespace: openbao
+spec:
+  authentication:
+    path: kubernetes
+    role: bao-config
+    serviceAccount:
+      name: bao-config
+  path: kubernetes
+  policies: [eso]
+  targetServiceAccounts: [local-external-secrets]
+  targetNamespaces:
+    targetNamespaces: [external-secrets]
+  tokenTTL: 1h
