@@ -1,0 +1,589 @@
+{
+ "uid": "argocd",
+ "title": "Argo CD",
+ "tags": [
+  "delivery",
+  "argocd"
+ ],
+ "schemaVersion": 39,
+ "version": 1,
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "refresh": "1m",
+ "templating": {
+  "list": []
+ },
+ "annotations": {
+  "list": []
+ },
+ "panels": [
+  {
+   "type": "row",
+   "title": "Applications",
+   "id": 1,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "collapsed": false
+  },
+  {
+   "type": "stat",
+   "title": "Apps",
+   "id": 2,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 0,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(argocd_app_info)"
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "title": "Out of sync",
+   "id": 3,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 6,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(argocd_app_info{sync_status!=\"Synced\"}) or vector(0)"
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "title": "Not healthy (excl. Progressing)",
+   "id": 4,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 12,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(argocd_app_info{health_status!~\"Healthy|Progressing\"}) or vector(0)"
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "title": "Auto-sync disabled",
+   "id": 5,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 18,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(argocd_app_info{autosync_enabled=\"false\"}) or vector(0)"
+    }
+   ]
+  },
+  {
+   "type": "table",
+   "title": "Apps not Synced or not Healthy",
+   "id": 6,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 6
+   },
+   "options": {
+    "showHeader": true
+   },
+   "transformations": [
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "Value": true,
+       "__name__": true,
+       "instance": true,
+       "job": true,
+       "dest_server": true,
+       "operation": true,
+       "repo": true,
+       "namespace": true,
+       "pod": true,
+       "service": true,
+       "endpoint": true,
+       "container": true,
+       "otel_scope_name": true,
+       "otel_scope_version": true
+      }
+     }
+    }
+   ],
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "argocd_app_info{sync_status!=\"Synced\"} or argocd_app_info{health_status!~\"Healthy|Progressing\"}",
+     "format": "table",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Sync operations / 10m by phase",
+   "id": 7,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 6
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (phase) (increase(argocd_app_sync_total[10m]))",
+     "legendFormat": "{{phase}}"
+    }
+   ]
+  },
+  {
+   "type": "row",
+   "title": "Controller",
+   "id": 8,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 14
+   },
+   "collapsed": false
+  },
+  {
+   "type": "timeseries",
+   "title": "Reconciles/s per app (top 10): a loop shows as a flat high line",
+   "id": 9,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 15
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, sum by (name) (rate(argocd_app_reconcile_count[5m])))",
+     "legendFormat": "{{name}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Reconcile p95 (s)",
+   "id": 10,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 15
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(argocd_app_reconcile_bucket[5m])))",
+     "legendFormat": "p95"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "kubectl requests/s by verb and code",
+   "id": 11,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 23
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (verb, response_code) (rate(argocd_kubectl_requests_total[5m]))",
+     "legendFormat": "{{verb}} {{response_code}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "kubectl exec pending + cluster cache age",
+   "id": 12,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 23
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(argocd_kubectl_exec_pending)",
+     "legendFormat": "exec pending"
+    },
+    {
+     "refId": "B",
+     "expr": "max(argocd_cluster_cache_age_seconds)",
+     "legendFormat": "cache age (s)"
+    }
+   ]
+  },
+  {
+   "type": "row",
+   "title": "Repo server and Redis",
+   "id": 13,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 30
+   },
+   "collapsed": false
+  },
+  {
+   "type": "timeseries",
+   "title": "Git requests/s by type",
+   "id": 14,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 0,
+    "y": 31
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (request_type) (rate(argocd_git_request_total[5m]))",
+     "legendFormat": "{{request_type}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Git request p95 (s) by type",
+   "id": 15,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 8,
+    "y": 31
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, request_type) (rate(argocd_git_request_duration_seconds_bucket[5m])))",
+     "legendFormat": "{{request_type}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Redis requests/s and failures",
+   "id": 16,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 16,
+    "y": 31
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(argocd_redis_request_total[5m]))",
+     "legendFormat": "requests/s"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(argocd_redis_request_total{failed=\"true\"}[5m]))",
+     "legendFormat": "failed/s"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Repo-server: pending requests and parallelism wait p95",
+   "id": 17,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 38
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(argocd_repo_pending_request_total)",
+     "legendFormat": "pending"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(argocd_repo_parallelism_wait_duration_seconds_bucket[5m])))",
+     "legendFormat": "wait p95 (s)"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "ApplicationSets: owned apps and reconcile p95",
+   "id": 18,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 38
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (name) (argocd_appset_owned_applications)",
+     "legendFormat": "{{name}} apps"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(argocd_appset_reconcile_bucket[5m])))",
+     "legendFormat": "reconcile p95 (s)"
+    }
+   ]
+  }
+ ]
+}

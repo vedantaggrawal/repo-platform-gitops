@@ -1,0 +1,551 @@
+{
+ "uid": "control-plane",
+ "title": "Kubernetes control plane",
+ "tags": [
+  "kubernetes",
+  "control-plane"
+ ],
+ "schemaVersion": 39,
+ "version": 1,
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "refresh": "1m",
+ "templating": {
+  "list": []
+ },
+ "annotations": {
+  "list": []
+ },
+ "panels": [
+  {
+   "type": "row",
+   "title": "API server",
+   "id": 1,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "collapsed": false
+  },
+  {
+   "type": "stat",
+   "title": "Requests/s",
+   "id": 2,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 0,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(apiserver_request_total{job=\"apiserver\"}[5m]))"
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "title": "5xx ratio (5m)",
+   "id": 3,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 6,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(apiserver_request_total{job=\"apiserver\",code=~\"5..\"}[5m])) / sum(rate(apiserver_request_total{job=\"apiserver\"}[5m]))"
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "title": "Inflight (mutating + readonly)",
+   "id": 4,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 12,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(apiserver_current_inflight_requests{job=\"apiserver\"})"
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "title": "Long-running (watches)",
+   "id": 5,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 6,
+    "x": 18,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "textMode": "value"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(apiserver_longrunning_requests{job=\"apiserver\"})"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Requests/s by verb",
+   "id": 6,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 6
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (verb) (rate(apiserver_request_total{job=\"apiserver\"}[5m]))",
+     "legendFormat": "{{verb}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Requests/s by code class",
+   "id": 7,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 6
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (code) (rate(apiserver_request_total{job=\"apiserver\",code=~\"[45]..\"}[5m]))",
+     "legendFormat": "{{code}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "p99 latency by verb (SLI histogram, non-streaming)",
+   "id": 8,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 13
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.99, sum by (le, verb) (rate(apiserver_request_sli_duration_seconds_bucket{job=\"apiserver\",verb!~\"WATCH|CONNECT\"}[5m])))",
+     "legendFormat": "{{verb}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Top 10 resources by request rate",
+   "id": 9,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 13
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, sum by (resource) (rate(apiserver_request_total{job=\"apiserver\"}[5m])))",
+     "legendFormat": "{{resource}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Watch events/s by resource (top 10)",
+   "id": 10,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 20
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, sum by (resource) (rate(apiserver_watch_events_total{job=\"apiserver\"}[5m])))",
+     "legendFormat": "{{resource}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Stored objects by resource (top 15)",
+   "id": 11,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 20
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(15, max by (resource) (apiserver_storage_objects{job=\"apiserver\"}))",
+     "legendFormat": "{{resource}}"
+    }
+   ]
+  },
+  {
+   "type": "row",
+   "title": "etcd and admission",
+   "id": 12,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 27
+   },
+   "collapsed": false
+  },
+  {
+   "type": "timeseries",
+   "title": "etcd request p99 by operation",
+   "id": 13,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 28
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.99, sum by (le, operation) (rate(etcd_request_duration_seconds_bucket{job=\"apiserver\"}[5m])))",
+     "legendFormat": "{{operation}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "etcd requests/s by operation",
+   "id": 14,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 28
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (operation) (rate(etcd_requests_total{job=\"apiserver\"}[5m]))",
+     "legendFormat": "{{operation}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Admission webhook p99 by webhook",
+   "id": 15,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 35
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.99, sum by (le, name) (rate(apiserver_admission_webhook_admission_duration_seconds_bucket{job=\"apiserver\"}[5m])))",
+     "legendFormat": "{{name}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Priority & fairness: executing requests by level",
+   "id": 16,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 35
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (priority_level) (apiserver_flowcontrol_current_executing_requests{job=\"apiserver\"})",
+     "legendFormat": "{{priority_level}}"
+    }
+   ]
+  },
+  {
+   "type": "row",
+   "title": "Controller workqueues (kubelet-exposed and apiserver-side)",
+   "id": 17,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 42
+   },
+   "collapsed": false
+  },
+  {
+   "type": "timeseries",
+   "title": "Workqueue depth (top 10)",
+   "id": 18,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 43
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, max by (name) (workqueue_depth))",
+     "legendFormat": "{{name}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Workqueue adds/s (top 10)",
+   "id": 19,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 43
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, sum by (name) (rate(workqueue_adds_total[5m])))",
+     "legendFormat": "{{name}}"
+    }
+   ]
+  }
+ ]
+}
