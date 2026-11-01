@@ -294,7 +294,7 @@
   },
   {
    "type": "timeseries",
-   "title": "Reconciles/s per app (top 10): a loop shows as a flat high line",
+   "title": "Syncs/s per app (top 10): a self-heal loop shows as a flat high line",
    "id": 9,
    "datasource": {
     "type": "prometheus",
@@ -316,14 +316,14 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "topk(10, sum by (name) (rate(argocd_app_reconcile_count[5m])))",
+     "expr": "topk(10, sum by (name) (rate(argocd_app_sync_total[5m])))",
      "legendFormat": "{{name}}"
     }
    ]
   },
   {
    "type": "timeseries",
-   "title": "Reconcile p95 (s)",
+   "title": "Reconcile p95 (s) and reconciles/s (controller total)",
    "id": 10,
    "datasource": {
     "type": "prometheus",
@@ -347,6 +347,11 @@
      "refId": "A",
      "expr": "histogram_quantile(0.95, sum by (le) (rate(argocd_app_reconcile_bucket[5m])))",
      "legendFormat": "p95"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(argocd_app_reconcile_count[5m]))",
+     "legendFormat": "reconciles/s"
     }
    ]
   },
