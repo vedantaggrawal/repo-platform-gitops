@@ -15,7 +15,6 @@ The project's current opinions (what we do and why) live in `.claude/rules/`. To
   - `appset-apps.yaml` deploys app workloads from the separate app-gitops repo.
 - `platform-apps/<app>/<env>/`: one upstream Helm chart per app.
   - `values.yaml`: chart values (the chart itself is declared in `argocd-apps/envs/<env>/apps.yaml`).
-  - `config.yaml`: legacy, being removed; not read any more.
   - `grafana/<env>/dashboards/`: dashboards owned by Grafana Git Sync (UI edits arrive as PRs).
   - No raw manifests here.
 - `manifests/<name>/<env>/`: raw manifests (CRs, ESO, CNPG, glue), each dir deployed by one `argocd-apps/templates/app-*.yaml` (check its `path:`).

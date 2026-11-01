@@ -15,10 +15,6 @@ spec:
       parameters:
         - name: env
           value: prod
-        - name: cluster
-          value: https://kubernetes.default.svc
-        - name: prune
-          value: "false"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

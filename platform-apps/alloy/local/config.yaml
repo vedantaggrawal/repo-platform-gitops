@@ -1,8 +1,0 @@
-# Disabled: replaced by the OpenTelemetry collectors (manifests/otel). Running
-# both double-scraped every target into Mimir and double-shipped pod logs to Loki.
-enabled: "false"
-chart: alloy
-repoURL: https://grafana.github.io/helm-charts
-targetRevision: "1.9.0"
-namespace: monitoring
-syncWave: "0"
