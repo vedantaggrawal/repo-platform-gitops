@@ -1,0 +1,545 @@
+{
+ "uid": "capacity",
+ "title": "Capacity per namespace",
+ "tags": [
+  "capacity",
+  "tenancy"
+ ],
+ "schemaVersion": 39,
+ "version": 1,
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "refresh": "1m",
+ "templating": {
+  "list": [
+   {
+    "name": "namespace",
+    "label": "namespace",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "mimir"
+    },
+    "query": {
+     "query": "label_values(kube_pod_info, namespace)",
+     "refId": "v"
+    },
+    "includeAll": true,
+    "allValue": ".*",
+    "multi": true,
+    "current": {
+     "text": "All",
+     "value": "$__all"
+    },
+    "refresh": 2
+   }
+  ]
+ },
+ "annotations": {
+  "list": []
+ },
+ "panels": [
+  {
+   "type": "row",
+   "title": "Nodes: headroom",
+   "id": 1,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "collapsed": false
+  },
+  {
+   "type": "timeseries",
+   "title": "CPU: requests vs usage vs allocatable (cores)",
+   "id": 2,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 0,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"})",
+     "legendFormat": "requested"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\"}[5m]))",
+     "legendFormat": "used"
+    },
+    {
+     "refId": "C",
+     "expr": "sum(kube_node_status_allocatable{resource=\"cpu\"})",
+     "legendFormat": "allocatable"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Memory: requests vs working set vs allocatable",
+   "id": 3,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 12,
+    "x": 12,
+    "y": 1
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"})",
+     "legendFormat": "requested"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(container_memory_working_set_bytes{container!=\"\"})",
+     "legendFormat": "used"
+    },
+    {
+     "refId": "C",
+     "expr": "sum(kube_node_status_allocatable{resource=\"memory\"})",
+     "legendFormat": "allocatable"
+    }
+   ]
+  },
+  {
+   "type": "row",
+   "title": "Per namespace: who consumes what",
+   "id": 4,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 8
+   },
+   "collapsed": false
+  },
+  {
+   "type": "bargauge",
+   "title": "CPU requested (cores)",
+   "id": 5,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 0,
+    "y": 9
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(sum by (namespace) (kube_pod_container_resource_requests{resource=\"cpu\",namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "bargauge",
+   "title": "CPU used (cores, 5m)",
+   "id": 6,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 8,
+    "y": 9
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\"}[5m])))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "bargauge",
+   "title": "CPU used / requested",
+   "id": 7,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 16,
+    "y": 9
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=\"\",namespace=~\"$namespace\"}[5m])) / sum by (namespace) (kube_pod_container_resource_requests{resource=\"cpu\",namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "bargauge",
+   "title": "Memory requested",
+   "id": 8,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 0,
+    "y": 19
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(sum by (namespace) (kube_pod_container_resource_requests{resource=\"memory\",namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "bargauge",
+   "title": "Memory working set",
+   "id": 9,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 8,
+    "y": 19
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(sum by (namespace) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "bargauge",
+   "title": "Memory used / requested",
+   "id": 10,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 16,
+    "y": 19
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(sum by (namespace) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\"}) / sum by (namespace) (kube_pod_container_resource_requests{resource=\"memory\",namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "row",
+   "title": "Per namespace: telemetry and storage footprint",
+   "id": 11,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 29
+   },
+   "collapsed": false
+  },
+  {
+   "type": "bargauge",
+   "title": "Active metric series (approx., by namespace label)",
+   "id": 12,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 0,
+    "y": 30
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(count by (namespace) ({__name__=~\".+\",namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "bargauge",
+   "title": "Pods",
+   "id": 13,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 8,
+    "y": 30
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(count by (namespace) (kube_pod_info{namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "bargauge",
+   "title": "PVC requested storage",
+   "id": 14,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 8,
+    "x": 16,
+    "y": 30
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "displayMode": "gradient",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sort_desc(sum by (namespace) (kube_persistentvolumeclaim_resource_requests_storage_bytes{namespace=~\"$namespace\"}))",
+     "legendFormat": "{{namespace}}",
+     "instant": true
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Memory working set by namespace (stacked)",
+   "id": 15,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "mimir"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 24,
+    "x": 0,
+    "y": 40
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "min": 0,
+     "custom": {
+      "stacking": {
+       "mode": "normal"
+      },
+      "fillOpacity": 30
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (namespace) (container_memory_working_set_bytes{container!=\"\",namespace=~\"$namespace\"})",
+     "legendFormat": "{{namespace}}"
+    }
+   ]
+  }
+ ]
+}
