@@ -35,4 +35,4 @@ spec:
   targetServiceAccounts: [local-external-secrets]
   targetNamespaces:
     targetNamespaces: [external-secrets]
-  tokenTTL: 1h
+  tokenTTL: 3600   # seconds (integer in the CRD)
