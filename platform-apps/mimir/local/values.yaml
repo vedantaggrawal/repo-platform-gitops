@@ -579,6 +579,39 @@ extraObjects:
                 labels: {severity: warning, service: tempo, layer: observability}
                 annotations:
                   summary: Tempo ingester flushes or compactions keep failing; check object storage
+          - name: argocd
+            rules:
+              - alert: ArgoAppOutOfSync
+                expr: argocd_app_info{sync_status!="Synced"} == 1
+                for: 30m
+                labels: {severity: warning, service: argocd, layer: delivery}
+                annotations:
+                  summary: "Argo CD app out of sync for 30m (see name, project): auto-sync off, a sync error, or drift that self-heal cannot fix"
+              - alert: ArgoAppDegraded
+                expr: argocd_app_info{health_status!~"Healthy|Progressing|Suspended"} == 1
+                for: 15m
+                labels: {severity: critical, service: argocd, layer: delivery}
+                annotations:
+                  summary: "Argo CD app not healthy for 15m (see name, health_status)"
+              - alert: ArgoSyncFailed
+                expr: sum by (name, project) (increase(argocd_app_sync_total{phase=~"Error|Failed"}[30m])) > 0
+                for: 5m
+                labels: {severity: warning, service: argocd, layer: delivery}
+                annotations:
+                  summary: "Argo CD sync operations failing in the last 30m (see name)"
+              - alert: ArgoReconcileLoop
+                # 2026-10: a CRD-default self-heal loop pinned the controller at 1.4 cores; a healthy app reconciles every few minutes.
+                expr: sum by (name) (rate(argocd_app_reconcile_count[10m])) > 0.2
+                for: 15m
+                labels: {severity: warning, service: argocd, layer: delivery}
+                annotations:
+                  summary: "Argo CD app reconciles more than 12 times a minute for 15m (see name): drift loop"
+              - alert: ArgoGitSlow
+                expr: histogram_quantile(0.95, sum by (le) (rate(argocd_git_request_duration_seconds_bucket[10m]))) > 30
+                for: 15m
+                labels: {severity: warning, service: argocd, layer: delivery}
+                annotations:
+                  summary: "Argo CD git requests p95 above 30s for 15m: repo-server or GitHub slow"
           # kubernetes-mixin recording rules the Kubernetes dashboards use (from the
           # kube-prometheus-stack chart, which no longer evaluates them here). Only
           # rules whose source metrics exist on this cluster.
