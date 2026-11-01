@@ -1,3 +1,24 @@
+{{- /*
+Platform ApplicationSet for one env, from argocd-apps/envs/<env>/apps.yaml (what runs there, at which chart
+version) and envs/<env>/cluster.yaml (where). One Application per enabled entry; chart values stay in
+platform-apps/<app>/<env>/values.yaml. The element set is rendered here, so `helm template` shows exactly
+which Applications an env has, and Kargo promotes a version by editing one key in that env's apps.yaml.
+*/ -}}
+{{- $env := .Values.env -}}
+{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" $env) | fromYaml -}}
+{{- $apps := .Files.Get (printf "envs/%s/apps.yaml" $env) | fromYaml -}}
+{{- $elements := list -}}
+{{- range $name, $a := $apps -}}
+  {{- if $a.enabled -}}
+    {{- $elements = append $elements (dict
+          "name" $name
+          "chart" $a.chart
+          "repoURL" $a.repoURL
+          "targetRevision" (toString $a.version)
+          "namespace" $a.namespace
+          "syncWave" (toString ($a.wave | default 0))) -}}
+  {{- end -}}
+{{- end }}
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -5,17 +26,12 @@ metadata:
   namespace: argocd
 spec:
   generators:
-    - git:
-        repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
-        revision: HEAD
-        files:
-          - path: 'platform-apps/*/{{ .Values.env }}/config.yaml'
-      selector:
-        matchLabels:
-          enabled: "true"
+    - list:
+        elements:
+          {{- toYaml $elements | nindent 10 }}
   template:
     metadata:
-      name: '{{ .Values.env }}-{{ "{{path[1]}}" }}'
+      name: '{{ .Values.env }}-{{ "{{name}}" }}'
       annotations:
         argocd.argoproj.io/sync-wave: '{{ "{{syncWave}}" }}'
     spec:
@@ -26,12 +42,12 @@ spec:
           targetRevision: '{{ "{{targetRevision}}" }}'
           helm:
             valueFiles:
-              - $values/platform-apps/{{ "{{path[1]}}" }}/{{ .Values.env }}/values.yaml
+              - $values/platform-apps/{{ "{{name}}" }}/{{ .Values.env }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
           targetRevision: HEAD
           ref: values
       destination:
-        server: {{ .Values.cluster }}
+        server: {{ $cluster.server }}
         namespace: '{{ "{{namespace}}" }}'
       # Fields set by the API server or cert controllers, not by charts:
       # without this they diff forever and self-heal re-applies every reconcile.
@@ -55,7 +71,7 @@ spec:
             - '.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches'
       syncPolicy:
         automated:
-          prune: {{ .Values.prune }}
+          prune: {{ $cluster.prune }}
           selfHeal: true
         syncOptions:
           - CreateNamespace=true

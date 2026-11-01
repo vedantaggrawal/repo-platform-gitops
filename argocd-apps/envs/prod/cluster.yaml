@@ -1,0 +1,8 @@
+# Cluster identity and env knobs for production (no cluster yet). Promotions into prod open a PR a human merges.
+name: prod
+server: https://kubernetes.default.svc
+prune: false
+rawManifests: false
+promotion:
+  upstream: stg
+  manual: true

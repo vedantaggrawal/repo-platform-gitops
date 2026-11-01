@@ -1,10 +1,3 @@
-# Default values — overridden by bootstrap helm parameters
+# The only input: which env this root app renders. Everything else about the env (cluster server, prune,
+# raw manifests, Kargo upstream) is argocd-apps/envs/<env>/cluster.yaml; the apps are envs/<env>/apps.yaml.
 env: dev
-cluster: https://kubernetes.default.svc
-prune: true
-
-# Envs that have raw manifests in this repo (manifests/<name>/<env>/,
-# network-policies/<env>/). The app-*.yaml Applications render only for these
-# envs; elsewhere they would point at a missing path (ComparisonError).
-rawManifestEnvs:
-  - local
