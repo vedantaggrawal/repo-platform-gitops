@@ -83,29 +83,8 @@ server:
             ttl                              = "15m"
           }
         }
-        # External Secrets Operator: read platform secrets and push generated
-        # ones. PushSecret writes custom_metadata first, so metadata needs
-        # create/update; no delete, so PushSecrets keep deletionPolicy None.
-        request "eso-policy" {
-          operation = "update"
-          path      = "sys/policy/eso"
-          data = {
-            policy = <<-EOP
-              path "secret/data/platform/*"     { capabilities = ["create", "read", "update"] }
-              path "secret/metadata/platform/*" { capabilities = ["create", "read", "update", "list"] }
-            EOP
-          }
-        }
-        request "eso-role" {
-          operation = "update"
-          path      = "auth/kubernetes/role/eso"
-          data = {
-            bound_service_account_names      = "local-external-secrets"
-            bound_service_account_namespaces = "external-secrets"
-            policies                         = "eso"
-            ttl                              = "1h"
-          }
-        }
+        # The eso policy and role (and every other consumer or tenant) are vault-config-operator
+        # resources under manifests/openbao-config; self-init stops at the bootstrap above.
       }
   dataStorage:
     size: 1Gi
