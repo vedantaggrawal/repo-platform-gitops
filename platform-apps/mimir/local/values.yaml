@@ -599,13 +599,14 @@ extraObjects:
                 labels: {severity: warning, service: argocd, layer: delivery}
                 annotations:
                   summary: "Argo CD sync operations failing in the last 30m (see name)"
-              - alert: ArgoReconcileLoop
-                # 2026-10: a CRD-default self-heal loop pinned the controller at 1.4 cores; a healthy app reconciles every few minutes.
-                expr: sum by (name) (rate(argocd_app_reconcile_count[10m])) > 0.2
+              - alert: ArgoSyncLoop
+                # 2026-10: a CRD-default self-heal loop re-synced an app continuously and pinned the controller at
+                # 1.4 cores. argocd_app_reconcile_count has no app label, so the signal is syncs per app.
+                expr: sum by (name, project) (rate(argocd_app_sync_total[10m])) > 0.05
                 for: 15m
                 labels: {severity: warning, service: argocd, layer: delivery}
                 annotations:
-                  summary: "Argo CD app reconciles more than 12 times a minute for 15m (see name): drift loop"
+                  summary: "Argo CD app syncs more than 3 times a minute for 15m (see name): self-heal or drift loop"
               - alert: ArgoGitSlow
                 expr: histogram_quantile(0.95, sum by (le) (rate(argocd_git_request_duration_seconds_bucket[10m]))) > 30
                 for: 15m
