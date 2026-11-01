@@ -1,0 +1,200 @@
+# Platform catalogue: the single pane for every platform (Helm chart) app.
+# The app-of-apps chart turns this into the platform ApplicationSet: one Application per app and env
+# where the env is listed with enabled: true. Chart values stay in platform-apps/<app>/<env>/values.yaml.
+# Keys: chart, repo, namespace, wave (Argo sync wave); envs.<env>: {version, enabled}; overrides.<env>
+# may replace chart/repo/namespace/wave for one env.
+platform:
+  alloy:
+    chart: alloy
+    repo: https://grafana.github.io/helm-charts
+    namespace: monitoring
+    wave: 0
+    envs:
+      local: {version: "1.9.0", enabled: false}
+  argo-rollouts:
+    chart: argo-rollouts
+    repo: https://argoproj.github.io/argo-helm
+    namespace: argo-rollouts
+    wave: 1
+    envs:
+      local: {version: "2.43.8", enabled: true}
+  authentik:
+    chart: authentik
+    repo: https://charts.goauthentik.io
+    namespace: authentik
+    wave: 3
+    envs:
+      local: {version: "2026.8.5", enabled: true}
+  cert-manager:
+    chart: cert-manager
+    repo: https://charts.jetstack.io
+    namespace: cert-manager
+    wave: -2
+    envs:
+      local: {version: "v1.17.4", enabled: false}
+  cilium:
+    chart: cilium
+    repo: https://helm.cilium.io/
+    namespace: kube-system
+    wave: -3
+    envs:
+      local: {version: "1.19.10", enabled: false}
+  cloudnative-pg:
+    chart: cloudnative-pg
+    repo: https://cloudnative-pg.github.io/charts
+    namespace: cnpg-system
+    wave: -1
+    envs:
+      local: {version: "0.29.1", enabled: true}
+  external-secrets:
+    chart: external-secrets
+    repo: https://charts.external-secrets.io
+    namespace: external-secrets
+    wave: -1
+    envs:
+      local: {version: "2.13.0", enabled: true}
+  grafana:
+    chart: grafana
+    repo: https://grafana-community.github.io/helm-charts
+    namespace: monitoring
+    wave: 0
+    envs:
+      local: {version: "14.0.1", enabled: true}
+  harbor:
+    chart: harbor
+    repo: https://helm.goharbor.io
+    namespace: harbor
+    wave: 1
+    envs:
+      local: {version: "1.19.4", enabled: true}
+  headlamp:
+    chart: headlamp
+    repo: https://kubernetes-sigs.github.io/headlamp/
+    namespace: headlamp
+    wave: 0
+    envs:
+      local: {version: "0.41.0", enabled: true}
+  jellyfin:
+    chart: jellyfin
+    repo: https://jellyfin.github.io/jellyfin-helm
+    namespace: jellyfin
+    wave: 0
+    envs:
+      local: {version: "3.4.0", enabled: true}
+  kargo:
+    chart: kargo
+    repo: ghcr.io/akuity/kargo-charts
+    namespace: kargo
+    wave: 1
+    envs:
+      local: {version: "1.11.8", enabled: true}
+  kube-prometheus-stack:
+    chart: kube-prometheus-stack
+    repo: https://prometheus-community.github.io/helm-charts
+    namespace: monitoring
+    wave: -1
+    envs:
+      local: {version: "51.10.0", enabled: false}
+      prod: {version: "51.10.0", enabled: true}
+      stg: {version: "51.10.0", enabled: true}
+  kube-state-metrics:
+    chart: kube-state-metrics
+    repo: https://prometheus-community.github.io/helm-charts
+    namespace: monitoring
+    wave: -2
+    envs:
+      local: {version: "5.37.0", enabled: true}
+  loki:
+    chart: loki
+    repo: https://grafana.github.io/helm-charts
+    namespace: monitoring
+    wave: -1
+    envs:
+      local: {version: "6.55.0", enabled: true}
+  meshery:
+    chart: meshery
+    repo: https://meshery.io/charts/
+    namespace: meshery
+    wave: 0
+    envs:
+      local: {version: "v1.0.74", enabled: false}
+  metrics-server:
+    chart: metrics-server
+    repo: https://kubernetes-sigs.github.io/metrics-server/
+    namespace: kube-system
+    wave: -2
+    envs:
+      dev: {version: "3.11.0", enabled: false}
+      local: {version: "3.11.0", enabled: true}
+      prod: {version: "3.11.0", enabled: true}
+      stg: {version: "3.11.0", enabled: true}
+  mimir:
+    chart: mimir-distributed
+    repo: https://grafana.github.io/helm-charts
+    namespace: monitoring
+    wave: -1
+    envs:
+      local: {version: "5.8.0", enabled: true}
+  minio:
+    chart: minio
+    repo: https://charts.min.io/
+    namespace: monitoring-storage
+    wave: -3
+    envs:
+      local: {version: "5.4.0", enabled: true}
+  node-exporter:
+    chart: prometheus-node-exporter
+    repo: https://prometheus-community.github.io/helm-charts
+    namespace: monitoring
+    wave: -2
+    envs:
+      local: {version: "4.60.1", enabled: true}
+  openbao:
+    chart: openbao
+    repo: https://openbao.github.io/openbao-helm
+    namespace: openbao
+    wave: 0
+    envs:
+      local: {version: "0.30.4", enabled: true}
+  opentelemetry-operator:
+    chart: opentelemetry-operator
+    repo: https://open-telemetry.github.io/opentelemetry-helm-charts
+    namespace: opentelemetry-operator
+    wave: -1
+    envs:
+      local: {version: "0.122.1", enabled: true}
+  otel-demo:
+    chart: opentelemetry-demo
+    repo: https://open-telemetry.github.io/opentelemetry-helm-charts
+    namespace: otel-demo
+    wave: 0
+    envs:
+      local: {version: "0.42.6", enabled: false}
+  prometheus-operator-crds:
+    chart: prometheus-operator-crds
+    repo: https://prometheus-community.github.io/helm-charts
+    namespace: monitoring
+    wave: -5
+    envs:
+      local: {version: "16.0.1", enabled: true}
+  tempo:
+    chart: tempo
+    repo: https://grafana.github.io/helm-charts
+    namespace: monitoring
+    wave: -1
+    envs:
+      local: {version: "1.24.4", enabled: true}
+  traefik:
+    chart: traefik
+    repo: https://traefik.github.io/charts
+    namespace: traefik
+    wave: -1
+    envs:
+      local: {version: "33.2.1", enabled: false}
+  vault-config-operator:
+    chart: vault-config-operator
+    repo: https://redhat-cop.github.io/vault-config-operator
+    namespace: openbao
+    wave: 1
+    envs:
+      local: {version: "v1.0.5", enabled: true}

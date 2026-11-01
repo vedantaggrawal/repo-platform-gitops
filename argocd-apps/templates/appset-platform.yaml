@@ -1,3 +1,24 @@
+{{- /*
+Platform ApplicationSet from the catalogue (argocd-apps/catalog.yaml): one element per app whose
+envs.<env> is enabled. Chart values stay in platform-apps/<app>/<env>/values.yaml. The element set is
+rendered here, so `helm template` shows exactly which Applications exist for an env.
+*/ -}}
+{{- $env := .Values.env -}}
+{{- $cat := .Files.Get "catalog.yaml" | fromYaml -}}
+{{- $elements := list -}}
+{{- range $name, $app := $cat.platform -}}
+  {{- $e := index ($app.envs | default dict) $env -}}
+  {{- if and $e $e.enabled -}}
+    {{- $o := index ($app.overrides | default dict) $env | default dict -}}
+    {{- $elements = append $elements (dict
+          "name" $name
+          "chart" ($o.chart | default $app.chart)
+          "repoURL" ($o.repo | default $app.repo)
+          "targetRevision" (toString $e.version)
+          "namespace" ($o.namespace | default $app.namespace)
+          "syncWave" (toString (hasKey $o "wave" | ternary $o.wave $app.wave))) -}}
+  {{- end -}}
+{{- end }}
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -5,17 +26,12 @@ metadata:
   namespace: argocd
 spec:
   generators:
-    - git:
-        repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
-        revision: HEAD
-        files:
-          - path: 'platform-apps/*/{{ .Values.env }}/config.yaml'
-      selector:
-        matchLabels:
-          enabled: "true"
+    - list:
+        elements:
+          {{- toYaml $elements | nindent 10 }}
   template:
     metadata:
-      name: '{{ .Values.env }}-{{ "{{path[1]}}" }}'
+      name: '{{ .Values.env }}-{{ "{{name}}" }}'
       annotations:
         argocd.argoproj.io/sync-wave: '{{ "{{syncWave}}" }}'
     spec:
@@ -26,7 +42,7 @@ spec:
           targetRevision: '{{ "{{targetRevision}}" }}'
           helm:
             valueFiles:
-              - $values/platform-apps/{{ "{{path[1]}}" }}/{{ .Values.env }}/values.yaml
+              - $values/platform-apps/{{ "{{name}}" }}/{{ .Values.env }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
           targetRevision: HEAD
           ref: values
