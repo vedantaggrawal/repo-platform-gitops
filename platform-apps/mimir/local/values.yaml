@@ -613,6 +613,44 @@ extraObjects:
                 labels: {severity: warning, service: argocd, layer: delivery}
                 annotations:
                   summary: "Argo CD git requests p95 above 30s for 15m: repo-server or GitHub slow"
+          - name: secrets-pki
+            rules:
+              - alert: CertificateExpiringSoon
+                expr: (certmanager_certificate_expiration_timestamp_seconds - time()) < 14 * 86400
+                for: 1h
+                labels: {severity: warning, service: cert-manager, layer: security}
+                annotations:
+                  summary: "A certificate expires in under 14 days and has not renewed (see namespace, name)"
+              - alert: CertificateNotReady
+                expr: certmanager_certificate_ready_status{condition="False"} == 1
+                for: 30m
+                labels: {severity: critical, service: cert-manager, layer: security}
+                annotations:
+                  summary: "A certificate has been not Ready for 30m (see namespace, name, issuer_name)"
+              - alert: ExternalSecretNotReady
+                expr: externalsecret_status_condition{condition="Ready",status="False"} == 1
+                for: 15m
+                labels: {severity: warning, service: external-secrets, layer: security}
+                annotations:
+                  summary: "An ExternalSecret is not syncing for 15m (see namespace, name): missing remote key, policy or store"
+              - alert: PushSecretNotReady
+                expr: pushsecret_status_condition{condition="Ready",status="False"} == 1
+                for: 15m
+                labels: {severity: warning, service: external-secrets, layer: security}
+                annotations:
+                  summary: "A PushSecret is failing for 15m (see namespace, name)"
+              - alert: SecretStoreNotReady
+                expr: clustersecretstore_status_condition{condition="Ready",status="False"} == 1
+                for: 5m
+                labels: {severity: critical, service: external-secrets, layer: security}
+                annotations:
+                  summary: "A ClusterSecretStore is not Ready: every secret behind it stops syncing"
+              - alert: OpenBaoSealed
+                expr: min(vault_core_unsealed) == 0
+                for: 5m
+                labels: {severity: critical, service: openbao, layer: security}
+                annotations:
+                  summary: "OpenBao is sealed; no secret can be read or written"
           # kubernetes-mixin recording rules the Kubernetes dashboards use (from the
           # kube-prometheus-stack chart, which no longer evaluates them here). Only
           # rules whose source metrics exist on this cluster.
