@@ -1,4 +1,5 @@
-{{- if has .Values.env .Values.rawManifestEnvs }}
+{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
+{{- if $cluster.rawManifests }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -13,7 +14,7 @@ spec:
     directory:
       recurse: true
   destination:
-    server: {{ .Values.cluster }}
+    server: {{ $cluster.server }}
     namespace: default
   # Aggregated ClusterRoles (aggregationRule set) get their rules filled in by the
   # clusterrole-aggregation controller; git leaves them empty, so ignore them.
@@ -24,7 +25,7 @@ spec:
         - 'select(.aggregationRule != null) | .rules'
   syncPolicy:
     automated:
-      prune: {{ .Values.prune }}
+      prune: {{ $cluster.prune }}
       selfHeal: true
     syncOptions:
       - CreateNamespace=true

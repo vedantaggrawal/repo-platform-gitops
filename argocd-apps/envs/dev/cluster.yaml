@@ -1,0 +1,7 @@
+# Cluster identity and env knobs for dev (no cluster yet: Applications render but target nothing).
+name: dev
+server: https://kubernetes.default.svc
+prune: true
+rawManifests: false
+promotion:
+  upstream: local

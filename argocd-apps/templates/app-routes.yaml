@@ -1,4 +1,5 @@
-{{- if has .Values.env .Values.rawManifestEnvs }}
+{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
+{{- if $cluster.rawManifests }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,11 +15,11 @@ spec:
     targetRevision: HEAD
     path: manifests/routes/{{ .Values.env }}
   destination:
-    server: {{ .Values.cluster }}
+    server: {{ $cluster.server }}
     namespace: argocd
   syncPolicy:
     automated:
-      prune: {{ .Values.prune }}
+      prune: {{ $cluster.prune }}
       selfHeal: true
     syncOptions:
       - CreateNamespace=true

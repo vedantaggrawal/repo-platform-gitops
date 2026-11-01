@@ -1,22 +1,22 @@
 {{- /*
-Platform ApplicationSet from the catalogue (argocd-apps/catalog.yaml): one element per app whose
-envs.<env> is enabled. Chart values stay in platform-apps/<app>/<env>/values.yaml. The element set is
-rendered here, so `helm template` shows exactly which Applications exist for an env.
+Platform ApplicationSet for one env, from argocd-apps/envs/<env>/apps.yaml (what runs there, at which chart
+version) and envs/<env>/cluster.yaml (where). One Application per enabled entry; chart values stay in
+platform-apps/<app>/<env>/values.yaml. The element set is rendered here, so `helm template` shows exactly
+which Applications an env has, and Kargo promotes a version by editing one key in that env's apps.yaml.
 */ -}}
 {{- $env := .Values.env -}}
-{{- $cat := .Files.Get "catalog.yaml" | fromYaml -}}
+{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" $env) | fromYaml -}}
+{{- $apps := .Files.Get (printf "envs/%s/apps.yaml" $env) | fromYaml -}}
 {{- $elements := list -}}
-{{- range $name, $app := $cat.platform -}}
-  {{- $e := index ($app.envs | default dict) $env -}}
-  {{- if and $e $e.enabled -}}
-    {{- $o := index ($app.overrides | default dict) $env | default dict -}}
+{{- range $name, $a := $apps -}}
+  {{- if $a.enabled -}}
     {{- $elements = append $elements (dict
           "name" $name
-          "chart" ($o.chart | default $app.chart)
-          "repoURL" ($o.repo | default $app.repo)
-          "targetRevision" (toString $e.version)
-          "namespace" ($o.namespace | default $app.namespace)
-          "syncWave" (toString (hasKey $o "wave" | ternary $o.wave $app.wave))) -}}
+          "chart" $a.chart
+          "repoURL" $a.repoURL
+          "targetRevision" (toString $a.version)
+          "namespace" $a.namespace
+          "syncWave" (toString ($a.wave | default 0))) -}}
   {{- end -}}
 {{- end }}
 apiVersion: argoproj.io/v1alpha1
@@ -47,7 +47,7 @@ spec:
           targetRevision: HEAD
           ref: values
       destination:
-        server: {{ .Values.cluster }}
+        server: {{ $cluster.server }}
         namespace: '{{ "{{namespace}}" }}'
       # Fields set by the API server or cert controllers, not by charts:
       # without this they diff forever and self-heal re-applies every reconcile.
@@ -71,7 +71,7 @@ spec:
             - '.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches'
       syncPolicy:
         automated:
-          prune: {{ .Values.prune }}
+          prune: {{ $cluster.prune }}
           selfHeal: true
         syncOptions:
           - CreateNamespace=true
