@@ -1,5 +1,6 @@
 # Platform ApplicationSet: one Application per entry of argocd-apps/envs/<env>/apps.yaml, for every
-# env whose cluster.yaml says active: true. Plain Argo CD, nothing substituted.
+# env whose cluster.yaml says active: true. Plain Argo CD, applied as is by the <env>-appsets Application;
+# no Helm anywhere in this path.
 #   merge  joins each env's cluster.yaml (env, server, prune) with its apps.yaml (apps map) on `env`
 #   list   fans the apps map out: elementsYaml builds one element per app (name + its keys)
 #   matrix gives every element the env's cluster facts next to its own app facts

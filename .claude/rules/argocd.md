@@ -3,7 +3,7 @@ paths:
   - "argocd-apps/**"
   - "bootstrap/**"
   - "manifests/**"
-  - "argocd-apps/appsets/**"
+  - "manifests/appsets/**"
   - "argocd-apps/envs/**"
 ---
 # Argo CD
@@ -14,7 +14,7 @@ paths:
 - **App workloads are multi-source:** `repo-helm-chart`, plus `$values` from `repo-app-gitops` at `apps/*/<env>`. A new app is a new directory, with no AppSet edit.
 - **prod runs with `prune: false`.** *Why:* a deleted file must not delete prod workloads.
 - **Disable, don't delete:** set `enabled: false` on the app's entry in `argocd-apps/envs/<env>/apps.yaml`, with a comment saying why.
-- **ApplicationSets are plain Argo CD manifests** (`argocd-apps/appsets/`, Go template, native generators), included verbatim by the control-plane root app. *Why:* two template languages in one file are unreadable and unlintable.
+- **ApplicationSets are plain Argo CD manifests** (`manifests/appsets/<env>/`, Go template, native generators), applied as they are by the control-plane `app-appsets` Application; the Helm chart never renders them. *Why:* two template languages in one file are unreadable and unlintable.
 - **Chart version and values revision are pinned together** (`version` + `valuesRef` per app and env). *Why:* a rollback or redeploy must never render an old chart with the newest values; config and code move as one.
 - **Argo CD 2.10: ESO, ESO-generator and CNPG CRs never go in a ServerSideApply app.**
   - The platform AppSet forces SSA (client-side apply overflows the last-applied annotation on large CRDs), and these CRs make the diff panic.
