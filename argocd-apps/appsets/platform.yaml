@@ -1,0 +1,105 @@
+# Platform ApplicationSet: one Application per entry of argocd-apps/envs/<env>/apps.yaml, for every
+# env whose cluster.yaml says active: true. Plain Argo CD, nothing substituted.
+#   merge  joins each env's cluster.yaml (env, server, prune) with its apps.yaml (apps map) on `env`
+#   list   fans the apps map out: elementsYaml builds one element per app (name + its keys)
+#   matrix gives every element the env's cluster facts next to its own app facts
+# Entries with enabled: false stay in the file but produce no Application. version and valuesRef pin
+# the chart and the values revision together, so a rollback never mixes an old chart with new values.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-onboarding
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - merge:
+              mergeKeys: [env]
+              generators:
+                - git:
+                    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+                    revision: HEAD
+                    files:
+                      - path: argocd-apps/envs/*/cluster.yaml
+                  selector:
+                    matchLabels:
+                      active: "true"
+                - git:
+                    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+                    revision: HEAD
+                    files:
+                      - path: argocd-apps/envs/*/apps.yaml
+          - list:
+              elementsYaml: |
+                {{- $out := list }}
+                {{- range $name, $app := .apps }}
+                {{-   $out = append $out (merge (dict "name" $name) $app) }}
+                {{- end }}
+                {{ toJson $out }}
+            selector:
+              matchExpressions:
+                - key: enabled
+                  operator: NotIn
+                  values: ["false"]
+  template:
+    metadata:
+      name: '{{ .env }}-{{ .name }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{ .wave }}'
+    spec:
+      project: platform
+      sources:
+        - chart: '{{ .chart }}'
+          repoURL: '{{ .repoURL }}'
+          targetRevision: '{{ .version }}'
+          helm:
+            valueFiles:
+              - $values/platform-apps/{{ .name }}/{{ .env }}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: '{{ .valuesRef }}'
+          ref: values
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ .namespace }}'
+      # Fields set by the API server or cert controllers, not by charts:
+      # without this they diff forever and self-heal re-applies every reconcile.
+      ignoreDifferences:
+        - group: '*'
+          kind: '*'
+          jqPathExpressions:
+            - '.spec.template.spec.containers[]?.resources | select(. == {})'
+            - '.spec.template.spec.initContainers[]?.resources | select(. == {})'
+            - '.webhooks[]?.clientConfig.caBundle'
+        # Some charts omit Gateway API defaults the API server fills in; drop a
+        # field only when it holds its default so real changes still diff.
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          jqPathExpressions:
+            - '.spec.parentRefs[]? | select(.group == "gateway.networking.k8s.io") | .group'
+            - '.spec.parentRefs[]? | select(.kind == "Gateway") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.group == "") | .group'
+            - '.spec.rules[]?.backendRefs[]? | select(.kind == "Service") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.weight == 1) | .weight'
+            - '.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches'
+      syncPolicy:
+        automated:
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 2m
+  # Booleans cannot be templated inside `template` (every templated field is a string);
+  # templatePatch is rendered as YAML, so prune keeps its type.
+  templatePatch: |
+    spec:
+      syncPolicy:
+        automated:
+          prune: {{ .prune }}
