@@ -1,8 +1,8 @@
-# Platform ApplicationSet: one Application per file in argocd-apps/envs/__ENV__/apps/*.yaml.
-# Pure Argo CD: Go template, two Git files generators in a matrix. The Helm chart only
-# substitutes __ENV__ (templates/appset-platform.yaml). Param precedence in a matrix is
-# first child wins, so the app files come first (their .path is the app's) and
-# envs/__ENV__/cluster.yaml second (env, server, prune).
+# Platform ApplicationSet: one Application per app file, per cluster Argo CD knows.
+# Plain Argo CD, nothing substituted: the env comes from the cluster Secret's `env` label
+# (manifests/argocd-clusters/), the app list from argocd-apps/envs/<env>/apps/*.yaml.
+# Matrix param precedence is first child wins: the cluster comes first (name, server,
+# metadata.labels.*), the app file second (.path, chart, repoURL, version, namespace, wave).
 #
 # App file (envs/<env>/apps/<app>.yaml):   chart, repoURL, version, namespace, wave
 #   disable without deleting:              enabled: false   (+ a comment saying why)
@@ -10,7 +10,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: __ENV__-platform-onboarding
+  name: platform-onboarding
   namespace: argocd
 spec:
   goTemplate: true
@@ -18,24 +18,24 @@ spec:
   generators:
     - matrix:
         generators:
+          - clusters:
+              selector:
+                matchExpressions:
+                  - key: env
+                    operator: Exists
           - git:
               repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
               revision: HEAD
               files:
-                - path: argocd-apps/envs/__ENV__/apps/*.yaml
+                - path: argocd-apps/envs/{{ .metadata.labels.env }}/apps/*.yaml
             selector:
               matchExpressions:
                 - key: enabled
                   operator: NotIn
                   values: ["false"]
-          - git:
-              repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
-              revision: HEAD
-              files:
-                - path: argocd-apps/envs/__ENV__/cluster.yaml
   template:
     metadata:
-      name: '{{ .env }}-{{ .path.filename | trimSuffix ".yaml" }}'
+      name: '{{ .metadata.labels.env }}-{{ .path.filename | trimSuffix ".yaml" }}'
       annotations:
         argocd.argoproj.io/sync-wave: '{{ .wave }}'
     spec:
@@ -46,7 +46,7 @@ spec:
           targetRevision: '{{ .version }}'
           helm:
             valueFiles:
-              - $values/platform-apps/{{ .path.filename | trimSuffix ".yaml" }}/{{ .env }}/values.yaml
+              - $values/platform-apps/{{ .path.filename | trimSuffix ".yaml" }}/{{ .metadata.labels.env }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
           targetRevision: HEAD
           ref: values
@@ -91,4 +91,4 @@ spec:
     spec:
       syncPolicy:
         automated:
-          prune: {{ .prune }}
+          prune: {{ .metadata.labels.prune }}

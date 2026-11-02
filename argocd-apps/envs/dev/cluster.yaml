@@ -1,5 +1,6 @@
 # Cluster identity and env knobs for dev (no cluster yet: Applications render but target nothing).
 env: dev
+controlPlane: false
 server: https://kubernetes.default.svc
 prune: true
 rawManifests: false

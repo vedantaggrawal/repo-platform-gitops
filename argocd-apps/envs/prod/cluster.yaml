@@ -1,5 +1,6 @@
 # Cluster identity and env knobs for production (no cluster yet). Promotions into prod open a PR a human merges.
 env: prod
+controlPlane: false
 server: https://kubernetes.default.svc
 prune: false
 rawManifests: false

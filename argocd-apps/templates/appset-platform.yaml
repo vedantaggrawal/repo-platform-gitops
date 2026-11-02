@@ -1,2 +1,5 @@
-{{- /* The platform ApplicationSet is a plain Argo CD manifest (appsets/platform.yaml); only the env is substituted. */ -}}
-{{ .Files.Get "appsets/platform.yaml" | replace "__ENV__" .Values.env }}
+{{- /* The platform ApplicationSet (appsets/platform.yaml) is a plain Argo CD manifest included verbatim, once, on the control plane. */ -}}
+{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
+{{- if $cluster.controlPlane }}
+{{ .Files.Get "appsets/platform.yaml" }}
+{{- end }}
