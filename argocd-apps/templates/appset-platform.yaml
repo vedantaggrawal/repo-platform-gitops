@@ -25,6 +25,11 @@ metadata:
   name: {{ .Values.env }}-platform-onboarding
   namespace: argocd
 spec:
+  # Migration step: the set is about to be replaced by a renamed one (cluster-generator routing).
+  # With this flag its Applications drop their finalizers, so pruning the set leaves the cluster
+  # resources in place for the successor to adopt. Remove together with the rename.
+  syncPolicy:
+    preserveResourcesOnDeletion: true
   generators:
     - list:
         elements:
