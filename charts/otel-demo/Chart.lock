@@ -1,0 +1,6 @@
+dependencies:
+- name: opentelemetry-demo
+  repository: https://open-telemetry.github.io/opentelemetry-helm-charts
+  version: 0.42.6
+digest: sha256:17ada87936b1ac3e50cae35f785a6eeb35a06b63ef04bc14172ad49541fb8b26
+generated: "2026-11-03T00:16:58.852075+01:00"

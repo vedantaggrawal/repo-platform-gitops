@@ -1,0 +1,214 @@
+alloy:
+  # Alloy — unified collector (metrics + logs + traces).
+  # Local: DaemonSet only (each node scrapes its own pods + tails its own
+  # pod stdout via /var/log). OTLP receiver also runs per-node.
+  # Prod: add a separate Deployment for cluster-wide endpoints, turn on
+  # clustering so scrape targets shard automatically (controller.replicas 3+).
+
+  controller:
+    type: daemonset
+
+  alloy:
+    configMap:
+      create: true
+      content: |
+        logging {
+          level  = "info"
+          format = "json"
+        }
+
+        // ─── Metrics: ServiceMonitor/PodMonitor CRDs → remote_write to Mimir ───
+        // CRDs come from the prometheus-operator-crds chart (no operator
+        // controller). Alloy's operator.servicemonitors component watches
+        // ServiceMonitor objects from every chart that ships one (cilium,
+        // hubble, KSM, cert-manager, etc.).
+        prometheus.operator.servicemonitors "default" {
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+        prometheus.operator.podmonitors "default" {
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+        prometheus.remote_write "mimir" {
+          endpoint {
+            url = "http://local-mimir-nginx.monitoring.svc.cluster.local/api/v1/push"
+            // X-Scope-OrgID plumbed for future multi-tenant; safe with
+            // multitenancy_enabled=false (Mimir ignores it).
+            headers = {
+              "X-Scope-OrgID" = "anonymous",
+            }
+          }
+        }
+
+        // ─── Cluster-component scrapes (no chart-provided SMs) ───
+        // apiserver / kubelet / cadvisor / coredns came from the kube-prom-stack
+        // bundle. Now scraped directly — extra RBAC for node-role discovery
+        // lives in manifests/alloy-rbac/local/clusterrole.yaml.
+
+        discovery.kubernetes "kube_endpoints" {
+          role = "endpoints"
+        }
+        discovery.kubernetes "kube_nodes" {
+          role = "node"
+        }
+
+        discovery.relabel "apiserver" {
+          targets = discovery.kubernetes.kube_endpoints.targets
+          rule {
+            source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+            regex         = "default;kubernetes;https"
+            action        = "keep"
+          }
+        }
+        prometheus.scrape "apiserver" {
+          job_name          = "apiserver"
+          targets           = discovery.relabel.apiserver.output
+          scheme            = "https"
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          tls_config {
+            ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            insecure_skip_verify = true
+          }
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+
+        prometheus.scrape "kubelet" {
+          job_name          = "kubelet"
+          targets           = discovery.kubernetes.kube_nodes.targets
+          scheme            = "https"
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          tls_config {
+            ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            insecure_skip_verify = true
+          }
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+
+        prometheus.scrape "cadvisor" {
+          job_name          = "cadvisor"
+          targets           = discovery.kubernetes.kube_nodes.targets
+          scheme            = "https"
+          metrics_path      = "/metrics/cadvisor"
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          tls_config {
+            ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+            insecure_skip_verify = true
+          }
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+
+        discovery.relabel "coredns" {
+          targets = discovery.kubernetes.kube_endpoints.targets
+          rule {
+            source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_service_name", "__meta_kubernetes_endpoint_port_name"]
+            regex         = "kube-system;kube-dns;metrics"
+            action        = "keep"
+          }
+        }
+        prometheus.scrape "coredns" {
+          job_name   = "coredns"
+          targets    = discovery.relabel.coredns.output
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+
+        // ─── Logs: pod stdout tail → Loki ───
+        discovery.kubernetes "pods" {
+          role = "pod"
+        }
+        discovery.relabel "pods" {
+          targets = discovery.kubernetes.pods.targets
+          rule {
+            source_labels = ["__meta_kubernetes_namespace"]
+            target_label  = "namespace"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_name"]
+            target_label  = "pod"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            target_label  = "container"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_node_name"]
+            target_label  = "node"
+          }
+        }
+        loki.source.kubernetes "pods" {
+          targets    = discovery.relabel.pods.output
+          forward_to = [loki.write.loki.receiver]
+        }
+        loki.write "loki" {
+          endpoint {
+            url = "http://local-loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
+          }
+        }
+
+        // ─── OTLP receiver: apps push metrics/logs/traces here ───
+        otelcol.receiver.otlp "default" {
+          grpc {
+            endpoint = "0.0.0.0:4317"
+          }
+          http {
+            endpoint = "0.0.0.0:4318"
+          }
+          output {
+            metrics = [otelcol.processor.batch.default.input]
+            logs    = [otelcol.processor.batch.default.input]
+            traces  = [otelcol.processor.batch.default.input]
+          }
+        }
+
+        otelcol.processor.batch "default" {
+          output {
+            metrics = [otelcol.exporter.prometheus.mimir.input]
+            logs    = [otelcol.exporter.loki.loki.input]
+            traces  = [otelcol.exporter.otlp.tempo.input]
+          }
+        }
+
+        // OTel → Mimir (via prom remote_write)
+        otelcol.exporter.prometheus "mimir" {
+          forward_to = [prometheus.remote_write.mimir.receiver]
+        }
+        // OTel → Loki (via Loki push)
+        otelcol.exporter.loki "loki" {
+          forward_to = [loki.write.loki.receiver]
+        }
+        // OTel → Tempo (native OTLP)
+        otelcol.exporter.otlp "tempo" {
+          client {
+            endpoint = "local-tempo.monitoring.svc.cluster.local:4317"
+            tls {
+              insecure = true
+            }
+          }
+        }
+
+    # OTLP ports exposed on the pod so apps can push from anywhere on the node.
+    extraPorts:
+      - name: otlp-grpc
+        port: 4317
+        targetPort: 4317
+        protocol: TCP
+      - name: otlp-http
+        port: 4318
+        targetPort: 4318
+        protocol: TCP
+
+    clustering:
+      enabled: false
+
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        memory: 512Mi
+
+  # Expose UI + OTLP receivers cluster-wide via Service.
+  service:
+    enabled: true
+    type: ClusterIP
+
+  serviceMonitor:
+    enabled: false

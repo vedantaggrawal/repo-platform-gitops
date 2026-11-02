@@ -1,0 +1,71 @@
+jellyfin:
+  # Jellyfin — official community Helm chart
+  # https://github.com/jellyfin/jellyfin-helm
+
+  image:
+    repository: docker.io/jellyfin/jellyfin
+    pullPolicy: IfNotPresent
+
+  # Persist everything on the kind node via local-path-provisioner.
+  # The standard class reclaims with Delete, so deleting a PVC wipes its data.
+  # config and media are annotated so Argo CD never prunes them or deletes them
+  # with the Application (e.g. when the app is disabled); cache is disposable.
+  persistence:
+    config:
+      enabled: true
+      accessMode: ReadWriteOnce
+      storageClass: standard
+      size: 5Gi
+      annotations:
+        helm.sh/resource-policy: keep
+        argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    cache:
+      enabled: true
+      type: pvc
+      accessMode: ReadWriteOnce
+      storageClass: standard
+      size: 5Gi
+    media:
+      enabled: true
+      type: pvc
+      accessMode: ReadWriteOnce
+      storageClass: standard
+      size: 20Gi
+      annotations:
+        helm.sh/resource-policy: keep
+        argocd.argoproj.io/sync-options: Delete=false,Prune=false
+
+  service:
+    type: ClusterIP
+    port: 8096
+
+  ingress:
+    enabled: false
+
+  # Run as non-root with a stable UID; fsGroup makes PVCs writable.
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      memory: 768Mi
+
+  jellyfin:
+    env:
+      - name: JELLYFIN_PublishedServerUrl
+        value: https://local.jellyfin.internal:10443
+      - name: JELLYFIN_CACHE_DIR
+        value: /cache
+      - name: TZ
+        value: Europe/Amsterdam
+
+  # Route on the Envoy Gateway.
+  httpRoute:
+    enabled: true
+    parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
+    hostnames: [local.jellyfin.internal]

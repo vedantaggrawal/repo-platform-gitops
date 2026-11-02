@@ -1,0 +1,9 @@
+apiVersion: v2
+name: metrics-server
+description: eve platform artefact for metrics-server (upstream chart metrics-server 3.11.0 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: metrics-server
+    version: "3.11.0"
+    repository: https://kubernetes-sigs.github.io/metrics-server/

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: alloy
+description: eve platform artefact for alloy (upstream chart alloy 1.9.0 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: alloy
+    version: "1.9.0"
+    repository: https://grafana.github.io/helm-charts

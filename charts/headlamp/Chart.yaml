@@ -1,0 +1,9 @@
+apiVersion: v2
+name: headlamp
+description: eve platform artefact for headlamp (upstream chart headlamp 0.41.0 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: headlamp
+    version: "0.41.0"
+    repository: https://kubernetes-sigs.github.io/headlamp/

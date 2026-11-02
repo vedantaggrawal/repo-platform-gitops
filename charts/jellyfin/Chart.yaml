@@ -1,0 +1,9 @@
+apiVersion: v2
+name: jellyfin
+description: eve platform artefact for jellyfin (upstream chart jellyfin 3.4.0 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: jellyfin
+    version: "3.4.0"
+    repository: https://jellyfin.github.io/jellyfin-helm
