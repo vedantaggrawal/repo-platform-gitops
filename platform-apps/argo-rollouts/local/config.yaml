@@ -1,6 +1,0 @@
-enabled: "true"
-chart: argo-rollouts
-repoURL: https://argoproj.github.io/argo-helm
-targetRevision: "2.43.8"   # app v1.10.1
-namespace: argo-rollouts   # the plugin config must live here (argo-rollouts-config)
-syncWave: "1"
