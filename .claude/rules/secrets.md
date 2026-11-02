@@ -1,7 +1,7 @@
 ---
 paths:
   - "stages/*/manifests/**"
-  - "platform-apps/**"
+  - "stages/*/values/**"
 ---
 # Secrets
 

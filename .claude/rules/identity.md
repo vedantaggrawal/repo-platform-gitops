@@ -1,8 +1,8 @@
 ---
 paths:
-  - "platform-apps/authentik/**"
+  - "stages/*/values/authentik.yaml"
   - "stages/*/manifests/authentik-config/**"
-  - "platform-apps/{grafana,kargo,harbor,minio,headlamp,openbao}/**"
+  - "stages/*/values/{grafana,kargo,harbor,minio,headlamp,openbao}.yaml"
 ---
 # Identity and SSO
 

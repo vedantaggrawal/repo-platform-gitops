@@ -1,6 +1,6 @@
 ---
 paths:
-  - "platform-apps/{grafana,loki,mimir,tempo,minio,opentelemetry-operator,prometheus-operator-crds,kube-state-metrics,metrics-server,alloy,kube-prometheus-stack}/**"
+  - "stages/*/values/{grafana,loki,mimir,tempo,minio,opentelemetry-operator,prometheus-operator-crds,kube-state-metrics,metrics-server,alloy,kube-prometheus-stack}.yaml"
   - "stages/*/manifests/{otel,config-drift}/**"
 ---
 # Observability

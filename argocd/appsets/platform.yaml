@@ -1,4 +1,4 @@
-# Platform ApplicationSet: one Application per entry of argocd-apps/envs/<stage>/apps.yaml, for every
+# Platform ApplicationSet: one Application per entry of stages/<stage>/apps.yaml, for every
 # stage whose cluster.yaml says active: true. Plain Argo CD, nothing substituted; the stage is the folder.
 #   inner matrix  apps.yaml (one param set per stage; .path.basename is the stage) x that stage's
 #                 cluster.yaml (server, prune), path templated from the first child
@@ -24,12 +24,12 @@ spec:
                     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
                     revision: HEAD
                     files:
-                      - path: argocd-apps/envs/*/apps.yaml
+                      - path: stages/*/apps.yaml
                 - git:
                     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
                     revision: HEAD
                     files:
-                      - path: argocd-apps/envs/{{ .path.basename }}/cluster.yaml
+                      - path: argocd-apps/envs/{{ .path.basename }}/cluster.yaml   # moves to stages/<stage>/ with the chart removal
                   selector:
                     matchLabels:
                       active: "true"
@@ -58,7 +58,7 @@ spec:
           targetRevision: '{{ .version }}'
           helm:
             valueFiles:
-              - $values/platform-apps/{{ .name }}/{{ .path.basename }}/values.yaml
+              - $values/stages/{{ .path.basename }}/values/{{ .name }}.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
           targetRevision: HEAD
           ref: values
@@ -115,7 +115,7 @@ spec:
           helm:
             skipCrds: {{ .skipCrds }}
             valueFiles:
-              - $values/platform-apps/{{ .name }}/{{ .path.basename }}/values.yaml
+              - $values/stages/{{ .path.basename }}/values/{{ .name }}.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
           targetRevision: HEAD
           ref: values

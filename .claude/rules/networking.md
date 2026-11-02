@@ -2,7 +2,7 @@
 paths:
   - "stages/*/manifests/cluster-dns/**"
   - "stages/*/manifests/network-policies/**"
-  - "platform-apps/{cilium,traefik}/**"
+  - "stages/*/values/{cilium,traefik}.yaml"
 ---
 # Networking (local env)
 
