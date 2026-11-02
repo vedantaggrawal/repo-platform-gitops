@@ -1,0 +1,5 @@
+chart: vault-config-operator
+repoURL: https://redhat-cop.github.io/vault-config-operator
+version: "v1.0.5"
+namespace: openbao
+wave: 1

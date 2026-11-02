@@ -1,5 +1,5 @@
 # Cluster identity and env knobs for the local kind cluster (control plane: hosts Argo CD and Kargo).
-name: local
+env: local
 server: https://kubernetes.default.svc
 prune: true
 # Raw manifests (manifests/<name>/local, network-policies/local) exist for this env: render the app-*.yaml apps.

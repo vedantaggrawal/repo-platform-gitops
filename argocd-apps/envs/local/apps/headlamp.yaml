@@ -1,0 +1,5 @@
+chart: headlamp
+repoURL: https://kubernetes-sigs.github.io/headlamp/
+version: "0.41.0"
+namespace: headlamp
+wave: 0

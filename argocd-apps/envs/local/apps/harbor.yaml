@@ -1,0 +1,5 @@
+chart: harbor
+repoURL: https://helm.goharbor.io
+version: "1.19.4"
+namespace: harbor
+wave: 1

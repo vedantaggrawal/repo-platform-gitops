@@ -1,0 +1,6 @@
+chart: cilium
+repoURL: https://helm.cilium.io/
+version: "1.19.10"
+namespace: kube-system
+wave: -3
+enabled: false

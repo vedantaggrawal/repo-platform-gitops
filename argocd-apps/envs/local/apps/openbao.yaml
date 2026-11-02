@@ -1,0 +1,5 @@
+chart: openbao
+repoURL: https://openbao.github.io/openbao-helm
+version: "0.30.4"
+namespace: openbao
+wave: 0

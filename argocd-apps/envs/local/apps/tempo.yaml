@@ -1,0 +1,5 @@
+chart: tempo
+repoURL: https://grafana.github.io/helm-charts
+version: "1.24.4"
+namespace: monitoring
+wave: -1

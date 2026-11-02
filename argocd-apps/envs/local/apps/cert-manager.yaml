@@ -1,0 +1,6 @@
+chart: cert-manager
+repoURL: https://charts.jetstack.io
+version: "v1.17.4"
+namespace: cert-manager
+wave: -2
+enabled: false

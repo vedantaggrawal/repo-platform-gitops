@@ -1,0 +1,5 @@
+chart: authentik
+repoURL: https://charts.goauthentik.io
+version: "2026.8.5"
+namespace: authentik
+wave: 3

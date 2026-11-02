@@ -1,0 +1,5 @@
+chart: mimir-distributed
+repoURL: https://grafana.github.io/helm-charts
+version: "5.8.0"
+namespace: monitoring
+wave: -1

@@ -1,6 +1,6 @@
 ---
 paths:
-  - "argocd-apps/envs/*/apps.yaml"
+  - "argocd-apps/envs/*/apps/*.yaml"
   - "platform-apps/kargo/**"
 ---
 # Delivery and versions

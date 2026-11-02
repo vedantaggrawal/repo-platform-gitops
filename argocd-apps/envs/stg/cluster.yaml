@@ -1,5 +1,5 @@
 # Cluster identity and env knobs for staging (no cluster yet).
-name: stg
+env: stg
 server: https://kubernetes.default.svc
 prune: true
 rawManifests: false
