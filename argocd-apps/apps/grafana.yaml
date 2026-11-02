@@ -1,0 +1,6 @@
+chart: grafana
+repoURL: https://grafana-community.github.io/helm-charts
+namespace: monitoring
+wave: 0
+versions:
+  local: "14.0.1"

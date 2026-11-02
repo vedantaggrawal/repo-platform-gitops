@@ -1,0 +1,8 @@
+chart: kube-prometheus-stack
+repoURL: https://prometheus-community.github.io/helm-charts
+namespace: monitoring
+wave: -1
+versions:
+  # local: "51.10.0"   # disabled
+  stg: "51.10.0"
+  prod: "51.10.0"

@@ -1,0 +1,6 @@
+chart: minio
+repoURL: https://charts.min.io/
+namespace: monitoring-storage
+wave: -3
+versions:
+  local: "5.4.0"

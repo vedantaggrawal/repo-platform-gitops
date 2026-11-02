@@ -1,0 +1,6 @@
+chart: loki
+repoURL: https://grafana.github.io/helm-charts
+namespace: monitoring
+wave: -1
+versions:
+  local: "6.55.0"

@@ -1,0 +1,6 @@
+chart: opentelemetry-demo
+repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+namespace: otel-demo
+wave: 0
+versions: {}
+  # local: "0.42.6"   # disabled

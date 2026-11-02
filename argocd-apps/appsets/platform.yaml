@@ -1,0 +1,97 @@
+# Platform ApplicationSet: one Application per app file, per cluster Argo CD knows.
+# Plain Argo CD, nothing substituted. The cluster generator yields every cluster whose Secret
+# (manifests/argocd-clusters/) carries an `env` label; the Git files generator yields one param set
+# per argocd-apps/apps/<app>.yaml. An app runs in an env when its file has versions.<env>; that
+# entry is the exact chart version there. Matrix params: first child wins, so the cluster's
+# name/server/metadata.labels.* come first and the app file's chart/repoURL/namespace/wave/versions
+# plus .path (the app's filename) second.
+#
+# App file (argocd-apps/apps/<app>.yaml):
+#   chart, repoURL, namespace, wave          once per app
+#   versions: {local: "1.2.3", prod: "1.2.0"} where it runs; comment an env out to disable it (say why)
+# Chart values stay in platform-apps/<app>/<env>/values.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-onboarding
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchExpressions:
+                  - key: env
+                    operator: Exists
+          - git:
+              repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+              revision: HEAD
+              files:
+                - path: argocd-apps/apps/*.yaml
+            # Only the apps that list this cluster's env (selectors see flattened keys).
+            selector:
+              matchExpressions:
+                - key: versions.{{ .metadata.labels.env }}
+                  operator: Exists
+  template:
+    metadata:
+      name: '{{ .metadata.labels.env }}-{{ .path.filename | trimSuffix ".yaml" }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{ .wave }}'
+    spec:
+      project: platform
+      sources:
+        - chart: '{{ .chart }}'
+          repoURL: '{{ .repoURL }}'
+          targetRevision: '{{ index .versions .metadata.labels.env }}'
+          helm:
+            valueFiles:
+              - $values/platform-apps/{{ .path.filename | trimSuffix ".yaml" }}/{{ .metadata.labels.env }}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ .namespace }}'
+      # Fields set by the API server or cert controllers, not by charts:
+      # without this they diff forever and self-heal re-applies every reconcile.
+      ignoreDifferences:
+        - group: '*'
+          kind: '*'
+          jqPathExpressions:
+            - '.spec.template.spec.containers[]?.resources | select(. == {})'
+            - '.spec.template.spec.initContainers[]?.resources | select(. == {})'
+            - '.webhooks[]?.clientConfig.caBundle'
+        # Some charts omit Gateway API defaults the API server fills in; drop a
+        # field only when it holds its default so real changes still diff.
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          jqPathExpressions:
+            - '.spec.parentRefs[]? | select(.group == "gateway.networking.k8s.io") | .group'
+            - '.spec.parentRefs[]? | select(.kind == "Gateway") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.group == "") | .group'
+            - '.spec.rules[]?.backendRefs[]? | select(.kind == "Service") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.weight == 1) | .weight'
+            - '.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches'
+      syncPolicy:
+        automated:
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 2m
+  # Booleans cannot be templated inside `template` (every templated field is a string);
+  # templatePatch is rendered as YAML, so prune keeps its type.
+  templatePatch: |
+    spec:
+      syncPolicy:
+        automated:
+          prune: {{ .metadata.labels.prune }}

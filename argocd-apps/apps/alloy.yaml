@@ -1,0 +1,6 @@
+chart: alloy
+repoURL: https://grafana.github.io/helm-charts
+namespace: monitoring
+wave: 0
+versions: {}
+  # local: "1.9.0"   # disabled

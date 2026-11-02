@@ -1,0 +1,6 @@
+chart: kargo
+repoURL: ghcr.io/akuity/kargo-charts
+namespace: kargo
+wave: 1
+versions:
+  local: "1.11.8"
