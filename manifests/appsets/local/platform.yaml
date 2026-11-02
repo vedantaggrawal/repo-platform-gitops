@@ -4,8 +4,8 @@
 #   merge  joins each env's cluster.yaml (env, server, prune) with its apps.yaml (apps map) on `env`
 #   list   fans the apps map out: elementsYaml builds one element per app (name + its keys)
 #   matrix gives every element the env's cluster facts next to its own app facts
-# Entries with enabled: false stay in the file but produce no Application. version and valuesRef pin
-# the chart and the values revision together, so a rollback never mixes an old chart with new values.
+# Entries with enabled: false stay in the file but produce no Application. The stage's values file is
+# written only by promotion (copied forward with the chart version), so HEAD is the stage's exact state.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -60,7 +60,7 @@ spec:
             valueFiles:
               - $values/platform-apps/{{ .name }}/{{ .env }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
-          targetRevision: '{{ .valuesRef }}'
+          targetRevision: HEAD
           ref: values
       destination:
         server: '{{ .server }}'

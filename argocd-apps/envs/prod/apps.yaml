@@ -2,17 +2,16 @@
 # ApplicationSet (argocd-apps/appsets/platform.yaml) fans this file out: one Application per entry.
 # Keys per app:
 #   chart, repoURL   the upstream chart            namespace, wave   where and in which order
-#   version          exact chart version           valuesRef         git revision of platform-apps/<app>/prod/values.yaml
+#   version          exact chart version (Kargo writes it; a human edits it only in the first stage)
 #   enabled: false   keep the entry, deploy nothing (say why)
-# version and valuesRef move together: Kargo promotes both (freight = chart version + values commit) and
-# writes them here; a human edits them only in the first stage, where valuesRef may be HEAD.
+# Config is promoted by copy: Kargo writes platform-apps/<app>/prod/values.yaml from the first stage's file at
+# the freight's commit (freight = chart version + values commit). Humans edit values only in the first stage.
 env: prod
 apps:
   kube-prometheus-stack:
     chart: kube-prometheus-stack
     repoURL: https://prometheus-community.github.io/helm-charts
     version: "51.10.0"
-    valuesRef: ea5bfb57b2e7168ec64b3e4daf8cef7d31d7a13b
     namespace: monitoring
     wave: -1
     enabled: true
@@ -21,7 +20,6 @@ apps:
     chart: metrics-server
     repoURL: https://kubernetes-sigs.github.io/metrics-server/
     version: "3.11.0"
-    valuesRef: ea5bfb57b2e7168ec64b3e4daf8cef7d31d7a13b
     namespace: kube-system
     wave: -2
     enabled: true

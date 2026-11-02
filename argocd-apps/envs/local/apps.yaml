@@ -2,17 +2,16 @@
 # ApplicationSet (argocd-apps/appsets/platform.yaml) fans this file out: one Application per entry.
 # Keys per app:
 #   chart, repoURL   the upstream chart            namespace, wave   where and in which order
-#   version          exact chart version           valuesRef         git revision of platform-apps/<app>/local/values.yaml
+#   version          exact chart version (Kargo writes it; a human edits it only in the first stage)
 #   enabled: false   keep the entry, deploy nothing (say why)
-# version and valuesRef move together: Kargo promotes both (freight = chart version + values commit) and
-# writes them here; a human edits them only in the first stage, where valuesRef may be HEAD.
+# Config is promoted by copy: Kargo writes platform-apps/<app>/local/values.yaml from the first stage's file at
+# the freight's commit (freight = chart version + values commit). Humans edit values only in the first stage.
 env: local
 apps:
   alloy:
     chart: alloy
     repoURL: https://grafana.github.io/helm-charts
     version: "1.9.0"
-    valuesRef: HEAD
     namespace: monitoring
     wave: 0
     enabled: false
@@ -21,7 +20,6 @@ apps:
     chart: argo-rollouts
     repoURL: https://argoproj.github.io/argo-helm
     version: "2.43.8"
-    valuesRef: HEAD
     namespace: argo-rollouts
     wave: 1
     enabled: true
@@ -30,7 +28,6 @@ apps:
     chart: authentik
     repoURL: https://charts.goauthentik.io
     version: "2026.8.5"
-    valuesRef: HEAD
     namespace: authentik
     wave: 3
     enabled: true
@@ -39,7 +36,6 @@ apps:
     chart: cert-manager
     repoURL: https://charts.jetstack.io
     version: "v1.17.4"
-    valuesRef: HEAD
     namespace: cert-manager
     wave: -2
     enabled: false
@@ -48,7 +44,6 @@ apps:
     chart: cilium
     repoURL: https://helm.cilium.io/
     version: "1.19.10"
-    valuesRef: HEAD
     namespace: kube-system
     wave: -3
     enabled: false
@@ -57,7 +52,6 @@ apps:
     chart: cloudnative-pg
     repoURL: https://cloudnative-pg.github.io/charts
     version: "0.29.1"
-    valuesRef: HEAD
     namespace: cnpg-system
     wave: -1
     enabled: true
@@ -66,7 +60,6 @@ apps:
     chart: external-secrets
     repoURL: https://charts.external-secrets.io
     version: "2.13.0"
-    valuesRef: HEAD
     namespace: external-secrets
     wave: -1
     enabled: true
@@ -75,7 +68,6 @@ apps:
     chart: grafana
     repoURL: https://grafana-community.github.io/helm-charts
     version: "14.0.1"
-    valuesRef: HEAD
     namespace: monitoring
     wave: 0
     enabled: true
@@ -84,7 +76,6 @@ apps:
     chart: harbor
     repoURL: https://helm.goharbor.io
     version: "1.19.4"
-    valuesRef: HEAD
     namespace: harbor
     wave: 1
     enabled: true
@@ -93,7 +84,6 @@ apps:
     chart: headlamp
     repoURL: https://kubernetes-sigs.github.io/headlamp/
     version: "0.41.0"
-    valuesRef: HEAD
     namespace: headlamp
     wave: 0
     enabled: true
@@ -102,7 +92,6 @@ apps:
     chart: jellyfin
     repoURL: https://jellyfin.github.io/jellyfin-helm
     version: "3.4.0"
-    valuesRef: HEAD
     namespace: jellyfin
     wave: 0
     enabled: true
@@ -111,7 +100,6 @@ apps:
     chart: kargo
     repoURL: ghcr.io/akuity/kargo-charts
     version: "1.11.8"
-    valuesRef: HEAD
     namespace: kargo
     wave: 1
     enabled: true
@@ -120,7 +108,6 @@ apps:
     chart: kube-prometheus-stack
     repoURL: https://prometheus-community.github.io/helm-charts
     version: "51.10.0"
-    valuesRef: HEAD
     namespace: monitoring
     wave: -1
     enabled: false
@@ -129,7 +116,6 @@ apps:
     chart: kube-state-metrics
     repoURL: https://prometheus-community.github.io/helm-charts
     version: "5.37.0"
-    valuesRef: HEAD
     namespace: monitoring
     wave: -2
     enabled: true
@@ -138,7 +124,6 @@ apps:
     chart: loki
     repoURL: https://grafana.github.io/helm-charts
     version: "6.55.0"
-    valuesRef: HEAD
     namespace: monitoring
     wave: -1
     enabled: true
@@ -147,7 +132,6 @@ apps:
     chart: meshery
     repoURL: https://meshery.io/charts/
     version: "v1.0.74"
-    valuesRef: HEAD
     namespace: meshery
     wave: 0
     enabled: false
@@ -156,7 +140,6 @@ apps:
     chart: metrics-server
     repoURL: https://kubernetes-sigs.github.io/metrics-server/
     version: "3.11.0"
-    valuesRef: HEAD
     namespace: kube-system
     wave: -2
     enabled: true
@@ -165,7 +148,6 @@ apps:
     chart: mimir-distributed
     repoURL: https://grafana.github.io/helm-charts
     version: "5.8.0"
-    valuesRef: HEAD
     namespace: monitoring
     wave: -1
     enabled: true
@@ -174,7 +156,6 @@ apps:
     chart: minio
     repoURL: https://charts.min.io/
     version: "5.4.0"
-    valuesRef: HEAD
     namespace: monitoring-storage
     wave: -3
     enabled: true
@@ -183,7 +164,6 @@ apps:
     chart: prometheus-node-exporter
     repoURL: https://prometheus-community.github.io/helm-charts
     version: "4.60.1"
-    valuesRef: HEAD
     namespace: monitoring
     wave: -2
     enabled: true
@@ -192,7 +172,6 @@ apps:
     chart: openbao
     repoURL: https://openbao.github.io/openbao-helm
     version: "0.30.4"
-    valuesRef: HEAD
     namespace: openbao
     wave: 0
     enabled: true
@@ -201,7 +180,6 @@ apps:
     chart: opentelemetry-operator
     repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
     version: "0.122.1"
-    valuesRef: HEAD
     namespace: opentelemetry-operator
     wave: -1
     enabled: true
@@ -210,7 +188,6 @@ apps:
     chart: opentelemetry-demo
     repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
     version: "0.42.6"
-    valuesRef: HEAD
     namespace: otel-demo
     wave: 0
     enabled: false
@@ -219,7 +196,6 @@ apps:
     chart: prometheus-operator-crds
     repoURL: https://prometheus-community.github.io/helm-charts
     version: "16.0.1"
-    valuesRef: HEAD
     namespace: monitoring
     wave: -5
     enabled: true
@@ -228,7 +204,6 @@ apps:
     chart: tempo
     repoURL: https://grafana.github.io/helm-charts
     version: "1.24.4"
-    valuesRef: HEAD
     namespace: monitoring
     wave: -1
     enabled: true
@@ -237,7 +212,6 @@ apps:
     chart: traefik
     repoURL: https://traefik.github.io/charts
     version: "33.2.1"
-    valuesRef: HEAD
     namespace: traefik
     wave: -1
     enabled: false
@@ -246,7 +220,6 @@ apps:
     chart: vault-config-operator
     repoURL: https://redhat-cop.github.io/vault-config-operator
     version: "v1.0.5"
-    valuesRef: HEAD
     namespace: openbao
     wave: 1
     enabled: true
