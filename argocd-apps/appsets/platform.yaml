@@ -13,11 +13,6 @@ metadata:
   name: platform-onboarding
   namespace: argocd
 spec:
-  # Migration step: this set is about to be replaced by a renamed one (cluster-generator routing).
-  # With this flag its Applications carry no finalizer, so pruning the set leaves the cluster
-  # resources in place for the successor to adopt. The successor does not carry the flag.
-  syncPolicy:
-    preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
