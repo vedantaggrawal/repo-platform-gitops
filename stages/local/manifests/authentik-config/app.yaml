@@ -1,0 +1,41 @@
+# Argo CD settings for the authentik-config manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: authentik
+wave: 2
+syncOptions:
+  - CreateNamespace=true
+  - SkipDryRunOnMissingResource=true
+retry:
+  limit: 5
+  backoff:
+    duration: 10s
+    factor: 2
+    maxDuration: 2m
+ignoreDifferences:
+  - group: postgresql.cnpg.io
+    kind: Cluster
+    jqPathExpressions:
+      - .spec.affinity
+      - .spec.bootstrap.initdb.encoding
+      - .spec.bootstrap.initdb.localeCType
+      - .spec.bootstrap.initdb.localeCollate
+      - .spec.enablePDB
+      - .spec.enableSuperuserAccess
+      - .spec.failoverDelay
+      - .spec.logLevel
+      - .spec.maxSyncReplicas
+      - .spec.minSyncReplicas
+      - .spec.monitoring
+      - .spec.postgresGID
+      - .spec.postgresUID
+      - .spec.postgresql
+      - .spec.primaryUpdateMethod
+      - .spec.primaryUpdateStrategy
+      - .spec.probes
+      - .spec.replicationSlots
+      - .spec.smartShutdownTimeout
+      - .spec.startDelay
+      - .spec.stopDelay
+      - .spec.storage.resizeInUseVolumes
+      - .spec.switchoverDelay

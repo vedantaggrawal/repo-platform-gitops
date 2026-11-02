@@ -1,0 +1,15 @@
+# Argo CD settings for the progressive-delivery manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: argo-rollouts
+wave: 2
+recurse: true
+syncOptions:
+  - SkipDryRunOnMissingResource=true
+  - ServerSideApply=true
+retry:
+  limit: 5
+  backoff:
+    duration: 10s
+    factor: 2
+    maxDuration: 2m

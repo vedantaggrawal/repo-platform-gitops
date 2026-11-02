@@ -222,3 +222,12 @@ apps:
     namespace: openbao
     wave: 1
     enabled: true
+
+  envoy-gateway:
+    chart: gateway-helm
+    repoURL: docker.io/envoyproxy
+    version: "v1.6.7"   # keep in step with the gateway-crds chart source (stages/local/manifests/gateway-crds/app.yaml)
+    namespace: envoy-gateway-system
+    wave: 1
+    skipCrds: true      # CRDs come from the gateway-crds app
+    retry: {limit: 5, backoff: {duration: 10s, factor: 2, maxDuration: 2m}}

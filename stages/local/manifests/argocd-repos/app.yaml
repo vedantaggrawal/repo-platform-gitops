@@ -1,0 +1,8 @@
+# Argo CD settings for the argocd-repos manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: argocd
+wave: -10
+recurse: true
+syncOptions:
+  - ServerSideApply=true

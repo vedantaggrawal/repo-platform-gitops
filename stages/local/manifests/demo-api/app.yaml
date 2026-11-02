@@ -1,0 +1,14 @@
+# Argo CD settings for the demo-api manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: kargo-demo-test
+wave: 3
+syncOptions:
+  - ServerSideApply=true
+  - SkipDryRunOnMissingResource=true
+retry:
+  limit: 5
+  backoff:
+    duration: 10s
+    factor: 2
+    maxDuration: 2m

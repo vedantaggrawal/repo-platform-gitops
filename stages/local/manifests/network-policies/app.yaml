@@ -1,0 +1,8 @@
+# Argo CD settings for the network-policies manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: default
+wave: -1
+recurse: true
+syncOptions:
+  - ServerSideApply=true

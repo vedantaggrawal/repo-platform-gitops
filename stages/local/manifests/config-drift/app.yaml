@@ -1,0 +1,9 @@
+# Argo CD settings for the config-drift manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: opentelemetry-operator
+wave: 3
+recurse: true
+syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true

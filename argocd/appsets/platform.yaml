@@ -1,0 +1,125 @@
+# Platform ApplicationSet: one Application per entry of argocd-apps/envs/<stage>/apps.yaml, for every
+# stage whose cluster.yaml says active: true. Plain Argo CD, nothing substituted; the stage is the folder.
+#   inner matrix  apps.yaml (one param set per stage; .path.basename is the stage) x that stage's
+#                 cluster.yaml (server, prune), path templated from the first child
+#   list          elementsYaml fans the apps map out: one element per app (name + its keys)
+#   outer matrix  gives every element the stage's facts next to its own
+# Entries with enabled: false stay in the file but produce no Application. Optional per-entry keys
+# (skipCrds, retry, ignoreDifferences) are applied by templatePatch when present. Stage directories are written
+# by promotion only (a snapshot of local copied forward), so HEAD is each stage's exact state.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-onboarding
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - matrix:
+              generators:
+                - git:
+                    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+                    revision: HEAD
+                    files:
+                      - path: argocd-apps/envs/*/apps.yaml
+                - git:
+                    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+                    revision: HEAD
+                    files:
+                      - path: argocd-apps/envs/{{ .path.basename }}/cluster.yaml
+                  selector:
+                    matchLabels:
+                      active: "true"
+          - list:
+              elementsYaml: |
+                {{- $out := list }}
+                {{- range $name, $app := .apps }}
+                {{-   $out = append $out (merge (dict "name" $name) $app) }}
+                {{- end }}
+                {{ toJson $out }}
+            selector:
+              matchExpressions:
+                - key: enabled
+                  operator: NotIn
+                  values: ["false"]
+  template:
+    metadata:
+      name: '{{ .path.basename }}-{{ .name }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{ .wave }}'
+    spec:
+      project: platform
+      sources:
+        - chart: '{{ .chart }}'
+          repoURL: '{{ .repoURL }}'
+          targetRevision: '{{ .version }}'
+          helm:
+            valueFiles:
+              - $values/platform-apps/{{ .name }}/{{ .path.basename }}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ .namespace }}'
+      # Fields set by the API server or cert controllers, not by charts:
+      # without this they diff forever and self-heal re-applies every reconcile.
+      ignoreDifferences:
+        - group: '*'
+          kind: '*'
+          jqPathExpressions:
+            - '.spec.template.spec.containers[]?.resources | select(. == {})'
+            - '.spec.template.spec.initContainers[]?.resources | select(. == {})'
+            - '.webhooks[]?.clientConfig.caBundle'
+        # Some charts omit Gateway API defaults the API server fills in; drop a
+        # field only when it holds its default so real changes still diff.
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          jqPathExpressions:
+            - '.spec.parentRefs[]? | select(.group == "gateway.networking.k8s.io") | .group'
+            - '.spec.parentRefs[]? | select(.kind == "Gateway") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.group == "") | .group'
+            - '.spec.rules[]?.backendRefs[]? | select(.kind == "Service") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.weight == 1) | .weight'
+            - '.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches'
+      syncPolicy:
+        automated:
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 2m
+  # Booleans cannot be templated inside `template` (every templated field is a string);
+  # templatePatch is rendered as YAML, so prune keeps its type.
+  templatePatch: |
+    spec:
+      syncPolicy:
+        automated:
+          prune: {{ .prune }}
+        {{- if hasKey . "retry" }}
+        retry: {{ toJson .retry }}
+        {{- end }}
+      {{- if hasKey . "skipCrds" }}
+      sources:
+        - chart: {{ .chart }}
+          repoURL: {{ .repoURL }}
+          targetRevision: {{ .version | quote }}
+          helm:
+            skipCrds: {{ .skipCrds }}
+            valueFiles:
+              - $values/platform-apps/{{ .name }}/{{ .path.basename }}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: HEAD
+          ref: values
+      {{- end }}
+      {{- if hasKey . "ignoreDifferences" }}
+      ignoreDifferences: {{ toJson .ignoreDifferences }}
+      {{- end }}
