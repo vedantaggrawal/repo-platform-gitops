@@ -1,0 +1,6 @@
+chart: alloy
+repoURL: https://grafana.github.io/helm-charts
+version: "1.9.0"
+namespace: monitoring
+wave: 0
+enabled: false

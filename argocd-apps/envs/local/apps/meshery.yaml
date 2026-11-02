@@ -1,0 +1,6 @@
+chart: meshery
+repoURL: https://meshery.io/charts/
+version: "v1.0.74"
+namespace: meshery
+wave: 0
+enabled: false

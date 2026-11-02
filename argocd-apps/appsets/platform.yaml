@@ -1,0 +1,94 @@
+# Platform ApplicationSet: one Application per file in argocd-apps/envs/__ENV__/apps/*.yaml.
+# Pure Argo CD: Go template, two Git files generators in a matrix. The Helm chart only
+# substitutes __ENV__ (templates/appset-platform.yaml). Param precedence in a matrix is
+# first child wins, so the app files come first (their .path is the app's) and
+# envs/__ENV__/cluster.yaml second (env, server, prune).
+#
+# App file (envs/<env>/apps/<app>.yaml):   chart, repoURL, version, namespace, wave
+#   disable without deleting:              enabled: false   (+ a comment saying why)
+# Chart values stay in platform-apps/<app>/<env>/values.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: __ENV__-platform-onboarding
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+              revision: HEAD
+              files:
+                - path: argocd-apps/envs/__ENV__/apps/*.yaml
+            selector:
+              matchExpressions:
+                - key: enabled
+                  operator: NotIn
+                  values: ["false"]
+          - git:
+              repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+              revision: HEAD
+              files:
+                - path: argocd-apps/envs/__ENV__/cluster.yaml
+  template:
+    metadata:
+      name: '{{ .env }}-{{ .path.filename | trimSuffix ".yaml" }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{ .wave }}'
+    spec:
+      project: platform
+      sources:
+        - chart: '{{ .chart }}'
+          repoURL: '{{ .repoURL }}'
+          targetRevision: '{{ .version }}'
+          helm:
+            valueFiles:
+              - $values/platform-apps/{{ .path.filename | trimSuffix ".yaml" }}/{{ .env }}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ .namespace }}'
+      # Fields set by the API server or cert controllers, not by charts:
+      # without this they diff forever and self-heal re-applies every reconcile.
+      ignoreDifferences:
+        - group: '*'
+          kind: '*'
+          jqPathExpressions:
+            - '.spec.template.spec.containers[]?.resources | select(. == {})'
+            - '.spec.template.spec.initContainers[]?.resources | select(. == {})'
+            - '.webhooks[]?.clientConfig.caBundle'
+        # Some charts omit Gateway API defaults the API server fills in; drop a
+        # field only when it holds its default so real changes still diff.
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          jqPathExpressions:
+            - '.spec.parentRefs[]? | select(.group == "gateway.networking.k8s.io") | .group'
+            - '.spec.parentRefs[]? | select(.kind == "Gateway") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.group == "") | .group'
+            - '.spec.rules[]?.backendRefs[]? | select(.kind == "Service") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.weight == 1) | .weight'
+            - '.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches'
+      syncPolicy:
+        automated:
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 2m
+  # Booleans cannot be templated inside `template` (every templated field is a string);
+  # templatePatch is rendered as YAML, so prune keeps its type.
+  templatePatch: |
+    spec:
+      syncPolicy:
+        automated:
+          prune: {{ .prune }}

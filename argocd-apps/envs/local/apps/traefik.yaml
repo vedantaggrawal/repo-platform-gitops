@@ -1,0 +1,6 @@
+chart: traefik
+repoURL: https://traefik.github.io/charts
+version: "33.2.1"
+namespace: traefik
+wave: -1
+enabled: false

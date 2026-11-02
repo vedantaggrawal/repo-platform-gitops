@@ -1,0 +1,5 @@
+chart: prometheus-node-exporter
+repoURL: https://prometheus-community.github.io/helm-charts
+version: "4.60.1"
+namespace: monitoring
+wave: -2

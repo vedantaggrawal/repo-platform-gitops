@@ -1,0 +1,5 @@
+chart: jellyfin
+repoURL: https://jellyfin.github.io/jellyfin-helm
+version: "3.4.0"
+namespace: jellyfin
+wave: 0

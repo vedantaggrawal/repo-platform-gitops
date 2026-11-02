@@ -1,0 +1,5 @@
+chart: prometheus-operator-crds
+repoURL: https://prometheus-community.github.io/helm-charts
+version: "16.0.1"
+namespace: monitoring
+wave: -5
