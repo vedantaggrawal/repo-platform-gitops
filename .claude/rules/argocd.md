@@ -15,7 +15,7 @@ paths:
 - **prod runs with `prune: false`.** *Why:* a deleted file must not delete prod workloads.
 - **Disable, don't delete:** set `enabled: false` on the app's entry in `argocd-apps/envs/<env>/apps.yaml`, with a comment saying why.
 - **ApplicationSets are plain Argo CD manifests** (`manifests/appsets/<env>/`, Go template, native generators), applied as they are by the control-plane `app-appsets` Application; the Helm chart never renders them. *Why:* two template languages in one file are unreadable and unlintable.
-- **Chart version and config move as one unit.** Kargo's freight is chart version + values commit; a promotion writes `version` into the stage's `apps.yaml` and copies `platform-apps/<app>/<stage>/values.yaml` from the first stage at that commit. Humans edit values only in the first stage. *Why:* a rollback or redeploy must never render an old chart with newer config (the kustomize-era incident).
+- **Promotion is a stage snapshot.** Kargo's freight is a commit of `local`'s state (apps.yaml versions, values files, config directories); a promotion copies them verbatim into the next stage. Per-chart warehouses bump versions in `local` only. Humans edit `local`; later stages are written by promotion. *Why:* one unit per stage: an old chart can never meet newer config, and a checkpoint is one commit.
 - **Argo CD 2.10: ESO, ESO-generator and CNPG CRs never go in a ServerSideApply app.**
   - The platform AppSet forces SSA (client-side apply overflows the last-applied annotation on large CRDs), and these CRs make the diff panic.
   - Put them in a `manifests/` app without `ServerSideApply=true`, e.g. `app-authentik-config`, `app-minio-init`, `app-secret-stores`.

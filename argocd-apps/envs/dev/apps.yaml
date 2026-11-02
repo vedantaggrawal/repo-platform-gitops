@@ -1,12 +1,11 @@
-# dev: every platform app of this env, one entry per upstream Helm chart app. The platform
-# ApplicationSet (argocd-apps/appsets/platform.yaml) fans this file out: one Application per entry.
+# dev: every platform app of this stage, one entry per upstream Helm chart app. The platform
+# ApplicationSet fans this file out: one Application per entry. The stage is the folder name.
+# Promotion is a stage snapshot: Kargo copies local's apps.yaml, values files and config directories
+# into the next stage verbatim; humans edit them only in local. Per-chart warehouses bump local only.
 # Keys per app:
 #   chart, repoURL   the upstream chart            namespace, wave   where and in which order
 #   version          exact chart version (Kargo writes it; a human edits it only in the first stage)
 #   enabled: false   keep the entry, deploy nothing (say why)
-# Config is promoted by copy: Kargo writes platform-apps/<app>/dev/values.yaml from the first stage's file at
-# the freight's commit (freight = chart version + values commit). Humans edit values only in the first stage.
-env: dev
 apps:
   metrics-server:
     chart: metrics-server
