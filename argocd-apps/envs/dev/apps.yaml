@@ -1,12 +1,17 @@
-# Platform apps for this env: one entry per upstream Helm chart app (argocd-apps renders an Application
-# per enabled entry; chart values stay in platform-apps/<app>/<env>/values.yaml). Keys: chart, repoURL,
-# version (exact; Kargo promotes it, humans never edit it in stg/prod), namespace, wave, enabled.
-# `constraint` (first stage only) is the semver range the Kargo Warehouse watches for new versions.
-
-metrics-server:
-  chart: metrics-server
-  repoURL: https://kubernetes-sigs.github.io/metrics-server/
-  version: "3.11.0"
-  namespace: kube-system
-  wave: -2
-  enabled: false
+# dev: every platform app of this env, one entry per upstream Helm chart app. The platform
+# ApplicationSet (argocd-apps/appsets/platform.yaml) fans this file out: one Application per entry.
+# Keys per app:
+#   chart, repoURL   the upstream chart            namespace, wave   where and in which order
+#   version          exact chart version (Kargo writes it; a human edits it only in the first stage)
+#   enabled: false   keep the entry, deploy nothing (say why)
+# Config is promoted by copy: Kargo writes platform-apps/<app>/dev/values.yaml from the first stage's file at
+# the freight's commit (freight = chart version + values commit). Humans edit values only in the first stage.
+env: dev
+apps:
+  metrics-server:
+    chart: metrics-server
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    version: "3.11.0"
+    namespace: kube-system
+    wave: -2
+    enabled: false

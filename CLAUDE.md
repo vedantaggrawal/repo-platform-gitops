@@ -7,16 +7,20 @@ The project's current opinions (what we do and why) live in `.claude/rules/`. To
 ## Layout (put config only where it belongs)
 - `bootstrap/<env>.yaml`: root app per env; it renders `argocd-apps/` with the single input `env`.
 - `argocd-apps/`: Helm chart for the app-of-apps.
-  - `envs/<env>/cluster.yaml`: the env's cluster (name, server, prune, rawManifests) and its Kargo upstream.
-  - `envs/<env>/apps.yaml`: the env's platform apps: chart, repoURL, version, namespace, wave, enabled. Kargo
-    promotes by editing `version` here; a human edits it only in the first stage.
-  - `appset-platform.yaml` renders one Application per enabled entry of `envs/<env>/apps.yaml`.
+  - `envs/<env>/cluster.yaml`: the env's cluster (env, server, prune, active, controlPlane, rawManifests) and its
+    Kargo upstream.
+  - `envs/<env>/apps.yaml`: the env's catalogue, every platform app in one file (`apps.<name>`: chart, repoURL,
+    version, namespace, wave, enabled). Kargo promotes by writing `version` and copying the values file forward;
+    a human edits both only in the first stage (`local`).
+  - `app-appsets.yaml` applies `manifests/appsets/<env>/` on the control plane (`cluster.yaml: controlPlane`).
   - `app-*.yaml` are the raw-manifest apps, rendered only when `cluster.yaml` has `rawManifests: true`.
   - `appset-apps.yaml` deploys app workloads from the separate app-gitops repo.
 - `platform-apps/<app>/<env>/`: one upstream Helm chart per app.
-  - `values.yaml`: chart values (the chart itself is declared in `argocd-apps/envs/<env>/apps.yaml`).
+  - `values.yaml`: chart values; the first stage's file is the source, later stages receive a copy on promotion.
   - `grafana/<env>/dashboards/`: dashboards owned by Grafana Git Sync (UI edits arrive as PRs).
   - No raw manifests here.
 - `manifests/<name>/<env>/`: raw manifests (CRs, ESO, CNPG, glue), each dir deployed by one `argocd-apps/templates/app-*.yaml` (check its `path:`).
+  - `appsets/<env>/platform.yaml`: the platform ApplicationSet, plain Argo CD (Go template: merge of each env's
+    cluster.yaml and apps.yaml, fanned out with elementsYaml). The Helm chart never touches it.
 - `network-policies/<env>/`: CiliumNetworkPolicies.
 - `charts/<name>/`: Helm charts owned by this repo (e.g. `secrets-sync`), consumed by `app-*.yaml` apps via `path:` with per-env values under `manifests/<name>/<env>/values.yaml`. Each chart ships `examples/` that must render and validate.

@@ -1,5 +1,6 @@
 # Principles (always apply)
 
+- **Shape first.** Design the files a reader will see before choosing a mechanism; avoid unnecessary templating (one language per file); explore what the tools already present offer (Helm, Argo CD generators and Go templates, Kargo, operators) and take the simplest built-in option. *Why:* the result must read naturally to a human and to an AI; mechanisms chosen first bend the layout and get rewritten.
 - **Small PRs.** One concern per PR, about 200 changed lines or fewer. Each PR must deploy and revert on its own.
   - Split into steps (secrets, then app, then cutover, then cleanup) rather than bundling.
   - *Why:* every PR is reviewed by a human. Big mixed PRs stall and hide mistakes.

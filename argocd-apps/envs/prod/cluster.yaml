@@ -1,5 +1,8 @@
 # Cluster identity and env knobs for production (no cluster yet). Promotions into prod open a PR a human merges.
-name: prod
+env: prod
+# No cluster yet: the ApplicationSet skips this env until active is true.
+active: false
+controlPlane: false
 server: https://kubernetes.default.svc
 prune: false
 rawManifests: false
