@@ -1,11 +1,11 @@
-# Platform ApplicationSet: one Application per entry of argocd-apps/envs/<env>/apps.yaml, for every
-# env whose cluster.yaml says active: true. Plain Argo CD, applied as is by the <env>-appsets Application;
-# no Helm anywhere in this path.
-#   merge  joins each env's cluster.yaml (env, server, prune) with its apps.yaml (apps map) on `env`
-#   list   fans the apps map out: elementsYaml builds one element per app (name + its keys)
-#   matrix gives every element the env's cluster facts next to its own app facts
-# Entries with enabled: false stay in the file but produce no Application. The stage's values file is
-# written only by promotion (copied forward with the chart version), so HEAD is the stage's exact state.
+# Platform ApplicationSet: one Application per entry of argocd-apps/envs/<stage>/apps.yaml, for every
+# stage whose cluster.yaml says active: true. Plain Argo CD, nothing substituted; the stage is the folder.
+#   inner matrix  apps.yaml (one param set per stage; .path.basename is the stage) x that stage's
+#                 cluster.yaml (server, prune), path templated from the first child
+#   list          elementsYaml fans the apps map out: one element per app (name + its keys)
+#   outer matrix  gives every element the stage's facts next to its own
+# Entries with enabled: false stay in the file but produce no Application. Stage directories are written
+# by promotion only (a snapshot of local copied forward), so HEAD is each stage's exact state.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -17,22 +17,21 @@ spec:
   generators:
     - matrix:
         generators:
-          - merge:
-              mergeKeys: [env]
+          - matrix:
               generators:
                 - git:
                     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
                     revision: HEAD
                     files:
-                      - path: argocd-apps/envs/*/cluster.yaml
-                  selector:
-                    matchLabels:
-                      active: "true"
+                      - path: argocd-apps/envs/*/apps.yaml
                 - git:
                     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
                     revision: HEAD
                     files:
-                      - path: argocd-apps/envs/*/apps.yaml
+                      - path: argocd-apps/envs/{{ .path.basename }}/cluster.yaml
+                  selector:
+                    matchLabels:
+                      active: "true"
           - list:
               elementsYaml: |
                 {{- $out := list }}
@@ -47,7 +46,7 @@ spec:
                   values: ["false"]
   template:
     metadata:
-      name: '{{ .env }}-{{ .name }}'
+      name: '{{ .path.basename }}-{{ .name }}'
       annotations:
         argocd.argoproj.io/sync-wave: '{{ .wave }}'
     spec:
@@ -58,7 +57,7 @@ spec:
           targetRevision: '{{ .version }}'
           helm:
             valueFiles:
-              - $values/platform-apps/{{ .name }}/{{ .env }}/values.yaml
+              - $values/platform-apps/{{ .name }}/{{ .path.basename }}/values.yaml
         - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
           targetRevision: HEAD
           ref: values

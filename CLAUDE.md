@@ -9,14 +9,14 @@ The project's current opinions (what we do and why) live in `.claude/rules/`. To
 - `argocd-apps/`: Helm chart for the app-of-apps.
   - `envs/<env>/cluster.yaml`: the env's cluster (env, server, prune, active, controlPlane, rawManifests) and its
     Kargo upstream.
-  - `envs/<env>/apps.yaml`: the env's catalogue, every platform app in one file (`apps.<name>`: chart, repoURL,
-    version, namespace, wave, enabled). Kargo promotes by writing `version` and copying the values file forward;
-    a human edits both only in the first stage (`local`).
+  - `envs/<env>/apps.yaml`: the stage's catalogue, every platform app in one file (`apps.<name>`: chart, repoURL,
+    version, namespace, wave, enabled). Promotion is a stage snapshot: Kargo copies `local`'s apps.yaml, values
+    files and config directories into the next stage verbatim. Humans edit them only in `local`.
   - `app-appsets.yaml` applies `manifests/appsets/<env>/` on the control plane (`cluster.yaml: controlPlane`).
   - `app-*.yaml` are the raw-manifest apps, rendered only when `cluster.yaml` has `rawManifests: true`.
   - `appset-apps.yaml` deploys app workloads from the separate app-gitops repo.
 - `platform-apps/<app>/<env>/`: one upstream Helm chart per app.
-  - `values.yaml`: chart values; the first stage's file is the source, later stages receive a copy on promotion.
+  - `values.yaml`: chart values; `local`'s file is the source, later stages receive it with the snapshot.
   - `grafana/<env>/dashboards/`: dashboards owned by Grafana Git Sync (UI edits arrive as PRs).
   - No raw manifests here.
 - `manifests/<name>/<env>/`: raw manifests (CRs, ESO, CNPG, glue), each dir deployed by one `argocd-apps/templates/app-*.yaml` (check its `path:`).
