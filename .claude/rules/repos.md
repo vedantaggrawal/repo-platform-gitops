@@ -17,4 +17,4 @@ paths:
 - **Apps share the generic chart and supply only values.** Unique infra (StatefulSet, CronJob) gets its own chart, as the exception. *Not* per-app charts: they drift.
 - **Terraform owns the layers below Argo CD:**
   - kind, Cilium, cert-manager, Argo CD, and the org-wide `repo-creds`.
-  - The `cilium` and `cert-manager` entries in `platform-apps/` stay `enabled: "false"`. Argo CD and kind have no entry.
+  - The `cilium` and `cert-manager` entries in `stages/<stage>/apps.yaml` stay `enabled: "false"`. Argo CD and kind have no entry.

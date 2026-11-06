@@ -1,0 +1,25 @@
+# Argo CD settings for the gateway-crds manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: envoy-gateway-system
+wave: -5
+prune: false
+syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+retry:
+  limit: 5
+  backoff:
+    duration: 10s
+    factor: 2
+    maxDuration: 2m
+extraSources:
+  - chart: gateway-crds-helm
+    repoURL: docker.io/envoyproxy
+    targetRevision: v1.6.7
+    helm:
+      parameters:
+        - name: crds.gatewayAPI.enabled
+          value: "false"
+        - name: crds.envoyGateway.enabled
+          value: "true"

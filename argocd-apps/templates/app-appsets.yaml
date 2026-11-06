@@ -1,7 +1,7 @@
 {{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
 {{- if $cluster.controlPlane }}
-# The ApplicationSets are plain Argo CD manifests (manifests/appsets/<env>/); this Application applies
-# them as they are. Only the control plane runs them: they route every env from envs/*/cluster.yaml.
+# The ApplicationSets are plain Argo CD manifests (argocd/appsets/); this Application applies them as
+# they are. Only the control plane runs them: they route every stage from its cluster.yaml.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
     targetRevision: HEAD
-    path: manifests/appsets/{{ .Values.env }}
+    path: argocd/appsets
     directory:
       recurse: true
   destination:

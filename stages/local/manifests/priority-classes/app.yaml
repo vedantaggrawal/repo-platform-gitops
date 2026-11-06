@@ -1,0 +1,15 @@
+# Argo CD settings for the priority-classes manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: default
+wave: -10
+recurse: true
+syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+retry:
+  limit: 5
+  backoff:
+    duration: 10s
+    factor: 2
+    maxDuration: 2m

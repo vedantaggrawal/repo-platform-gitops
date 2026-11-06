@@ -1,0 +1,14 @@
+# Argo CD settings for the minio-init manifests in this stage: read by argocd/appsets/manifests.yaml.
+# Keys: namespace, wave; optional project, recurse, prune (false = never prune here), allowEmpty, syncOptions,
+# retry, ignoreDifferences, extraSources.
+namespace: monitoring-storage
+wave: -2
+recurse: true
+syncOptions:
+  - CreateNamespace=true
+retry:
+  limit: 20
+  backoff:
+    duration: 10s
+    factor: 2
+    maxDuration: 5m

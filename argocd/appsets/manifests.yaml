@@ -1,0 +1,77 @@
+# Raw-manifest Applications: one per stages/<stage>/manifests/<name>/ directory, for every stage whose
+# cluster.yaml says active: true. Plain Argo CD, nothing substituted; the stage and the name are the path.
+#   inner matrix  app.yaml of each directory (namespace, wave, optional Argo settings; .path gives stage and
+#                 name) x that stage's cluster.yaml (server, prune), path templated from the first child
+# Optional keys in app.yaml (wave, project, recurse, prune, allowEmpty, syncOptions, retry, ignoreDifferences,
+# extraSources) are applied by templatePatch only when present; a directory with just a namespace gets the
+# plain defaults. prune defaults to the stage's cluster.yaml; prune: false in app.yaml pins it off for that app.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: manifests
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+              revision: HEAD
+              files:
+                - path: stages/*/manifests/*/app.yaml
+          - git:
+              repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+              revision: HEAD
+              files:
+                - path: argocd-apps/envs/{{ index .path.segments 1 }}/cluster.yaml
+            selector:
+              matchLabels:
+                active: "true"
+  template:
+    metadata:
+      name: '{{ index .path.segments 1 }}-{{ .path.basename }}'
+    spec:
+      project: platform
+      sources:
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: HEAD
+          path: '{{ .path.path }}'
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ .namespace }}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+  # Lists, booleans and optional keys cannot be expressed in `template` (every templated field is a
+  # string); templatePatch is rendered as YAML and merged in.
+  templatePatch: |
+    {{- if hasKey . "wave" }}
+    metadata:
+      annotations:
+        argocd.argoproj.io/sync-wave: {{ .wave | quote }}
+    {{- end }}
+    spec:
+      {{- if hasKey . "project" }}
+      project: {{ .project }}
+      {{- end }}
+      {{- $dir := dict "repoURL" "https://github.com/vedantaggrawal/repo-platform-gitops.git" "targetRevision" "HEAD" "path" .path.path }}
+      {{- if hasKey . "recurse" }}{{ $_ := set $dir "directory" (dict "recurse" .recurse) }}{{ end }}
+      {{- $extra := list }}{{ if hasKey . "extraSources" }}{{ $extra = .extraSources }}{{ end }}
+      sources: {{ toJson (concat (list $dir) $extra) }}
+      {{- if hasKey . "ignoreDifferences" }}
+      ignoreDifferences: {{ toJson .ignoreDifferences }}
+      {{- end }}
+      syncPolicy:
+        automated:
+          prune: {{ .prune }}   # app.yaml wins over cluster.yaml (first matrix child)
+          {{- if hasKey . "allowEmpty" }}
+          allowEmpty: {{ .allowEmpty }}
+          {{- end }}
+        {{- if hasKey . "syncOptions" }}
+        syncOptions: {{ toJson .syncOptions }}
+        {{- end }}
+        {{- if hasKey . "retry" }}
+        retry: {{ toJson .retry }}
+        {{- end }}
