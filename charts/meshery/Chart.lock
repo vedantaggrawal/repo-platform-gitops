@@ -1,0 +1,6 @@
+dependencies:
+- name: meshery
+  repository: https://meshery.io/charts/
+  version: v1.0.74
+digest: sha256:af58443a774803973517e3d14fe87ddc4409f3c0ad61611fe9243aebd8c2406e
+generated: "2026-11-03T00:16:13.48786+01:00"

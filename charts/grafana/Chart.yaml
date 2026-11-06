@@ -1,0 +1,9 @@
+apiVersion: v2
+name: grafana
+description: eve platform artefact for grafana (upstream chart grafana 14.0.1 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: grafana
+    version: "14.0.1"
+    repository: https://grafana-community.github.io/helm-charts

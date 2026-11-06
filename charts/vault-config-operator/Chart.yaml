@@ -1,0 +1,9 @@
+apiVersion: v2
+name: vault-config-operator
+description: eve platform artefact for vault-config-operator (upstream chart vault-config-operator v1.0.5 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: vault-config-operator
+    version: "v1.0.5"
+    repository: https://redhat-cop.github.io/vault-config-operator

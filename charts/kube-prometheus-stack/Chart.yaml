@@ -1,0 +1,9 @@
+apiVersion: v2
+name: kube-prometheus-stack
+description: eve platform artefact for kube-prometheus-stack (upstream chart kube-prometheus-stack 51.10.0 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: kube-prometheus-stack
+    version: "51.10.0"
+    repository: https://prometheus-community.github.io/helm-charts

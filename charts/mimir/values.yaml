@@ -1,0 +1,865 @@
+global:
+  extraEnvFrom:
+    - secretRef:
+        name: mimir-s3
+mimir-distributed:
+  mimir:
+    structuredConfig:
+      server:
+        log_format: json
+      multitenancy_enabled: false
+      common:
+        storage:
+          backend: s3
+          s3:
+            endpoint: local-minio.monitoring-storage.svc.cluster.local:9000
+            access_key_id: ${MIMIR_S3_ACCESS_KEY_ID}
+            secret_access_key: ${MIMIR_S3_SECRET_ACCESS_KEY}
+            insecure: true
+            region: us-east-1
+      blocks_storage:
+        backend: s3
+        s3:
+          bucket_name: mimir-blocks
+      ruler_storage:
+        backend: local
+        local:
+          directory: /etc/mimir-rules
+      alertmanager_storage:
+        backend: s3
+        s3:
+          bucket_name: mimir-alertmanager
+      limits:
+        compactor_blocks_retention_period: 30d
+        ingestion_rate: 100000
+        ingestion_burst_size: 200000
+        max_global_series_per_user: 1500000
+        max_global_exemplars_per_user: 100000
+      ingester:
+        ring:
+          replication_factor: 1
+          heartbeat_period: 15s
+          heartbeat_timeout: 1m
+      store_gateway:
+        sharding_ring:
+          replication_factor: 1
+          heartbeat_period: 15s
+          heartbeat_timeout: 1m
+  _resourcesSmall:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 128Mi
+  alertmanager:
+    enabled: true
+    replicas: 1
+    extraVolumes:
+      - name: alert-slack
+        secret:
+          secretName: alert-slack
+          optional: true
+    extraVolumeMounts:
+      - name: alert-slack
+        mountPath: /etc/alertmanager-secrets/slack
+        readOnly: true
+    fallbackConfig: |
+      route:
+        receiver: "null"
+        group_by: [alertname, namespace, service]
+        routes:
+          - matchers: [severity="critical"]
+            receiver: slack
+            repeat_interval: 1h
+          - matchers: [severity="warning"]
+            receiver: slack
+            repeat_interval: 4h
+          - matchers: [severity="info"]
+            receiver: "null"
+      receivers:
+        - name: "null"
+        - name: slack
+          slack_configs:
+            - api_url_file: /etc/alertmanager-secrets/slack/webhook_url
+              send_resolved: true
+              title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})'
+              text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ "\n" }}{{ end }}'
+    persistentVolume:
+      size: 1Gi
+      storageClass: standard
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+  distributor:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 512Mi
+  ingester:
+    replicas: 1
+    zoneAwareReplication:
+      enabled: false
+    persistentVolume:
+      size: 5Gi
+      storageClass: standard
+    resources:
+      requests:
+        cpu: 250m
+        memory: 2048Mi
+      limits:
+        memory: 4096Mi
+  querier:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+  query_frontend:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+  query_scheduler:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+  store_gateway:
+    replicas: 1
+    zoneAwareReplication:
+      enabled: false
+    persistentVolume:
+      size: 2Gi
+      storageClass: standard
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+  compactor:
+    replicas: 1
+    persistentVolume:
+      size: 10Gi
+      storageClass: standard
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+    env:
+      - name: GOMEMLIMIT
+        value: 900MiB
+  ruler:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+    extraVolumes:
+      - name: rules
+        configMap:
+          name: mimir-rules
+    extraVolumeMounts:
+      - name: rules
+        mountPath: /etc/mimir-rules/anonymous
+        readOnly: true
+  overrides_exporter:
+    enabled: false
+  gateway:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 128Mi
+  rollout_operator:
+    enabled: false
+  minio:
+    enabled: false
+  memcached:
+    enabled: false
+  memcachedExporter:
+    enabled: false
+  metaMonitoring:
+    serviceMonitor:
+      enabled: true
+    grafanaAgent:
+      enabled: false
+  extraObjects:
+    - |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: mimir-rules
+        namespace: monitoring
+      data:
+        slo.yaml: |
+          groups:
+            - name: slo-gateway-availability
+              rules:
+                - alert: GatewayErrorBudgetBurnFast
+                  expr: |
+                    (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[1h])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[1h]))) > (14.4 * 0.001)
+                    and
+                    (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[5m])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[5m]))) > (14.4 * 0.001)
+                  labels: {severity: critical, service: platform-gateway}
+                  annotations:
+                    summary: platform-gateway burning 99.9% availability budget at 14.4x (1h and 5m)
+                - alert: GatewayErrorBudgetBurnSlow
+                  expr: |
+                    (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[6h])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[6h]))) > (6 * 0.001)
+                    and
+                    (sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway",status_code="STATUS_CODE_ERROR"}[30m])) / sum(rate(traces_span_metrics_calls_total{service_name="platform-gateway"}[30m]))) > (6 * 0.001)
+                  labels: {severity: warning, service: platform-gateway}
+                  annotations:
+                    summary: platform-gateway burning 99.9% availability budget at 6x (6h and 30m)
+            - name: slo-tenant-api-latency
+              rules:
+                - alert: TenantApiLatencyP95High
+                  expr: histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name="tenant-api"}[5m]))) > 300
+                  for: 10m
+                  labels: {severity: warning, service: tenant-api}
+                  annotations:
+                    summary: tenant-api p95 latency above 300ms for 10m
+            - name: postgres-capacity
+              rules:
+                - alert: PostgresConnectionsHigh
+                  expr: sum by (namespace, pod) (cnpg_backends_total) / max by (namespace, pod) (cnpg_pg_settings_setting{name="max_connections"}) > 0.8
+                  for: 10m
+                  labels: {severity: warning, service: postgres}
+                  annotations:
+                    summary: Postgres connections above 80% of max_connections
+            - name: platform-capacity
+              rules:
+                # kind's local-path volumes expose no per-PVC stats (no CSI), so watch
+                # the node filesystem that holds every PVC (/var).
+                - alert: NodeDiskFillingUp
+                  expr: (node_filesystem_avail_bytes{mountpoint="/var"} / node_filesystem_size_bytes{mountpoint="/var"} < 0.15) and predict_linear(node_filesystem_avail_bytes{mountpoint="/var"}[6h], 24 * 3600) < 0
+                  for: 30m
+                  labels: {severity: warning, service: node, layer: storage}
+                  annotations:
+                    summary: Node /var (holds all PVCs) under 15% free and full within 24h
+                - alert: PodPendingTooLong
+                  expr: sum by (namespace, pod) (kube_pod_status_phase{phase="Pending"}) > 0
+                  for: 5m
+                  labels: {severity: warning, service: kubernetes, layer: scheduling}
+                  annotations:
+                    summary: Pod Pending for over 5m
+                - alert: NodeMemoryRequestsHigh
+                  expr: sum by (node) (kube_pod_container_resource_requests{resource="memory",node!=""}) / sum by (node) (kube_node_status_allocatable{resource="memory"}) > 0.85
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: capacity}
+                  annotations:
+                    summary: Node memory requests above 85% of allocatable
+                - alert: NodeCpuRequestsHigh
+                  expr: sum by (node) (kube_pod_container_resource_requests{resource="cpu",node!=""}) / sum by (node) (kube_node_status_allocatable{resource="cpu"}) > 0.85
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: capacity}
+                  annotations:
+                    summary: Node CPU requests above 85% of allocatable
+                - alert: ContainerOOMKilled
+                  expr: (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1) and on (namespace, pod, container) (increase(kube_pod_container_status_restarts_total[10m]) > 0)
+                  labels: {severity: warning, service: kubernetes, layer: workload}
+                  annotations:
+                    summary: A container OOMKilled in the last 10m
+                - alert: ArgoApplicationControllerRestarting
+                  expr: increase(kube_pod_container_status_restarts_total{namespace="argocd",container="application-controller"}[30m]) > 0
+                  labels: {severity: critical, service: argocd, layer: gitops}
+                  annotations:
+                    summary: Argo CD application-controller restarted in the last 30m (OOM if ContainerOOMKilled also fires)
+                - alert: ContainerCpuThrottlingHigh
+                  expr: sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{container!=""}[5m])) / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{container!=""}[5m])) > 0.25
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: workload}
+                  annotations:
+                    summary: A container CPU throttled in over 25% of periods
+            - name: telemetry-pipeline
+              rules:
+                - alert: OtelCollectorExportFailing
+                  expr: sum by (exporter) (rate(otelcol_exporter_send_failed_spans_total[5m]) + rate(otelcol_exporter_send_failed_metric_points_total[5m]) + rate(otelcol_exporter_send_failed_log_records_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: critical, service: otel-collector, layer: telemetry}
+                  annotations:
+                    summary: OTel collector exporter failing to send
+                - alert: OtelCollectorQueueNearFull
+                  expr: max by (exporter, pod) (otelcol_exporter_queue_size / otelcol_exporter_queue_capacity) > 0.8
+                  for: 5m
+                  labels: {severity: warning, service: otel-collector, layer: telemetry}
+                  annotations:
+                    summary: OTel exporter queue above 80%
+                - alert: OtelCollectorReceiverRefusing
+                  expr: sum by (receiver) (rate(otelcol_receiver_refused_spans_total[5m]) + rate(otelcol_receiver_refused_metric_points_total[5m]) + rate(otelcol_receiver_refused_log_records_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: warning, service: otel-collector, layer: telemetry}
+                  annotations:
+                    summary: OTel receiver refusing data (backpressure)
+                - alert: MimirDiscardingSamples
+                  expr: sum by (reason) (rate(cortex_discarded_samples_total[5m])) > 0
+                  for: 10m
+                  labels: {severity: warning, service: mimir, layer: telemetry}
+                  annotations:
+                    summary: Mimir discarding samples
+            - name: grafana
+              rules:
+                - alert: GrafanaDown
+                  expr: absent_over_time(grafana_build_info[10m])
+                  for: 5m
+                  labels: {severity: critical, service: grafana, layer: observability}
+                  annotations:
+                    summary: Grafana has reported no metrics for 10m
+                - alert: GrafanaDatasourceErrorRate
+                  expr: sum by (plugin_id) (rate(grafana_plugin_request_duration_seconds_count{endpoint="queryData",status="error"}[10m])) / sum by (plugin_id) (rate(grafana_plugin_request_duration_seconds_count{endpoint="queryData"}[10m])) > 0.05
+                  for: 10m
+                  labels: {severity: warning, service: grafana, layer: observability}
+                  annotations:
+                    summary: A Grafana datasource plugin returns >5% query errors (see plugin_id)
+                - alert: GrafanaHttpP95High
+                  # Streaming and datasource-proxied handlers are as slow as the backend; excluded.
+                  expr: histogram_quantile(0.95, sum by (le) (rate(grafana_http_request_duration_seconds_bucket{handler!~"/api/live/.*|/api/ds/query|/api/datasources/proxy/.*"}[10m]))) > 2
+                  for: 15m
+                  labels: {severity: warning, service: grafana, layer: observability}
+                  annotations:
+                    summary: Grafana HTTP p95 above 2s for 15m
+            # Mimir's own health. 2026-10-31: the single ingester left the ring three times after
+            # host sleep (heartbeat timeout) and nothing paged; pushes returned 500 for minutes.
+            - name: mimir-health
+              rules:
+                - alert: MimirIngesterUnhealthyInRing
+                  expr: max(cortex_ring_members{name="ingester",state="Unhealthy"}) > 0
+                  for: 1m
+                  labels: {severity: critical, service: mimir, layer: observability}
+                  annotations:
+                    summary: An ingester is Unhealthy in the ring; with RF 1 every push fails until it heartbeats again
+                - alert: MimirPushFailures
+                  expr: sum(rate(cortex_request_duration_seconds_count{route="api_v1_push",status_code=~"5.."}[5m])) > 0.5
+                  for: 2m
+                  labels: {severity: critical, service: mimir, layer: observability}
+                  annotations:
+                    summary: Remote-write pushes are failing with 5xx (>0.5/s for 2m); metrics are being lost
+                - alert: MimirNoIngest
+                  # Dead man's switch for the metrics pipeline: the platform never pushes fewer than ~200 samples/s.
+                  expr: sum(rate(cortex_distributor_received_samples_total[5m])) < 50
+                  for: 10m
+                  labels: {severity: critical, service: mimir, layer: observability}
+                  annotations:
+                    summary: Mimir receives almost no samples for 10m; collector, network or ring problem
+                - alert: MimirRulerEvaluationFailures
+                  expr: sum by (rule_group) (increase(cortex_prometheus_rule_evaluation_failures_total[10m])) > 0
+                  for: 10m
+                  labels: {severity: warning, service: mimir, layer: observability}
+                  annotations:
+                    summary: A rule group keeps failing evaluation (see rule_group); alerts in it are blind
+            # Collector pipeline: data lost between scrape and storage never shows up anywhere else.
+            - name: otel-pipeline
+              rules:
+                - alert: OtelExporterSendFailures
+                  expr: sum by (pod, exporter) (rate(otelcol_exporter_send_failed_metric_points_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: critical, service: otel, layer: observability, signal: metrics}
+                  annotations:
+                    summary: A collector exporter keeps failing to send metrics (see pod, exporter); telemetry is being dropped after retries
+                - alert: OtelExporterSendFailures
+                  expr: sum by (pod, exporter) (rate(otelcol_exporter_send_failed_log_records_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: critical, service: otel, layer: observability, signal: logs}
+                  annotations:
+                    summary: A collector exporter keeps failing to send logs (see pod, exporter); telemetry is being dropped after retries
+                - alert: OtelExporterSendFailures
+                  expr: sum by (pod, exporter) (rate(otelcol_exporter_send_failed_spans_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: critical, service: otel, layer: observability, signal: spans}
+                  annotations:
+                    summary: A collector exporter keeps failing to send spans (see pod, exporter); telemetry is being dropped after retries
+                - alert: OtelReceiverRefused
+                  expr: sum by (pod, receiver) (rate(otelcol_receiver_refused_metric_points_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: warning, service: otel, layer: observability, signal: metrics}
+                  annotations:
+                    summary: A collector refuses metrics at the receiver (memory limiter or back-pressure); raise limits or shed load
+                - alert: OtelReceiverRefused
+                  expr: sum by (pod, receiver) (rate(otelcol_receiver_refused_log_records_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: warning, service: otel, layer: observability, signal: logs}
+                  annotations:
+                    summary: A collector refuses logs at the receiver (memory limiter or back-pressure); raise limits or shed load
+                - alert: OtelReceiverRefused
+                  expr: sum by (pod, receiver) (rate(otelcol_receiver_refused_spans_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: warning, service: otel, layer: observability, signal: spans}
+                  annotations:
+                    summary: A collector refuses spans at the receiver (memory limiter or back-pressure); raise limits or shed load
+                - alert: OtelExporterQueueFull
+                  expr: max by (pod, exporter) (otelcol_exporter_queue_size / otelcol_exporter_queue_capacity) > 0.8
+                  for: 5m
+                  labels: {severity: warning, service: otel, layer: observability}
+                  annotations:
+                    summary: A collector export queue is above 80 percent for 5m; the backend is slow or down and data will be dropped when it fills
+            # SLOs (design-dashboards #1). Each SLI is a good/total ratio at four windows so the front page
+            # and the burn-rate alerts read precomputed series. Objectives live in the alert thresholds:
+            # gateway availability 99.5 percent, latency 95 percent under 500 ms, API server 99.9, Mimir write
+            # 99.9, Mimir query 99.5. Loki, Argo CD, login and certificate SLIs follow once scraped.
+            - name: slo
+              interval: 1m
+              rules:
+                - record: "slo:gateway_availability:ratio_rate5m"
+                  expr: sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_response_code_class!="5"}[5m])) / sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*"}[5m]))
+                - record: "slo:gateway_availability:ratio_rate30m"
+                  expr: sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_response_code_class!="5"}[30m])) / sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*"}[30m]))
+                - record: "slo:gateway_availability:ratio_rate1h"
+                  expr: sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_response_code_class!="5"}[1h])) / sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*"}[1h]))
+                - record: "slo:gateway_availability:ratio_rate6h"
+                  expr: sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_response_code_class!="5"}[6h])) / sum(rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*"}[6h]))
+                - record: "slo:gateway_latency_under_500ms:ratio_rate5m"
+                  expr: sum(rate(envoy_cluster_upstream_rq_time_bucket{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*",le="500"}[5m])) / sum(rate(envoy_cluster_upstream_rq_time_count{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*"}[5m]))
+                - record: "slo:gateway_latency_under_500ms:ratio_rate30m"
+                  expr: sum(rate(envoy_cluster_upstream_rq_time_bucket{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*",le="500"}[30m])) / sum(rate(envoy_cluster_upstream_rq_time_count{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*"}[30m]))
+                - record: "slo:gateway_latency_under_500ms:ratio_rate1h"
+                  expr: sum(rate(envoy_cluster_upstream_rq_time_bucket{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*",le="500"}[1h])) / sum(rate(envoy_cluster_upstream_rq_time_count{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*"}[1h]))
+                - record: "slo:gateway_latency_under_500ms:ratio_rate6h"
+                  expr: sum(rate(envoy_cluster_upstream_rq_time_bucket{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*",le="500"}[6h])) / sum(rate(envoy_cluster_upstream_rq_time_count{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*"}[6h]))
+                - record: "slo:apiserver_availability:ratio_rate5m"
+                  expr: sum(rate(apiserver_request_total{job="apiserver",code!~"5.."}[5m])) / sum(rate(apiserver_request_total{job="apiserver"}[5m]))
+                - record: "slo:apiserver_availability:ratio_rate30m"
+                  expr: sum(rate(apiserver_request_total{job="apiserver",code!~"5.."}[30m])) / sum(rate(apiserver_request_total{job="apiserver"}[30m]))
+                - record: "slo:apiserver_availability:ratio_rate1h"
+                  expr: sum(rate(apiserver_request_total{job="apiserver",code!~"5.."}[1h])) / sum(rate(apiserver_request_total{job="apiserver"}[1h]))
+                - record: "slo:apiserver_availability:ratio_rate6h"
+                  expr: sum(rate(apiserver_request_total{job="apiserver",code!~"5.."}[6h])) / sum(rate(apiserver_request_total{job="apiserver"}[6h]))
+                - record: "slo:mimir_write_availability:ratio_rate5m"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route="api_v1_push",status_code!~"5.."}[5m])) / sum(rate(cortex_request_duration_seconds_count{route="api_v1_push"}[5m]))
+                - record: "slo:mimir_write_availability:ratio_rate30m"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route="api_v1_push",status_code!~"5.."}[30m])) / sum(rate(cortex_request_duration_seconds_count{route="api_v1_push"}[30m]))
+                - record: "slo:mimir_write_availability:ratio_rate1h"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route="api_v1_push",status_code!~"5.."}[1h])) / sum(rate(cortex_request_duration_seconds_count{route="api_v1_push"}[1h]))
+                - record: "slo:mimir_write_availability:ratio_rate6h"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route="api_v1_push",status_code!~"5.."}[6h])) / sum(rate(cortex_request_duration_seconds_count{route="api_v1_push"}[6h]))
+                - record: "slo:mimir_query_availability:ratio_rate5m"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)",status_code!~"5.."}[5m])) / sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)"}[5m]))
+                - record: "slo:mimir_query_availability:ratio_rate30m"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)",status_code!~"5.."}[30m])) / sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)"}[30m]))
+                - record: "slo:mimir_query_availability:ratio_rate1h"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)",status_code!~"5.."}[1h])) / sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)"}[1h]))
+                - record: "slo:mimir_query_availability:ratio_rate6h"
+                  expr: sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)",status_code!~"5.."}[6h])) / sum(rate(cortex_request_duration_seconds_count{route=~"prometheus_api_v1_(query|query_range|series|labels|label_name_values)"}[6h]))
+                - record: "slo:pipeline_kept:ratio_rate5m"
+                  expr: sum(rate(otelcol_exporter_sent_metric_points_total{pod="otel-cluster-collector-0",exporter="prometheusremotewrite/mimir"}[5m])) / sum(rate(otelcol_receiver_accepted_metric_points_total{pod="otel-cluster-collector-0"}[5m]))
+                - record: "slo:pipeline_kept:ratio_rate1h"
+                  expr: sum(rate(otelcol_exporter_sent_metric_points_total{pod="otel-cluster-collector-0",exporter="prometheusremotewrite/mimir"}[1h])) / sum(rate(otelcol_receiver_accepted_metric_points_total{pod="otel-cluster-collector-0"}[1h]))
+            # Multi-window burn rates (Google SRE workbook): fast = 14.4x over 1h and 5m, slow = 6x over 6h and 30m.
+            - name: slo-burn
+              rules:
+                - alert: GatewayAvailabilityBurnFast
+                  expr: (1 - slo:gateway_availability:ratio_rate1h) > 14.4 * 0.005 and (1 - slo:gateway_availability:ratio_rate5m) > 14.4 * 0.005
+                  for: 2m
+                  labels: {severity: critical, service: gateway, layer: edge, slo: availability}
+                  annotations:
+                    summary: Gateway 5xx burn rate above 14x the 99.5 percent budget over 1h and 5m
+                - alert: GatewayAvailabilityBurnSlow
+                  expr: (1 - slo:gateway_availability:ratio_rate6h) > 6 * 0.005 and (1 - slo:gateway_availability:ratio_rate30m) > 6 * 0.005
+                  for: 15m
+                  labels: {severity: warning, service: gateway, layer: edge, slo: availability}
+                  annotations:
+                    summary: Gateway 5xx burn rate above 6x the 99.5 percent budget over 6h and 30m
+                - alert: GatewayLatencyBurnFast
+                  expr: (1 - slo:gateway_latency_under_500ms:ratio_rate1h) > 14.4 * 0.05 and (1 - slo:gateway_latency_under_500ms:ratio_rate5m) > 14.4 * 0.05
+                  for: 2m
+                  labels: {severity: critical, service: gateway, layer: edge, slo: latency}
+                  annotations:
+                    summary: Gateway requests over 500 ms burn the 95 percent latency budget at 14x over 1h and 5m
+                - alert: MimirWriteAvailabilityBurnFast
+                  expr: (1 - slo:mimir_write_availability:ratio_rate1h) > 14.4 * 0.001 and (1 - slo:mimir_write_availability:ratio_rate5m) > 14.4 * 0.001
+                  for: 2m
+                  labels: {severity: critical, service: mimir, layer: observability, slo: write-availability}
+                  annotations:
+                    summary: Mimir remote-write 5xx burn rate above 14x the 99.9 percent budget over 1h and 5m
+                - alert: ApiserverAvailabilityBurnFast
+                  expr: (1 - slo:apiserver_availability:ratio_rate1h) > 14.4 * 0.001 and (1 - slo:apiserver_availability:ratio_rate5m) > 14.4 * 0.001
+                  for: 2m
+                  labels: {severity: critical, service: kube-apiserver, layer: kubernetes, slo: availability}
+                  annotations:
+                    summary: API server 5xx burn rate above 14x the 99.9 percent budget over 1h and 5m
+                - alert: GatewayLatencyBurnSlow
+                  expr: (1 - slo:gateway_latency_under_500ms:ratio_rate6h) > 6 * 0.05 and (1 - slo:gateway_latency_under_500ms:ratio_rate30m) > 6 * 0.05
+                  for: 15m
+                  labels: {severity: warning, service: gateway, layer: edge, slo: latency}
+                  annotations:
+                    summary: Gateway requests over 500 ms burn the 95 percent latency budget at 6x over 6h and 30m
+                - alert: MimirWriteAvailabilityBurnSlow
+                  expr: (1 - slo:mimir_write_availability:ratio_rate6h) > 6 * 0.001 and (1 - slo:mimir_write_availability:ratio_rate30m) > 6 * 0.001
+                  for: 15m
+                  labels: {severity: warning, service: mimir, layer: observability, slo: write-availability}
+                  annotations:
+                    summary: Mimir remote-write 5xx burn rate above 6x the 99.9 percent budget over 6h and 30m
+                - alert: ApiserverAvailabilityBurnSlow
+                  expr: (1 - slo:apiserver_availability:ratio_rate6h) > 6 * 0.001 and (1 - slo:apiserver_availability:ratio_rate30m) > 6 * 0.001
+                  for: 15m
+                  labels: {severity: warning, service: kube-apiserver, layer: kubernetes, slo: availability}
+                  annotations:
+                    summary: API server 5xx burn rate above 6x the 99.9 percent budget over 6h and 30m
+            - name: loki-health
+              rules:
+                - alert: LokiNoIngest
+                  expr: sum(rate(loki_distributor_lines_received_total[5m])) < 1
+                  for: 10m
+                  labels: {severity: critical, service: loki, layer: observability}
+                  annotations:
+                    summary: "Loki receives fewer than 1 line per second for 10m; agent, network or ingester problem"
+                - alert: LokiDiscards
+                  expr: sum by (reason) (rate(loki_discarded_samples_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: warning, service: loki, layer: observability}
+                  annotations:
+                    summary: "Loki discards log lines (see reason: rate limit, too old, stream limit); raise limits or fix the sender"
+                - alert: LokiPushErrors
+                  expr: sum(rate(loki_request_duration_seconds_count{route=~"loki_api_v1_push|otlp_v1_logs|/logproto.Pusher/Push",status_code=~"5.."}[5m])) / sum(rate(loki_request_duration_seconds_count{route=~"loki_api_v1_push|otlp_v1_logs|/logproto.Pusher/Push"}[5m])) > 0.01
+                  for: 5m
+                  labels: {severity: critical, service: loki, layer: observability}
+                  annotations:
+                    summary: More than 1 percent of log pushes fail with 5xx for 5m
+            - name: tempo-health
+              rules:
+                - alert: TempoDiscards
+                  expr: sum by (reason) (rate(tempo_discarded_spans_total[5m])) > 0
+                  for: 5m
+                  labels: {severity: warning, service: tempo, layer: observability}
+                  annotations:
+                    summary: "Tempo discards spans (see reason: trace too large, live traces exceeded); raise limits or sample harder"
+                - alert: TempoFlushOrCompactionErrors
+                  expr: sum(increase(tempo_ingester_failed_flushes_total[15m])) + sum(increase(tempodb_compaction_errors_total[15m])) > 0
+                  for: 15m
+                  labels: {severity: warning, service: tempo, layer: observability}
+                  annotations:
+                    summary: Tempo ingester flushes or compactions keep failing; check object storage
+            - name: argocd
+              rules:
+                - alert: ArgoAppOutOfSync
+                  expr: argocd_app_info{sync_status!="Synced"} == 1
+                  for: 30m
+                  labels: {severity: warning, service: argocd, layer: delivery}
+                  annotations:
+                    summary: "Argo CD app out of sync for 30m (see name, project): auto-sync off, a sync error, or drift that self-heal cannot fix"
+                - alert: ArgoAppDegraded
+                  expr: argocd_app_info{health_status!~"Healthy|Progressing|Suspended"} == 1
+                  for: 15m
+                  labels: {severity: critical, service: argocd, layer: delivery}
+                  annotations:
+                    summary: "Argo CD app not healthy for 15m (see name, health_status)"
+                - alert: ArgoSyncFailed
+                  expr: sum by (name, project) (increase(argocd_app_sync_total{phase=~"Error|Failed"}[30m])) > 0
+                  for: 5m
+                  labels: {severity: warning, service: argocd, layer: delivery}
+                  annotations:
+                    summary: "Argo CD sync operations failing in the last 30m (see name)"
+                - alert: ArgoSyncLoop
+                  # 2026-10: a CRD-default self-heal loop re-synced an app continuously and pinned the controller at
+                  # 1.4 cores. argocd_app_reconcile_count has no app label, so the signal is syncs per app.
+                  # 2026-11-01: two apps looped at ~30 syncs/h (0.008/s) for a day under the old 0.05/s threshold.
+                  # A healthy app syncs a few times a day; 10/h sustained for 30 min is a loop.
+                  expr: sum by (name, project) (rate(argocd_app_sync_total[30m])) > 0.003
+                  for: 30m
+                  labels: {severity: warning, service: argocd, layer: delivery}
+                  annotations:
+                    summary: "Argo CD app syncs more than ~10 times an hour for 30m (see name): self-heal or drift loop"
+                - alert: ArgoGitSlow
+                  expr: histogram_quantile(0.95, sum by (le) (rate(argocd_git_request_duration_seconds_bucket[10m]))) > 30
+                  for: 15m
+                  labels: {severity: warning, service: argocd, layer: delivery}
+                  annotations:
+                    summary: "Argo CD git requests p95 above 30s for 15m: repo-server or GitHub slow"
+            - name: secrets-pki
+              rules:
+                - alert: CertificateExpiringSoon
+                  expr: (certmanager_certificate_expiration_timestamp_seconds - time()) < 14 * 86400
+                  for: 1h
+                  labels: {severity: warning, service: cert-manager, layer: security}
+                  annotations:
+                    summary: "A certificate expires in under 14 days and has not renewed (see namespace, name)"
+                - alert: CertificateNotReady
+                  expr: certmanager_certificate_ready_status{condition="False"} == 1
+                  for: 30m
+                  labels: {severity: critical, service: cert-manager, layer: security}
+                  annotations:
+                    summary: "A certificate has been not Ready for 30m (see namespace, name, issuer_name)"
+                - alert: ExternalSecretNotReady
+                  expr: externalsecret_status_condition{condition="Ready",status="False"} == 1
+                  for: 15m
+                  labels: {severity: warning, service: external-secrets, layer: security}
+                  annotations:
+                    summary: "An ExternalSecret is not syncing for 15m (see namespace, name): missing remote key, policy or store"
+                - alert: PushSecretNotReady
+                  expr: pushsecret_status_condition{condition="Ready",status="False"} == 1
+                  for: 15m
+                  labels: {severity: warning, service: external-secrets, layer: security}
+                  annotations:
+                    summary: "A PushSecret is failing for 15m (see namespace, name)"
+                - alert: SecretStoreNotReady
+                  expr: clustersecretstore_status_condition{condition="Ready",status="False"} == 1
+                  for: 5m
+                  labels: {severity: critical, service: external-secrets, layer: security}
+                  annotations:
+                    summary: "A ClusterSecretStore is not Ready: every secret behind it stops syncing"
+                - alert: OpenBaoSealed
+                  expr: min(vault_core_unsealed) == 0
+                  for: 5m
+                  labels: {severity: critical, service: openbao, layer: security}
+                  annotations:
+                    summary: "OpenBao is sealed; no secret can be read or written"
+            # kubernetes-mixin recording rules the Kubernetes dashboards use (from the
+            # kube-prometheus-stack chart, which no longer evaluates them here). Only
+            # rules whose source metrics exist on this cluster.
+            - name: mixin-k8s.rules
+              rules:
+                - record: "node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate"
+                  expr: |
+                    sum by (cluster, namespace, pod, container) ( irate(container_cpu_usage_seconds_total{job="kubelet", metrics_path="/metrics/cadvisor", image!=""}[5m]) ) * on (cluster, namespace, pod) group_left(node) topk by (cluster, namespace, pod) ( 1, max by(cluster, namespace, pod, node) (kube_pod_info{node!=""}) )
+                - record: "node_namespace_pod_container:container_memory_working_set_bytes"
+                  expr: |
+                    container_memory_working_set_bytes{job="kubelet", metrics_path="/metrics/cadvisor", image!=""} * on (cluster, namespace, pod) group_left(node) topk by(cluster, namespace, pod) (1, max by(cluster, namespace, pod, node) (kube_pod_info{node!=""}) )
+                - record: "node_namespace_pod_container:container_memory_rss"
+                  expr: |
+                    container_memory_rss{job="kubelet", metrics_path="/metrics/cadvisor", image!=""} * on (cluster, namespace, pod) group_left(node) topk by(cluster, namespace, pod) (1, max by(cluster, namespace, pod, node) (kube_pod_info{node!=""}) )
+                - record: "node_namespace_pod_container:container_memory_cache"
+                  expr: |
+                    container_memory_cache{job="kubelet", metrics_path="/metrics/cadvisor", image!=""} * on (cluster, namespace, pod) group_left(node) topk by(cluster, namespace, pod) (1, max by(cluster, namespace, pod, node) (kube_pod_info{node!=""}) )
+                - record: "cluster:namespace:pod_memory:active:kube_pod_container_resource_requests"
+                  expr: |
+                    kube_pod_container_resource_requests{resource="memory",job="kube-state-metrics"} * on (namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( (kube_pod_status_phase{phase=~"Pending|Running"} == 1) )
+                - record: "namespace_memory:kube_pod_container_resource_requests:sum"
+                  expr: |
+                    sum by (namespace, cluster) ( sum by (namespace, pod, cluster) ( max by (namespace, pod, container, cluster) ( kube_pod_container_resource_requests{resource="memory",job="kube-state-metrics"} ) * on(namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( kube_pod_status_phase{phase=~"Pending|Running"} == 1 ) ) )
+                - record: "cluster:namespace:pod_cpu:active:kube_pod_container_resource_requests"
+                  expr: |
+                    kube_pod_container_resource_requests{resource="cpu",job="kube-state-metrics"} * on (namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( (kube_pod_status_phase{phase=~"Pending|Running"} == 1) )
+                - record: "namespace_cpu:kube_pod_container_resource_requests:sum"
+                  expr: |
+                    sum by (namespace, cluster) ( sum by (namespace, pod, cluster) ( max by (namespace, pod, container, cluster) ( kube_pod_container_resource_requests{resource="cpu",job="kube-state-metrics"} ) * on(namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( kube_pod_status_phase{phase=~"Pending|Running"} == 1 ) ) )
+                - record: "cluster:namespace:pod_memory:active:kube_pod_container_resource_limits"
+                  expr: |
+                    kube_pod_container_resource_limits{resource="memory",job="kube-state-metrics"} * on (namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( (kube_pod_status_phase{phase=~"Pending|Running"} == 1) )
+                - record: "namespace_memory:kube_pod_container_resource_limits:sum"
+                  expr: |
+                    sum by (namespace, cluster) ( sum by (namespace, pod, cluster) ( max by (namespace, pod, container, cluster) ( kube_pod_container_resource_limits{resource="memory",job="kube-state-metrics"} ) * on(namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( kube_pod_status_phase{phase=~"Pending|Running"} == 1 ) ) )
+                - record: "cluster:namespace:pod_cpu:active:kube_pod_container_resource_limits"
+                  expr: |
+                    kube_pod_container_resource_limits{resource="cpu",job="kube-state-metrics"} * on (namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( (kube_pod_status_phase{phase=~"Pending|Running"} == 1) )
+                - record: "namespace_cpu:kube_pod_container_resource_limits:sum"
+                  expr: |
+                    sum by (namespace, cluster) ( sum by (namespace, pod, cluster) ( max by (namespace, pod, container, cluster) ( kube_pod_container_resource_limits{resource="cpu",job="kube-state-metrics"} ) * on(namespace, pod, cluster) group_left() max by (namespace, pod, cluster) ( kube_pod_status_phase{phase=~"Pending|Running"} == 1 ) ) )
+                - record: "namespace_workload_pod:kube_pod_owner:relabel"
+                  expr: |
+                    max by (cluster, namespace, workload, pod) ( label_replace( label_replace( kube_pod_owner{job="kube-state-metrics", owner_kind="ReplicaSet"}, "replicaset", "$1", "owner_name", "(.*)" ) * on(replicaset, namespace) group_left(owner_name) topk by(replicaset, namespace) ( 1, max by (replicaset, namespace, owner_name) ( kube_replicaset_owner{job="kube-state-metrics"} ) ), "workload", "$1", "owner_name", "(.*)" ) )
+                  labels: {"workload_type": "deployment"}
+                - record: "namespace_workload_pod:kube_pod_owner:relabel"
+                  expr: |
+                    max by (cluster, namespace, workload, pod) ( label_replace( kube_pod_owner{job="kube-state-metrics", owner_kind="DaemonSet"}, "workload", "$1", "owner_name", "(.*)" ) )
+                  labels: {"workload_type": "daemonset"}
+                - record: "namespace_workload_pod:kube_pod_owner:relabel"
+                  expr: |
+                    max by (cluster, namespace, workload, pod) ( label_replace( kube_pod_owner{job="kube-state-metrics", owner_kind="StatefulSet"}, "workload", "$1", "owner_name", "(.*)" ) )
+                  labels: {"workload_type": "statefulset"}
+                - record: "namespace_workload_pod:kube_pod_owner:relabel"
+                  expr: |
+                    max by (cluster, namespace, workload, pod) ( label_replace( kube_pod_owner{job="kube-state-metrics", owner_kind="Job"}, "workload", "$1", "owner_name", "(.*)" ) )
+                  labels: {"workload_type": "job"}
+            - name: mixin-node.rules
+              rules:
+                - record: "node_namespace_pod:kube_pod_info:"
+                  expr: |
+                    topk by(cluster, namespace, pod) (1, max by (cluster, node, namespace, pod) ( label_replace(kube_pod_info{job="kube-state-metrics",node!=""}, "pod", "$1", "pod", "(.*)") ))
+                - record: "node:node_num_cpu:sum"
+                  expr: |
+                    count by (cluster, node) ( node_cpu_seconds_total{mode="idle",job="node-exporter"} * on (namespace, pod) group_left(node) topk by(namespace, pod) (1, node_namespace_pod:kube_pod_info:) )
+                - record: ":node_memory_MemAvailable_bytes:sum"
+                  expr: |
+                    sum( node_memory_MemAvailable_bytes{job="node-exporter"} or ( node_memory_Buffers_bytes{job="node-exporter"} + node_memory_Cached_bytes{job="node-exporter"} + node_memory_MemFree_bytes{job="node-exporter"} + node_memory_Slab_bytes{job="node-exporter"} ) ) by (cluster)
+                - record: "node:node_cpu_utilization:ratio_rate5m"
+                  expr: |
+                    avg by (cluster, node) ( sum without (mode) ( rate(node_cpu_seconds_total{mode!="idle",mode!="iowait",mode!="steal",job="node-exporter"}[5m]) ) )
+                - record: "cluster:node_cpu:ratio_rate5m"
+                  expr: |
+                    avg by (cluster) ( node:node_cpu_utilization:ratio_rate5m )
+            - name: mixin-node-exporter.rules
+              rules:
+                - record: "instance:node_num_cpu:sum"
+                  expr: |
+                    count without (cpu, mode) ( node_cpu_seconds_total{job="node-exporter",mode="idle"} )
+                - record: "instance:node_cpu_utilisation:rate5m"
+                  expr: |
+                    1 - avg without (cpu) ( sum without (mode) (rate(node_cpu_seconds_total{job="node-exporter", mode=~"idle|iowait|steal"}[5m])) )
+                - record: "instance:node_load1_per_cpu:ratio"
+                  expr: |
+                    ( node_load1{job="node-exporter"} / instance:node_num_cpu:sum{job="node-exporter"} )
+                - record: "instance:node_memory_utilisation:ratio"
+                  expr: |
+                    1 - ( ( node_memory_MemAvailable_bytes{job="node-exporter"} or ( node_memory_Buffers_bytes{job="node-exporter"} + node_memory_Cached_bytes{job="node-exporter"} + node_memory_MemFree_bytes{job="node-exporter"} + node_memory_Slab_bytes{job="node-exporter"} ) ) / node_memory_MemTotal_bytes{job="node-exporter"} )
+                - record: "instance:node_vmstat_pgmajfault:rate5m"
+                  expr: |
+                    rate(node_vmstat_pgmajfault{job="node-exporter"}[5m])
+                - record: "instance_device:node_disk_io_time_seconds:rate5m"
+                  expr: |
+                    rate(node_disk_io_time_seconds_total{job="node-exporter", device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"}[5m])
+                - record: "instance_device:node_disk_io_time_weighted_seconds:rate5m"
+                  expr: |
+                    rate(node_disk_io_time_weighted_seconds_total{job="node-exporter", device=~"(/dev/)?(mmcblk.p.+|nvme.+|rbd.+|sd.+|vd.+|xvd.+|dm-.+|md.+|dasd.+)"}[5m])
+                - record: "instance:node_network_receive_bytes_excluding_lo:rate5m"
+                  expr: |
+                    sum without (device) ( rate(node_network_receive_bytes_total{job="node-exporter", device!="lo"}[5m]) )
+                - record: "instance:node_network_transmit_bytes_excluding_lo:rate5m"
+                  expr: |
+                    sum without (device) ( rate(node_network_transmit_bytes_total{job="node-exporter", device!="lo"}[5m]) )
+                - record: "instance:node_network_receive_drop_excluding_lo:rate5m"
+                  expr: |
+                    sum without (device) ( rate(node_network_receive_drop_total{job="node-exporter", device!="lo"}[5m]) )
+                - record: "instance:node_network_transmit_drop_excluding_lo:rate5m"
+                  expr: |
+                    sum without (device) ( rate(node_network_transmit_drop_total{job="node-exporter", device!="lo"}[5m]) )
+            - name: mixin-kubelet.rules
+              rules:
+                - record: "node_quantile:kubelet_pleg_relist_duration_seconds:histogram_quantile"
+                  expr: |
+                    histogram_quantile(0.99, sum(rate(kubelet_pleg_relist_duration_seconds_bucket{job="kubelet", metrics_path="/metrics"}[5m])) by (cluster, instance, le) * on(cluster, instance) group_left(node) kubelet_node_name{job="kubelet", metrics_path="/metrics"})
+                  labels: {"quantile": "0.99"}
+                - record: "node_quantile:kubelet_pleg_relist_duration_seconds:histogram_quantile"
+                  expr: |
+                    histogram_quantile(0.9, sum(rate(kubelet_pleg_relist_duration_seconds_bucket{job="kubelet", metrics_path="/metrics"}[5m])) by (cluster, instance, le) * on(cluster, instance) group_left(node) kubelet_node_name{job="kubelet", metrics_path="/metrics"})
+                  labels: {"quantile": "0.9"}
+                - record: "node_quantile:kubelet_pleg_relist_duration_seconds:histogram_quantile"
+                  expr: |
+                    histogram_quantile(0.5, sum(rate(kubelet_pleg_relist_duration_seconds_bucket{job="kubelet", metrics_path="/metrics"}[5m])) by (cluster, instance, le) * on(cluster, instance) group_left(node) kubelet_node_name{job="kubelet", metrics_path="/metrics"})
+                  labels: {"quantile": "0.5"}
+            - name: mixin-kube-prometheus-general.rules
+              rules:
+                - record: "count:up1"
+                  expr: |
+                    count without(instance, pod, node) (up == 1)
+                - record: "count:up0"
+                  expr: |
+                    count without(instance, pod, node) (up == 0)
+            - name: mixin-kube-prometheus-node-recording.rules
+              rules:
+                - record: "cluster:node_cpu:sum_rate5m"
+                  expr: |
+                    sum(rate(node_cpu_seconds_total{mode!="idle",mode!="iowait",mode!="steal"}[5m]))
+            - name: mixin-kubernetes
+              rules:
+                - alert: KubePodCrashLooping
+                  expr: |
+                    max_over_time(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff", job="kube-state-metrics", namespace=~".*"}[5m]) >= 1
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "Pod is crash looping."
+                - alert: KubePodNotReady
+                  expr: |
+                    sum by (namespace, pod, cluster) ( max by(namespace, pod, cluster) ( kube_pod_status_phase{job="kube-state-metrics", namespace=~".*", phase=~"Pending|Unknown|Failed"} ) * on(namespace, pod, cluster) group_left(owner_kind) topk by(namespace, pod, cluster) ( 1, max by(namespace, pod, owner_kind, cluster) (kube_pod_owner{owner_kind!="Job"}) ) ) > 0
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "Pod has been in a non-ready state for more than 15 minutes."
+                - alert: KubeDeploymentReplicasMismatch
+                  expr: |
+                    ( kube_deployment_spec_replicas{job="kube-state-metrics", namespace=~".*"} > kube_deployment_status_replicas_available{job="kube-state-metrics", namespace=~".*"} ) and ( changes(kube_deployment_status_replicas_updated{job="kube-state-metrics", namespace=~".*"}[10m]) == 0 )
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "Deployment has not matched the expected number of replicas."
+                - alert: KubeStatefulSetReplicasMismatch
+                  expr: |
+                    ( kube_statefulset_status_replicas_ready{job="kube-state-metrics", namespace=~".*"} != kube_statefulset_status_replicas{job="kube-state-metrics", namespace=~".*"} ) and ( changes(kube_statefulset_status_replicas_updated{job="kube-state-metrics", namespace=~".*"}[10m]) == 0 )
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "StatefulSet has not matched the expected number of replicas."
+                - alert: KubeDaemonSetRolloutStuck
+                  expr: |
+                    ( ( kube_daemonset_status_current_number_scheduled{job="kube-state-metrics", namespace=~".*"} != kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics", namespace=~".*"} ) or ( kube_daemonset_status_number_misscheduled{job="kube-state-metrics", namespace=~".*"} != 0 ) or ( kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics", namespace=~".*"} != kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics", namespace=~".*"} ) or ( kube_daemonset_status_number_available{job="kube-state-metrics", namespace=~".*"} != kube_daemonset_status_desired_number_scheduled{job="kube-state-metrics", namespace=~".*"} ) ) and ( changes(kube_daemonset_status_updated_number_scheduled{job="kube-state-metrics", namespace=~".*"}[5m]) == 0 )
+                  for: 15m
+                  labels: {severity: warning, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "DaemonSet rollout is stuck."
+                - alert: KubeContainerWaiting
+                  expr: |
+                    sum by (namespace, pod, container, cluster) (kube_pod_container_status_waiting_reason{job="kube-state-metrics", namespace=~".*"}) > 0
+                  for: 1h
+                  labels: {severity: warning, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "Pod container waiting longer than 1 hour"
+                - alert: KubeNodeNotReady
+                  expr: |
+                    kube_node_status_condition{job="kube-state-metrics",condition="Ready",status="true"} == 0
+                  for: 15m
+                  labels: {severity: critical, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "Node is not ready."
+                - alert: KubeletDown
+                  expr: |
+                    absent(up{job="kubelet", metrics_path="/metrics"} == 1)
+                  for: 15m
+                  labels: {severity: critical, service: kubernetes, layer: platform}
+                  annotations:
+                    summary: "Target disappeared from Prometheus target discovery."
+            - name: gateway-envoy
+              rules:
+                # Per-route latency from Envoy; streaming routes (watch/WebSocket UIs)
+                # hold requests open by design and are excluded from the SLI.
+                - alert: GatewayLatencyP95High
+                  expr: histogram_quantile(0.95, sum by (le, envoy_cluster_name) (rate(envoy_cluster_upstream_rq_time_bucket{namespace="envoy-gateway-system",envoy_cluster_name=~"httproute/.*",envoy_cluster_name!~"httproute/(argocd|kargo|headlamp|kube-system)/.*"}[10m]))) > 500
+                  for: 15m
+                  labels: {severity: warning, service: envoy, layer: gateway}
+                  annotations:
+                    summary: Gateway route p95 above 500ms for 15m (streaming routes excluded)
+                - alert: EnvoyUpstreamConnectionOverflow
+                  expr: sum by (envoy_cluster_name) (increase(envoy_cluster_upstream_cx_overflow_total{namespace="envoy-gateway-system"}[5m]) + increase(envoy_cluster_upstream_rq_pending_overflow_total{namespace="envoy-gateway-system"}[5m])) > 0
+                  labels: {severity: warning, service: envoy, layer: gateway}
+                  annotations:
+                    summary: Envoy Gateway upstream connection or pending-request circuit breaker overflowing
+                - alert: EnvoyUpstream5xxRatioHigh
+                  expr: sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system",envoy_response_code_class="5"}[5m])) / sum by (envoy_cluster_name) (rate(envoy_cluster_upstream_rq_xx_total{namespace="envoy-gateway-system"}[5m])) > 0.05
+                  for: 10m
+                  labels: {severity: critical, service: envoy, layer: gateway}
+                  annotations:
+                    summary: Envoy Gateway upstream 5xx ratio above 5% for 10m
+            - name: postgres-health
+              rules:
+                - alert: PostgresLockWaits
+                  expr: max by (namespace, pod) (cnpg_backends_waiting_total) > 0
+                  for: 5m
+                  labels: {severity: warning, service: postgres, layer: data}
+                  annotations:
+                    summary: Postgres backends waiting on locks for over 5m
+                - alert: PostgresDeadlocks
+                  expr: sum by (namespace, pod, datname) (increase(cnpg_pg_stat_database_deadlocks_total[10m])) > 0
+                  labels: {severity: warning, service: postgres, layer: data}
+                  annotations:
+                    summary: Postgres deadlocks detected in the last 10m
+                - alert: PostgresLongTransaction
+                  expr: max by (namespace, pod, datname) (cnpg_backends_max_tx_duration_seconds) > 300
+                  for: 5m
+                  labels: {severity: warning, service: postgres, layer: data}
+                  annotations:
+                    summary: Postgres transaction open longer than 5m
+                - alert: PostgresReplicationLagHigh
+                  expr: max by (namespace, pod) (cnpg_pg_replication_lag) > 30
+                  for: 10m
+                  labels: {severity: warning, service: postgres, layer: data}
+                  annotations:
+                    summary: Postgres replica lag above 30s for 10m

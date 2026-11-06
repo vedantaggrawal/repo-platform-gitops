@@ -1,0 +1,180 @@
+grafana:
+  replicas: 1
+
+  # Console output as JSON so Loki's | json parser unpacks msg/level/logger.
+  grafana.ini:
+    log:
+      mode: console
+      level: info
+    log.console:
+      format: json
+    server:
+      root_url: https://local.grafana.internal:30443
+    # SSO via Authentik (GitHub login is offered there). Public client + PKCE, so
+    # there is no client secret. The browser goes to Authentik's external URL; the
+    # back-channel token/userinfo calls use the in-cluster service, so Grafana
+    # needs no trust in the platform CA. Admin = member of group platform-admins
+    # (Authentik puts groups in the `profile` scope). The local admin (Secret
+    # grafana-admin) remains as break-glass.
+    auth.generic_oauth:
+      enabled: true
+      name: Authentik
+      # Skip Grafana's login form: go straight to Authentik (break-glass admin
+      # login stays at /login?disableAutoLogin=true).
+      auto_login: true
+      client_id: grafana
+      use_pkce: true
+      scopes: openid profile email
+      auth_url: https://local.authentik.internal:30443/application/o/authorize/
+      token_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/token/
+      api_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/userinfo/
+      # Sign-out is local, like Argo CD and Kargo: back to Grafana's own login page
+      # (auto-login off there). Signing out of everything is done in Authentik.
+      signout_redirect_url: https://local.grafana.internal:30443/login?disableAutoLogin=true
+      login_attribute_path: preferred_username
+      email_attribute_path: email
+      groups_attribute_path: groups
+      role_attribute_path: contains(groups[*], 'platform-admins') && 'Admin' || 'Viewer'
+      role_attribute_strict: false
+      allow_sign_up: true
+
+  # Grafana 13 on Postgres with Git Sync and ~20 dashboards peaks above 400Mi.
+  resources:
+    requests:
+      cpu: 200m
+      memory: 768Mi
+    limits:
+      memory: 768Mi
+
+  # ServiceAccount with Service access so Loki and Mimir resolve via DNS works
+  # the same; no special perms needed for the standalone Grafana.
+  serviceAccount:
+    create: true
+
+  # Sidecar auto-discovers ConfigMaps with grafana_datasource=1 or
+  # grafana_dashboard=1 in any namespace. Other apps (e.g. Cilium) drop
+  # dashboard ConfigMaps with the right label and they show up automatically.
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      # Folders come from the grafana_folder annotation on each ConfigMap (the
+      # kube-prometheus-stack chart stamps Kubernetes, Cilium stamps Cilium).
+      # Git Sync owns "platform-dashboards".
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      # Datasources are provisioned statically below, so sidecar discovery is
+      # off. With searchNamespace: ALL it imported the dev kube-prometheus-stack
+      # `grafana_datasource=1` ConfigMap (Prometheus isDefault:true) from the
+      # shared monitoring namespace, colliding with our Mimir default and
+      # crashing Grafana ("Only one datasource per organization can be default").
+      enabled: false
+
+  # LGTM datasources: Mimir (metrics, default), Loki (logs), Tempo (traces).
+  # Cross-source jumps: Loki → Tempo via TraceID in log lines; Tempo →
+  # Loki via service.name; Tempo → Mimir for metrics on the same service.
+  # Standalone grafana chart wants the provisioning-file format here (the
+  # kube-prom-stack-only `additionalDataSources` key was silently ignored).
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Mimir
+          type: prometheus
+          uid: mimir
+          isDefault: true
+          access: proxy
+          url: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
+          jsonData:
+            httpHeaderName1: X-Scope-OrgID
+            timeInterval: 30s
+            exemplarTraceIdDestinations:
+              - {name: trace_id, datasourceUid: tempo}
+          secureJsonData:
+            httpHeaderValue1: anonymous
+        - name: Loki
+          type: loki
+          uid: loki
+          access: proxy
+          url: http://local-loki-gateway.monitoring.svc.cluster.local
+          jsonData:
+            derivedFields:
+              - name: TraceID
+                matcherRegex: '"trace_id":"(\w+)"'
+                url: '$${__value.raw}'
+                datasourceUid: tempo
+        - name: Tempo
+          type: tempo
+          uid: tempo
+          access: proxy
+          url: http://local-tempo.monitoring.svc.cluster.local:3200
+          jsonData:
+            tracesToLogsV2:
+              datasourceUid: loki
+              spanStartTimeShift: '-5m'
+              spanEndTimeShift: '5m'
+              tags: [{ key: service.name, value: service_name }]
+              filterByTraceID: true
+            tracesToMetrics:
+              datasourceUid: mimir
+              tags: [{ key: service.name, value: service_name }]
+            serviceMap:
+              datasourceUid: mimir
+            nodeGraph:
+              enabled: true
+
+  ingress:
+    enabled: false
+
+  # Route on the Envoy Gateway.
+  route:
+    main:
+      enabled: true
+      parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
+      hostnames: [local.grafana.internal]
+
+  # Standalone chart doesn't ship a ServiceMonitor by default — Alloy now
+  # scrapes Grafana via explicit prometheus.scrape, so leave SM off.
+  # Grafana's own metrics (requests, datasource calls, login failures): scraped by
+  # the OTel target allocator; rules alert on down/errors/latency.
+  serviceMonitor:
+    enabled: true
+    interval: 60s
+    # The Kubernetes-style apiserver histograms and the feature-toggle gauge are
+    # ~2.3k of Grafana's ~6k series and nothing alerts on them.
+    metricRelabelings:
+      - action: drop
+        sourceLabels: [__name__]
+        regex: grafana_(apiserver_.*|feature_toggles_info)
+
+  # Admin credentials from a Secret the chart doesn't render. Without this the
+  # chart generates a random password on every render (its `lookup` is empty
+  # under Argo CD's `helm template`), so Grafana restarted and its admin password
+  # changed on every sync of this repo.
+  # State lives in the grafana-db CNPG cluster (users, preferences, the Git Sync
+  # repository object). CNPG writes the DSN into Secret grafana-db-app.
+  # Discrete fields: Grafana rejects the postgresql:// scheme of the CNPG uri key.
+  env:
+    GF_DATABASE_TYPE: postgres
+    GF_DATABASE_HOST: grafana-db-rw.monitoring:5432
+    GF_DATABASE_NAME: grafana
+    GF_DATABASE_SSL_MODE: require
+  envValueFrom:
+    GF_DATABASE_USER:
+      secretKeyRef:
+        name: grafana-db-app
+        key: username
+    GF_DATABASE_PASSWORD:
+      secretKeyRef:
+        name: grafana-db-app
+        key: password
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  # grafana-admin is generated in-cluster by External Secrets (see
+  # manifests/secret-stores/local/grafana-admin.yaml); the password never appears
+  # in Git.

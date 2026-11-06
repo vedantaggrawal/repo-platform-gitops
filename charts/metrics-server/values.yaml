@@ -1,0 +1,9 @@
+metrics-server:
+  # Chart 3.11.* pins v0.6.4 which doesn't know --logging-format.
+  # Bump the binary to v0.7.2 (first release with klog2 --logging-format).
+  image:
+    tag: v0.7.2
+
+  args:
+    - --kubelet-insecure-tls
+    - --logging-format=json
