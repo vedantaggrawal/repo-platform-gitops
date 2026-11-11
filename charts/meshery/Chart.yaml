@@ -1,0 +1,9 @@
+apiVersion: v2
+name: meshery
+description: eve platform artefact for meshery (upstream chart meshery v1.0.74 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: meshery
+    version: "v1.0.74"
+    repository: https://meshery.io/charts/

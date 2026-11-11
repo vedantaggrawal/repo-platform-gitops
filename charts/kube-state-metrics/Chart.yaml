@@ -1,0 +1,9 @@
+apiVersion: v2
+name: kube-state-metrics
+description: eve platform artefact for kube-state-metrics (upstream chart kube-state-metrics 5.37.0 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: kube-state-metrics
+    version: "5.37.0"
+    repository: https://prometheus-community.github.io/helm-charts

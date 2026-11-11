@@ -1,0 +1,2 @@
+kube-prometheus-stack:
+  # Prod-specific overrides for kube-prometheus-stack

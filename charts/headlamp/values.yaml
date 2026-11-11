@@ -1,0 +1,20 @@
+headlamp:
+  replicaCount: 1
+
+  image:
+    pullPolicy: IfNotPresent
+
+  clusterRoleBinding:
+    create: true
+
+  serviceAccount:
+    create: true
+
+  ingress:
+    enabled: false
+
+  # Route on the Envoy Gateway.
+  httpRoute:
+    enabled: true
+    parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
+    hostnames: [local.headlamp.internal]

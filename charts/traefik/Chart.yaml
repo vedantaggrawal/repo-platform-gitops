@@ -1,0 +1,9 @@
+apiVersion: v2
+name: traefik
+description: eve platform artefact for traefik (upstream chart traefik 33.2.1 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: traefik
+    version: "33.2.1"
+    repository: https://traefik.github.io/charts

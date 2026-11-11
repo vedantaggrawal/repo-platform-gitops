@@ -1,0 +1,9 @@
+apiVersion: v2
+name: kargo
+description: eve platform artefact for kargo (upstream chart kargo 1.11.8 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: kargo
+    version: "1.11.8"
+    repository: oci://ghcr.io/akuity/kargo-charts

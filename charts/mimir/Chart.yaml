@@ -1,0 +1,9 @@
+apiVersion: v2
+name: mimir
+description: eve platform artefact for mimir (upstream chart mimir-distributed 5.8.0 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: mimir-distributed
+    version: "5.8.0"
+    repository: https://grafana.github.io/helm-charts

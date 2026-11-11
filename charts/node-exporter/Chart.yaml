@@ -1,0 +1,9 @@
+apiVersion: v2
+name: node-exporter
+description: eve platform artefact for node-exporter (upstream chart prometheus-node-exporter 4.60.1 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: prometheus-node-exporter
+    version: "4.60.1"
+    repository: https://prometheus-community.github.io/helm-charts

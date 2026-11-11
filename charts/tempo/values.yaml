@@ -1,0 +1,62 @@
+tempo:
+  # Tempo — trace store.
+  # This chart is the single-binary 'tempo' (NOT 'tempo-distributed'):
+  # 1 StatefulSet runs distributor + ingester + querier + compactor.
+  # Prod path: switch to tempo-distributed chart with same backend config.
+
+  replicas: 1
+
+  tempo:
+    retention: 72h
+    extraArgs:
+      config.expand-env: "true"
+    extraEnvFrom:
+      - secretRef:
+          name: tempo-s3
+    multitenancyEnabled: false
+    server:
+      http_listen_port: 3200
+      log_format: json
+    # No metrics-generator: RED + service graph are produced pre-sampling by the
+    # otel-cluster spanmetrics/servicegraph connectors (tail sampling would bias them).
+    storage:
+      trace:
+        backend: s3
+        s3:
+          bucket: tempo-blocks
+          endpoint: local-minio.monitoring-storage.svc.cluster.local:9000
+          # From Secret tempo-s3 (tempo.extraEnvFrom), expanded by -config.expand-env.
+          access_key: "${TEMPO_S3_ACCESS_KEY}"
+          secret_key: "${TEMPO_S3_SECRET_KEY}"
+          insecure: true
+          forcepathstyle: true
+          region: us-east-1
+        wal:
+          path: /var/tempo/wal
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 512Mi
+
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClassName: standard
+
+  service:
+    type: ClusterIP
+
+  # Scraped by the otel-cluster target allocator (any ServiceMonitor). 60s like every platform target;
+  # the collector allowlist admits tempo_* names only once a dashboard or rule references them.
+  serviceMonitor:
+    enabled: true
+    interval: 60s

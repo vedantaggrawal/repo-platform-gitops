@@ -1,0 +1,9 @@
+apiVersion: v2
+name: authentik
+description: eve platform artefact for authentik (upstream chart authentik 2026.8.5 plus the platform's values); a release is the unit promoted between envs
+type: application
+version: 1.0.0
+dependencies:
+  - name: authentik
+    version: "2026.8.5"
+    repository: https://charts.goauthentik.io

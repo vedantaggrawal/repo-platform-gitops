@@ -1,0 +1,55 @@
+minio:
+  # MinIO — S3-compatible object store backing Mimir/Loki/Tempo.
+  # Standalone mode locally; switch to mode: distributed (>=4 replicas) for prod.
+
+  mode: standalone
+  replicas: 1
+
+  # Recreate: the RWO data volume can't be shared by a surge pod. Server-side
+  # apply can't drop the live rollingUpdate block (no field owner), so Argo CD
+  # replaces this Deployment instead (same as the loki gateway).
+  deploymentUpdate:
+    type: Recreate
+  additionalAnnotations:
+    argocd.argoproj.io/sync-options: Replace=true
+
+  # Root credentials: Secret minio-root (keys rootUser/rootPassword), delivered
+  # from OpenBao by an ExternalSecret in manifests/minio-init/local.
+  existingSecret: minio-root
+
+  # The chart default `users` adds a console user with a well-known password; app
+  # users are created by the minio-init Job instead.
+  users: []
+
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: 30Gi
+
+  # Bucket creation moved to manifests/minio-init/local/buckets-job.yaml
+  # (Argo Application local-minio-init). Argo strips the chart's
+  # helm.sh/hook annotations so the chart's `buckets:` Job never ran.
+  buckets: []
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
+
+  service:
+    type: ClusterIP
+    port: 9000
+  consoleService:
+    type: ClusterIP
+    port: 9001
+
+  # Web console for poking around buckets; served by the Envoy Gateway route (manifests/routes).
+  consoleIngress:
+    enabled: false
+
+  # Disable the metrics scrape job until Alloy is in place (phase 5).
+  metrics:
+    serviceMonitor:
+      enabled: false

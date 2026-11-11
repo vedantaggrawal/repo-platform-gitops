@@ -1,0 +1,78 @@
+kargo:
+  # TEMPORARY: locally built Kargo v1.11.8 + a UI login-callback patch that is being
+  # proposed upstream (follow-up to akuity/kargo#7136). The image is side-loaded into
+  # the kind nodes and isn't in any registry. Remove this block once upstream ships
+  # the fix.
+  image:
+    repository: ghcr.io/vedantaggrawal/kargo
+    tag: v1.11.8-ui-callback.2
+    pullPolicy: IfNotPresent
+
+  # Kargo — local dev environment.
+  #
+  # Admin account login is enabled. The password hash + token signing key live in
+  # the `kargo-admin-creds` Secret (created out-of-band in the kargo namespace, NOT
+  # in git, since this values file is public) and are consumed via api.secret.name.
+  # Rotate/recreate that Secret to change the admin password.
+  #
+  # The API is exposed through the Cilium ingress at
+  # https://local.kargo.internal:30443 (kind maps container 443 -> host 30443).
+  # Kargo mints its own self-signed certs via cert-manager (CRDs already present),
+  # matching how the rest of the platform handles local TLS.
+
+  api:
+    adminAccount:
+      enabled: true
+    # Existing Secret holding ADMIN_ACCOUNT_PASSWORD_HASH and
+    # ADMIN_ACCOUNT_TOKEN_SIGNING_KEY; keeps secret material out of this public repo.
+    secret:
+      name: kargo-admin-creds
+
+    host: local.kargo.internal
+
+    # SSO via Authentik (public client `kargo`, PKCE; GitHub login federated
+    # there). The API server verifies Authentik's issuer over TLS, so it trusts
+    # the platform CA (Secret platform-ca, delivered by ESO). Groups arrive in
+    # the `profile` scope; members of platform-admins are Kargo admins. The admin
+    # account above stays as break-glass.
+    oidc:
+      enabled: true
+      issuerURL: https://local.authentik.internal:30443/application/o/kargo/
+      clientID: kargo
+      cliClientID: kargo
+      additionalScopes: [profile, email]
+      usernameClaim: email
+      admins:
+        claims:
+          groups: [platform-admins]
+      dex:
+        enabled: false
+    cabundle:
+      secretName: platform-ca
+    # JSON logs so Loki's `| json` parser unpacks fields cleanly, consistent with
+    # the rest of the platform (argocd, cert-manager).
+    logFormat: JSON
+
+    # TLS terminates at the gateway; the API server speaks plain HTTP upstream but
+    # still advertises https URLs to clients.
+    tls:
+      enabled: false
+      terminatedUpstream: true
+
+    ingress:
+      enabled: false
+
+  controller:
+    logFormat: JSON
+
+  garbageCollector:
+    logFormat: JSON
+
+  managementController:
+    logFormat: JSON
+
+  webhooksServer:
+    logFormat: JSON
+
+  externalWebhooksServer:
+    logFormat: JSON

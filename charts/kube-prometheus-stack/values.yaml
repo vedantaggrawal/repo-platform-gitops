@@ -1,0 +1,99 @@
+kube-prometheus-stack:
+  # Local kind cluster — minimal resource footprint.
+  # Prometheus StatefulSet disabled: Alloy now scrapes (via ServiceMonitor/PodMonitor
+  # CRDs that the Operator still manages) and remote_writes to Mimir.
+  # Operator + CRDs + Alertmanager remain so the rest of the stack is unaffected.
+  prometheus:
+    enabled: false
+
+  alertmanager:
+    alertmanagerSpec:
+      replicas: 1
+      logFormat: json
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          memory: 128Mi
+
+  grafana:
+    replicas: 1
+    # Console output as JSON so Loki's | json parser unpacks msg/level/logger.
+    grafana.ini:
+      log:
+        mode: console
+        level: info
+      log.console:
+        format: json
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 512Mi
+    sidecar:
+      dashboards:
+        enabled: true
+        searchNamespace: ALL
+      datasources:
+        enabled: true
+        searchNamespace: ALL
+        defaultDatasourceEnabled: false   # we provide Mimir as default below
+    # LGTM datasources: Mimir (metrics, default), Loki (logs), Tempo (traces).
+    # Cross-source jumps: Loki → Tempo via TraceID in log lines; Tempo →
+    # Loki via service.name; Tempo → Mimir for metrics on the same service.
+    additionalDataSources:
+      - name: Mimir
+        type: prometheus
+        uid: mimir
+        isDefault: true
+        access: proxy
+        url: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
+          timeInterval: 30s
+        secureJsonData:
+          httpHeaderValue1: anonymous
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://local-loki-gateway.monitoring.svc.cluster.local
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '"trace_id":"(\w+)"'
+              url: '$${__value.raw}'
+              datasourceUid: tempo
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://local-tempo.monitoring.svc.cluster.local:3200
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: '-5m'
+            spanEndTimeShift: '5m'
+            tags: [{ key: service.name, value: service_name }]
+            filterByTraceID: true
+          tracesToMetrics:
+            datasourceUid: mimir
+            tags: [{ key: service.name, value: service_name }]
+          serviceMap:
+            datasourceUid: mimir
+          nodeGraph:
+            enabled: true
+    ingress:
+      enabled: true
+      ingressClassName: cilium
+      annotations:
+        cert-manager.io/cluster-issuer: platform-ca
+        cert-manager.io/usages: "digital signature,key encipherment,server auth"
+      hosts:
+        - local.grafana.internal
+      tls:
+        - secretName: grafana-tls
+          hosts:
+            - local.grafana.internal

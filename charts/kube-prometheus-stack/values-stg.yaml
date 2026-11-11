@@ -1,0 +1,2 @@
+kube-prometheus-stack:
+  # Stg-specific overrides for kube-prometheus-stack
