@@ -1,0 +1,6 @@
+enabled: "true"
+chart: loki
+repoURL: https://grafana.github.io/helm-charts
+targetRevision: "6.55.0"
+namespace: monitoring
+syncWave: "-1"

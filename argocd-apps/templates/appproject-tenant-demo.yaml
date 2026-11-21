@@ -1,5 +1,4 @@
-{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
-{{- if $cluster.rawManifests }}
+{{- if has .Values.env .Values.rawManifestEnvs }}
 # Tenant "demo": namespaced resources only, in its own namespaces. Quota,
 # limits and network policy stay with the platform. Roles bind to the
 # Authentik groups tenant-demo-{admin,dev,viewer} (OIDC `groups` claim).
@@ -18,9 +17,9 @@ spec:
     # Kargo-managed stage apps (appset-kargo-demo.yaml)
     - https://github.com/vedantaggrawal/kargo-demo
   destinations:
-    - server: {{ $cluster.server }}
+    - server: {{ .Values.cluster }}
       namespace: 'tenant-demo-*'
-    - server: {{ $cluster.server }}
+    - server: {{ .Values.cluster }}
       namespace: 'kargo-demo-*'
   clusterResourceWhitelist: []
   namespaceResourceBlacklist:

@@ -1,7 +1,7 @@
 ---
 paths:
-  - "stages/*/apps.yaml"
-  - "stages/*/values/kargo.yaml"
+  - "platform-apps/*/*/config.yaml"
+  - "platform-apps/kargo/**"
 ---
 # Delivery and versions
 
