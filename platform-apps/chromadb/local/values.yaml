@@ -1,0 +1,40 @@
+# Chroma vector database — community Helm chart (chart 0.2.2 = Chroma 1.5.3)
+# https://github.com/amikos-tech/chromadb-chart
+# Single node for RAG experiments. Reached in-cluster at
+# http://local-chromadb.chromadb.svc:8000 and from the browser/laptop at
+# https://local.chromadb.internal:30443 (HTTPRoute in manifests/routes/local).
+
+replicaCount: 1
+
+image:
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
+
+chromadb:
+  # Chroma >= 1.0 (Rust server) ignores the chart's auth.* values; access is
+  # network-level only (platform gateway, local network). Keep it explicit.
+  auth:
+    enabled: false
+  allowReset: false
+  anonymizedTelemetry: false
+  logging:
+    chromadb: INFO
+  isPersistent: true
+  persistDirectory: /data
+  data:
+    volumeSize: 5Gi
+    storageClass: standard
+    # Keep the PVC when the StatefulSet goes (standard class reclaims with Delete).
+    retentionPolicyOnDelete: Retain
