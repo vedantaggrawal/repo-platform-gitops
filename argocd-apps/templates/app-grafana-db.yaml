@@ -1,0 +1,65 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-grafana-db
+  namespace: argocd
+  annotations:
+    # Demo app's database (CNPG) and its role passwords (External Secrets).
+    # Namespace kargo-demo-test is created by Kargo; this app needs only the CRDs.
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/grafana-db/{{ .Values.env }}
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: monitoring
+  # CNPG's webhook fills in defaults for these Cluster fields; without this they
+  # show as drift and selfHeal re-syncs forever. Fields we declare are still compared.
+  ignoreDifferences:
+    - group: postgresql.cnpg.io
+      kind: Cluster
+      jqPathExpressions:
+        - .spec.affinity
+        - .spec.bootstrap.initdb.encoding
+        - .spec.bootstrap.initdb.localeCType
+        - .spec.bootstrap.initdb.localeCollate
+        - .spec.enablePDB
+        - .spec.enableSuperuserAccess
+        - .spec.failoverDelay
+        - .spec.logLevel
+        - .spec.managed.roles[]?.connectionLimit
+        - .spec.managed.roles[]?.inherit
+        - .spec.maxSyncReplicas
+        - .spec.minSyncReplicas
+        - .spec.monitoring
+        - .spec.postgresGID
+        - .spec.postgresUID
+        - .spec.postgresql
+        - .spec.primaryUpdateMethod
+        - .spec.primaryUpdateStrategy
+        - .spec.probes
+        - .spec.replicationSlots
+        - .spec.smartShutdownTimeout
+        - .spec.startDelay
+        - .spec.stopDelay
+        - .spec.storage.resizeInUseVolumes
+        - .spec.switchoverDelay
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      # CRDs come from the CNPG, ESO and cert-manager apps.
+      - SkipDryRunOnMissingResource=true
+      # No ServerSideApply: Argo CD 2.10 panics diffing CNPG/ESO custom resources under SSA.
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}

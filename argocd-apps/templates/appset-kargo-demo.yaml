@@ -1,5 +1,4 @@
-{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
-{{- if $cluster.rawManifests }}
+{{- if has .Values.env .Values.rawManifestEnvs }}
 # Kargo demo stage apps (was applied by hand; adopted here). Kargo promotes
 # via the authorized-stage annotation.
 apiVersion: argoproj.io/v1alpha1
@@ -26,7 +25,7 @@ spec:
         targetRevision: 'stage/{{ "{{stage}}" }}'
         path: .
       destination:
-        server: {{ $cluster.server }}
+        server: {{ .Values.cluster }}
         namespace: 'kargo-demo-{{ "{{stage}}" }}'
       syncPolicy:
         syncOptions:

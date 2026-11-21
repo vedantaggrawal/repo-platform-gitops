@@ -1,4 +1,3 @@
-{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -27,11 +26,11 @@ spec:
           targetRevision: main
           ref: values
       destination:
-        server: {{ $cluster.server }}
+        server: {{ .Values.cluster }}
         namespace: '{{ "{{path[1]}}" }}'
       syncPolicy:
         automated:
-          prune: {{ $cluster.prune }}
+          prune: {{ .Values.prune }}
           selfHeal: true
         syncOptions:
           - CreateNamespace=true

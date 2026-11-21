@@ -1,0 +1,6 @@
+enabled: "true"
+chart: vault-config-operator
+repoURL: https://redhat-cop.github.io/vault-config-operator
+targetRevision: "v1.0.5"
+namespace: openbao
+syncWave: "1"

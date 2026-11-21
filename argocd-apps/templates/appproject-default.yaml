@@ -1,5 +1,4 @@
-{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
-{{- if $cluster.rawManifests }}
+{{- if has .Values.env .Values.rawManifestEnvs }}
 # Locked: nothing may be added here by accident. Last wave, after every app
 # has moved to `platform` / `tenant-demo`. Never pruned if removed from git.
 apiVersion: argoproj.io/v1alpha1

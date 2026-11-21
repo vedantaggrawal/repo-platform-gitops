@@ -1,5 +1,4 @@
-{{- $cluster := .Files.Get (printf "envs/%s/cluster.yaml" .Values.env) | fromYaml -}}
-{{- if $cluster.rawManifests }}
+{{- if has .Values.env .Values.rawManifestEnvs }}
 # Platform apps (AppSets, raw apps, root apps). Created before any Application
 # that references it. Shared by every env root on the cluster, rendered once.
 apiVersion: argoproj.io/v1alpha1
@@ -39,7 +38,7 @@ spec:
     - docker.io/envoyproxy
     - https://redhat-cop.github.io/vault-config-operator
   destinations:
-    - server: {{ $cluster.server }}
+    - server: {{ .Values.cluster }}
       namespace: '*'
   clusterResourceWhitelist:
     - group: '*'

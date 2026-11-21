@@ -1,0 +1,68 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ .Values.env }}-platform-onboarding
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+        revision: HEAD
+        files:
+          - path: 'platform-apps/*/{{ .Values.env }}/config.yaml'
+      selector:
+        matchLabels:
+          enabled: "true"
+  template:
+    metadata:
+      name: '{{ .Values.env }}-{{ "{{path[1]}}" }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{ "{{syncWave}}" }}'
+    spec:
+      project: platform
+      sources:
+        - chart: '{{ "{{chart}}" }}'
+          repoURL: '{{ "{{repoURL}}" }}'
+          targetRevision: '{{ "{{targetRevision}}" }}'
+          helm:
+            valueFiles:
+              - $values/platform-apps/{{ "{{path[1]}}" }}/{{ .Values.env }}/values.yaml
+        - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: {{ .Values.cluster }}
+        namespace: '{{ "{{namespace}}" }}'
+      # Fields set by the API server or cert controllers, not by charts:
+      # without this they diff forever and self-heal re-applies every reconcile.
+      ignoreDifferences:
+        - group: '*'
+          kind: '*'
+          jqPathExpressions:
+            - '.spec.template.spec.containers[]?.resources | select(. == {})'
+            - '.spec.template.spec.initContainers[]?.resources | select(. == {})'
+            - '.webhooks[]?.clientConfig.caBundle'
+        # Some charts omit Gateway API defaults the API server fills in; drop a
+        # field only when it holds its default so real changes still diff.
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          jqPathExpressions:
+            - '.spec.parentRefs[]? | select(.group == "gateway.networking.k8s.io") | .group'
+            - '.spec.parentRefs[]? | select(.kind == "Gateway") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.group == "") | .group'
+            - '.spec.rules[]?.backendRefs[]? | select(.kind == "Service") | .kind'
+            - '.spec.rules[]?.backendRefs[]? | select(.weight == 1) | .weight'
+            - '.spec.rules[]? | select(.matches == [{"path":{"type":"PathPrefix","value":"/"}}]) | .matches'
+      syncPolicy:
+        automated:
+          prune: {{ .Values.prune }}
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 2m

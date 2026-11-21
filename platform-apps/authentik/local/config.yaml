@@ -1,0 +1,9 @@
+enabled: "true"
+chart: authentik
+repoURL: https://charts.goauthentik.io
+targetRevision: "2026.8.5"
+namespace: authentik
+# Waves don't order ApplicationSet apps against root-app children
+# (local-authentik-config: database, secrets, blueprints). On a fresh cluster
+# the pods wait until those exist, then start by themselves.
+syncWave: "3"
