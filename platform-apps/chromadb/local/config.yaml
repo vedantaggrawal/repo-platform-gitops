@@ -1,0 +1,6 @@
+enabled: "true"
+chart: chromadb
+repoURL: https://amikos-tech.github.io/chromadb-chart/
+targetRevision: "0.2.2"
+namespace: chromadb
+syncWave: "0"
