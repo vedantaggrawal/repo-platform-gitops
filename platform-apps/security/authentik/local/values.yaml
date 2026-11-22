@@ -15,6 +15,9 @@ global:
     # First start only: creates the `akadmin` break-glass user with this password.
     - name: AUTHENTIK_BOOTSTRAP_PASSWORD
       valueFrom: { secretKeyRef: { name: authentik-keys, key: bootstrap_password } }
+    # OpenBao's confidential OIDC client; blueprints/apps.yaml reads it with !Env.
+    - name: AUTHENTIK_OPENBAO_OIDC_CLIENT_SECRET
+      valueFrom: { secretKeyRef: { name: authentik-openbao-oidc, key: client_secret } }
 
 authentik:
   error_reporting:
