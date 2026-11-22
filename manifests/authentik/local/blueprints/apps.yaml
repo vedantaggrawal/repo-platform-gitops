@@ -81,3 +81,17 @@ entries:
   - model: authentik_core.application
     identifiers: { slug: openbao }
     attrs: { name: OpenBao, provider: !KeyOf provider-openbao }
+  # Chroma's HTTP API behind the gateway: JWT only (SecurityPolicy in manifests/routes/local).
+  # Clients get a token with the same CLI/PKCE flow as eve-demo-api and send it as Bearer.
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-chromadb
+    identifiers: { name: chromadb }
+    attrs:
+      <<: *public
+      client_id: chromadb
+      access_token_validity: hours=8
+      redirect_uris:
+        - { matching_mode: regex, url: '^http://localhost:[0-9]+/callback$' }
+  - model: authentik_core.application
+    identifiers: { slug: chromadb }
+    attrs: { name: Chroma, provider: !KeyOf provider-chromadb }

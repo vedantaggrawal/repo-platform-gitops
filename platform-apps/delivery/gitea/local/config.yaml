@@ -1,0 +1,6 @@
+enabled: "true"
+chart: gitea
+repoURL: https://dl.gitea.com/charts/
+targetRevision: "12.7.0"
+namespace: gitea
+syncWave: "1"

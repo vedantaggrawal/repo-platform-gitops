@@ -4,6 +4,12 @@ metadata:
   name: {{ .Values.env }}-platform-onboarding
   namespace: argocd
 spec:
+  # Delete protection (incident 2026-11-22: one reconcile with mis-generated names deleted all 21
+  # Applications and, through their finalizers, their resources). With this set the controller
+  # adds no resources-finalizer to generated Applications: a wrong generation removes Application
+  # objects only, resources stay and the next generation adopts them in place.
+  syncPolicy:
+    preserveResourcesOnDeletion: true
   generators:
     - git:
         repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
@@ -59,6 +65,13 @@ spec:
         automated:
           prune: {{ .Values.prune }}
           selfHeal: true
+        # The namespace Argo creates carries the app's layer and the platform tenant, so
+        # kube_namespace_labels joins and OpenCost allocation work per layer and tenant.
+        # Shared namespaces (monitoring, openbao, kube-system) hold apps of one layer each.
+        managedNamespaceMetadata:
+          labels:
+            eve.io/layer: '{{ "{{path[1]}}" }}'
+            eve.io/tenant: platform
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

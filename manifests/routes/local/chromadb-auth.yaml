@@ -1,0 +1,17 @@
+# JWT auth for Chroma's API behind the gateway: a Bearer token from Authentik's chromadb provider.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: chromadb
+  namespace: chromadb
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: chromadb}
+  jwt:
+    providers:
+      - name: authentik
+        issuer: https://local.authentik.internal:30443/application/o/chromadb/
+        audiences: [chromadb]
+        remoteJWKS:
+          uri: http://local-authentik-server.authentik.svc.cluster.local/application/o/chromadb/jwks/
+          cacheDuration: 300s
