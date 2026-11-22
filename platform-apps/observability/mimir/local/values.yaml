@@ -286,7 +286,7 @@ extraObjects:
                 for: 10m
                 labels: {severity: critical, service: alertmanager, layer: observability}
                 annotations:
-                  summary: Alertmanager cannot deliver notifications via {{ $labels.integration }}
+                  summary: Alertmanager cannot deliver notifications via {{ "{{ $labels.integration }}" }}
                   runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#delivery-failing
       slo.yaml: |
         groups:
