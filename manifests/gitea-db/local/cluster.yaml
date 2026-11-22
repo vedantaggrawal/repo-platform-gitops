@@ -1,0 +1,25 @@
+# Gitea's database: CloudNativePG, one instance on local. CNPG writes the app role's
+# credentials into Secret gitea-db-app (username, password, uri); the Gitea chart app
+# reads them (platform-apps/delivery/gitea). Deleting the Application keeps the cluster.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: gitea-db
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Delete=false,Prune=false
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  bootstrap:
+    initdb:
+      database: gitea
+      owner: gitea
+  storage:
+    size: 2Gi
+    storageClass: standard
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 384Mi

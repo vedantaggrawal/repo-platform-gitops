@@ -1,0 +1,10 @@
+# Gitea's namespace, owned by this app so the layer label is declared. Never pruned
+# or deleted with the Application: Gitea's repositories (PVC) live here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitea
+  labels:
+    eve.io/layer: delivery
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false

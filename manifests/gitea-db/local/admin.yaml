@@ -1,0 +1,40 @@
+# Gitea's local admin (break-glass; normal login is Authentik SSO once wired). ESO
+# generates the password once (refreshPolicy CreatedOnce) and owns Secret gitea-admin,
+# which the chart reads via gitea.admin.existingSecret (keys username, password).
+# Lives in this non-ServerSideApply app like grafana-admin (ESO CRs and SSA diff).
+# Read it with:
+#   kubectl -n gitea get secret gitea-admin -o jsonpath='{.data.password}' | base64 -d
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: gitea-admin
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  length: 32
+  digits: 6
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: gitea-admin
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: gitea-admin
+    creationPolicy: Owner
+    template:
+      data:
+        username: gitea-admin
+        password: "{{ .password }}"
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: gitea-admin
