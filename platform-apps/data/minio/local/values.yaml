@@ -53,4 +53,4 @@ metrics:
   serviceMonitor:
     enabled: true
     interval: 60s
-    includeNode: false
+    includeNode: true   # the chart renders the ServiceMonitor only with this on (cluster + node endpoints)
