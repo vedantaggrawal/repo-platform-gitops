@@ -48,7 +48,7 @@ resources:
 gitea:
   admin:
     existingSecret: gitea-admin   # keys username, password (manifests/gitea-db/local/admin.yaml)
-    email: gitea-admin@local.gitea.internal
+    email: gitea-admin@gitea.local.evelab.space
     passwordMode: keepUpdated
   # SSO: one OIDC source (chart runs `gitea admin auth add-oauth` once; keys become flags).
   # Discovery at Authentik's public name: a trusted chain, no private CA in the pod.
@@ -66,9 +66,9 @@ gitea:
       enabled: true
   config:
     server:
-      DOMAIN: local.gitea.internal
-      ROOT_URL: https://local.gitea.internal:30443/
-      SSH_DOMAIN: local.gitea.internal
+      DOMAIN: gitea.local.evelab.space
+      ROOT_URL: https://gitea.local.evelab.space:30443/
+      SSH_DOMAIN: gitea.local.evelab.space
       LANDING_PAGE: explore
     database:
       DB_TYPE: postgres

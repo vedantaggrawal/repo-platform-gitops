@@ -1,5 +1,5 @@
 # OIDC apps. Adding one = a provider + application pair below.
-# Issuer for each app: https://local.authentik.internal:30443/application/o/<slug>/
+# Issuer for each app: https://authentik.local.evelab.space:30443/application/o/<slug>/ (issuer = request host)
 # Groups reach apps in the `groups` claim (part of the `profile` scope).
 version: 1
 metadata:
@@ -48,6 +48,8 @@ entries:
       redirect_uris:
         - { matching_mode: strict, url: "https://local.argocd.internal:30443/auth/callback" }
         - { matching_mode: strict, url: "https://local.argocd.internal:30443/pkce/verify" }   # UI login with PKCE (Argo CD 2.10)
+        - { matching_mode: strict, url: "https://argocd.local.evelab.space:30443/auth/callback" }
+        - { matching_mode: strict, url: "https://argocd.local.evelab.space:30443/pkce/verify" }
         - { matching_mode: strict, url: "http://localhost:8085/auth/callback" }   # argocd login --sso
   - model: authentik_core.application
     identifiers: { slug: argocd }
@@ -61,6 +63,7 @@ entries:
       client_id: kargo
       redirect_uris:
         - { matching_mode: strict, url: "https://local.kargo.internal:30443/login" }
+        - { matching_mode: strict, url: "https://kargo.local.evelab.space:30443/login" }
         # kargo login --sso listens on a random localhost port
         - { matching_mode: regex, url: '^http://localhost:[0-9]+/auth/callback$' }
   - model: authentik_core.application
@@ -77,6 +80,7 @@ entries:
       client_secret: !Env AUTHENTIK_OPENBAO_OIDC_CLIENT_SECRET
       redirect_uris:
         - { matching_mode: strict, url: "https://local.openbao.internal:30443/ui/vault/auth/oidc/oidc/callback" }
+        - { matching_mode: strict, url: "https://openbao.local.evelab.space:30443/ui/vault/auth/oidc/oidc/callback" }
         - { matching_mode: strict, url: "http://localhost:8250/oidc/callback" }   # vault login -method=oidc
   - model: authentik_core.application
     identifiers: { slug: openbao }
