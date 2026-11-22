@@ -1,0 +1,113 @@
+# Human login to OpenBao via Authentik (OIDC). Members of platform-admins get policy platform-admin.
+# CLI: vault login -method=oidc   UI: Method OIDC. The client secret is seeded by manifests/authentik.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: openbao-oidc-client
+  namespace: openbao
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: openbao-oidc-client
+    creationPolicy: Owner
+    template:
+      data:
+        client_id: openbao
+        client_secret: "{{ .client_secret }}"
+  dataFrom:
+    - extract: { key: platform/authentik/openbao-oidc }
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: Policy
+metadata:
+  name: platform-admin
+  namespace: openbao
+spec:
+  authentication:
+    path: kubernetes
+    role: bao-config
+    serviceAccount:
+      name: bao-config
+  policy: |
+    path "secret/*" { capabilities = ["create", "read", "update", "delete", "list"] }
+    path "sys/*"    { capabilities = ["create", "read", "update", "delete", "list", "sudo"] }
+    path "auth/*"   { capabilities = ["create", "read", "update", "delete", "list", "sudo"] }
+    path "identity/*" { capabilities = ["create", "read", "update", "delete", "list"] }
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: AuthEngineMount
+metadata:
+  name: oidc
+  namespace: openbao
+spec:
+  authentication:
+    path: kubernetes
+    role: bao-config
+    serviceAccount:
+      name: bao-config
+  type: oidc
+  path: ""
+  description: Authentik SSO
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: JWTOIDCAuthEngineConfig
+metadata:
+  name: authentik
+  namespace: openbao
+spec:
+  authentication:
+    path: kubernetes
+    role: bao-config
+    serviceAccount:
+      name: bao-config
+  path: oidc
+  OIDCDiscoveryURL: https://local.authentik.internal:30443/application/o/openbao/
+  # Pods resolve local.*.internal to the host (cluster-dns); the gateway cert chains to this CA.
+  OIDCDiscoveryCAPEM: |
+        -----BEGIN CERTIFICATE-----
+        MIIBgTCCASagAwIBAgIQB/8YJdb3OtmidL634o3oSzAKBggqhkjOPQQDAjAgMR4w
+        HAYDVQQDExVldmUgcGxhdGZvcm0gbG9jYWwgQ0EwHhcNMjYxMDIzMDIyMzU0WhcN
+        MzYxMDIwMDIyMzU0WjAgMR4wHAYDVQQDExVldmUgcGxhdGZvcm0gbG9jYWwgQ0Ew
+        WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARsYgvcYWnsUeKQe5rjxeX/kcerwJTx
+        WzP73sQ1SZmeDAyUnC/oyWwRq6vHhCdBEQ0meUc2vKMUAl1uoBtu7mXwo0IwQDAO
+        BgNVHQ8BAf8EBAMCAqQwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUmxRxF9ub
+        yE1im8onzF7IscaXrbIwCgYIKoZIzj0EAwIDSQAwRgIhAL5Q2azSZFfSWTBhHaNI
+        XiPQAIIXfsb73q3hEDZ3yBdNAiEAxDvRCRque6UrexgZG+MKEwM/Cobm/rztNM2D
+        mL/58NE=
+        -----END CERTIFICATE-----
+  OIDCClientID: openbao
+  OIDCCredentials:
+    secret: { name: openbao-oidc-client }
+    usernameKey: client_id
+    passwordKey: client_secret
+  defaultRole: platform-admin
+---
+apiVersion: redhatcop.redhat.io/v1alpha1
+kind: JWTOIDCAuthEngineRole
+metadata:
+  name: platform-admin
+  namespace: openbao
+spec:
+  authentication:
+    path: kubernetes
+    role: bao-config
+    serviceAccount:
+      name: bao-config
+  path: oidc
+  name: platform-admin
+  roleType: oidc
+  userClaim: email
+  groupsClaim: groups
+  boundAudiences: [openbao]
+  boundClaims:
+    groups: [platform-admins]
+  OIDCScopes: [openid, email, profile]
+  allowedRedirectURIs:
+    - https://local.openbao.internal:30443/ui/vault/auth/oidc/oidc/callback
+    - http://localhost:8250/oidc/callback
+  tokenPolicies: [platform-admin]
+  tokenTTL: 1h
+  tokenMaxTTL: 8h

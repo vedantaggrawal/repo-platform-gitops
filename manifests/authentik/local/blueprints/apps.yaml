@@ -66,3 +66,18 @@ entries:
   - model: authentik_core.application
     identifiers: { slug: kargo }
     attrs: { name: Kargo, provider: !KeyOf provider-kargo }
+  # OpenBao: confidential client (the OIDC auth method needs a secret); UI and CLI callbacks.
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-openbao
+    identifiers: { name: openbao }
+    attrs:
+      <<: *public
+      client_type: confidential
+      client_id: openbao
+      client_secret: !Env AUTHENTIK_OPENBAO_OIDC_CLIENT_SECRET
+      redirect_uris:
+        - { matching_mode: strict, url: "https://local.openbao.internal:30443/ui/vault/auth/oidc/oidc/callback" }
+        - { matching_mode: strict, url: "http://localhost:8250/oidc/callback" }   # vault login -method=oidc
+  - model: authentik_core.application
+    identifiers: { slug: openbao }
+    attrs: { name: OpenBao, provider: !KeyOf provider-openbao }
