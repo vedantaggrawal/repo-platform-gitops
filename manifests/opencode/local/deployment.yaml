@@ -30,7 +30,7 @@ spec:
             - { name: workspace, mountPath: /workspace }
       containers:
         - name: opencode
-          image: ghcr.io/anomalyco/opencode:v1.19.6
+          image: ghcr.io/anomalyco/opencode:1.19.6
           args: [serve, --hostname, "0.0.0.0", --port, "4096"]
           workingDir: /workspace/repo-platform-gitops
           env:
