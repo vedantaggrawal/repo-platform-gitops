@@ -1,0 +1,57 @@
+# Backups of authentik-db: WAL archiving + a daily base backup to MinIO bucket cnpg-backups via the
+# Barman Cloud plugin (platform-apps/data/plugin-barman-cloud). Credentials: MinIO user cnpg
+# (manifests/minio-init). Restore: a new Cluster with bootstrap.recovery from this ObjectStore.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: cnpg-backup-s3
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: cnpg-backup-s3
+    creationPolicy: Owner
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef: { key: platform/minio/cnpg, property: username }
+    - secretKey: ACCESS_SECRET_KEY
+      remoteRef: { key: platform/minio/cnpg, property: password }
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: minio
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  retentionPolicy: "30d"
+  configuration:
+    destinationPath: s3://cnpg-backups/authentik/
+    endpointURL: http://local-minio.monitoring-storage.svc.cluster.local:9000
+    s3Credentials:
+      accessKeyId: { name: cnpg-backup-s3, key: ACCESS_KEY_ID }
+      secretAccessKey: { name: cnpg-backup-s3, key: ACCESS_SECRET_KEY }
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: authentik-db-daily
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  schedule: "0 0 3 * * *"   # 03:00 daily (CNPG: seconds first)
+  immediate: true
+  backupOwnerReference: self
+  cluster: { name: authentik-db }
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

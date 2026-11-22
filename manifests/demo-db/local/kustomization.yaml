@@ -3,4 +3,5 @@ kind: Kustomization
 namespace: kargo-demo-test
 resources:
   - cluster.yaml
+  - backup.yaml
   - secrets.yaml
