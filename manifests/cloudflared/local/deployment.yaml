@@ -3,6 +3,9 @@
 #   *.evelab.space -> https://envoy-envoy-gateway-system-platform-f2076d6c.envoy-gateway-system.svc.cluster.local:443
 #   TLS: Origin Server Name = tunnel.local.evelab.space (matches the gateway's public wildcard cert)
 # Envoy then routes by Host, so an app is public only if its HTTPRoute lists <app>.evelab.space.
+# These pods are the ONLY connectors for the tunnel. Never run `cloudflared service install` on a
+# laptop with this token: Cloudflare balances across every connector, and one that cannot resolve
+# the in-cluster origin turns a share of all public requests into edge 502s (incident 2026-11-22).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -34,6 +37,9 @@ spec:
             httpGet: { path: /ready, port: metrics }
             initialDelaySeconds: 10
             periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /ready, port: metrics }
+            periodSeconds: 10
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

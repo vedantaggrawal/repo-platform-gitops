@@ -30,3 +30,5 @@ paths:
   switching on "No TLS Verify".
 - **Pods reach the host over IPv4 only.** AAAA lookups return an empty NOERROR.
 - **No inbound ports, no public IP, Cloudflare proxy off for `*.local`.** Exposure is opt-in per route, never per DNS.
+- **The cloudflared pods are the only tunnel connectors.** Never `cloudflared service install` on a laptop with the
+  tunnel token: every connector gets a share of all public requests, and one off-cluster returns edge 502s.
