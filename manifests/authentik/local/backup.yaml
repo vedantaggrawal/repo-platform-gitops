@@ -55,3 +55,18 @@ spec:
   method: plugin
   pluginConfiguration:
     name: barman-cloud.cloudnative-pg.io
+---
+# One-time base backup declared in git (the ScheduledBackup's immediate run fired before the plugin
+# sidecar existed). Stays as a completed object; the daily schedule continues from here.
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: authentik-db-initial
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  cluster: { name: authentik-db }
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
