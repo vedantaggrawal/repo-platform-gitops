@@ -25,7 +25,7 @@ entries:
     attrs:
       attributes: { tenant_id: demo, tier: free }
     permissions:
-      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: authentik_core.view_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
 
@@ -38,7 +38,7 @@ entries:
       attributes: { tenant_id: demo, role: admin }
       roles: [!KeyOf role-tenant-demo-admin]
     permissions:
-      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: authentik_core.view_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
   - model: authentik_core.group
@@ -46,7 +46,7 @@ entries:
     attrs:
       attributes: { tenant_id: demo, role: dev }
     permissions:
-      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: authentik_core.view_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
   - model: authentik_core.group
@@ -54,7 +54,7 @@ entries:
     attrs:
       attributes: { tenant_id: demo, role: viewer }
     permissions:
-      - { role: !KeyOf role-tenant-demo-admin, permission: view_group }
+      - { role: !KeyOf role-tenant-demo-admin, permission: authentik_core.view_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: add_user_to_group }
       - { role: !KeyOf role-tenant-demo-admin, permission: remove_user_from_group }
 
