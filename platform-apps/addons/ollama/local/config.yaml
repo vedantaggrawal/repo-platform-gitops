@@ -1,0 +1,6 @@
+enabled: "true"
+chart: ollama
+repoURL: https://otwld.github.io/ollama-helm
+targetRevision: "1.95.0"
+namespace: ollama
+syncWave: "0"

@@ -1,0 +1,26 @@
+# Ollama — in-cluster embedding server (and later the local LLM for the records assistant).
+# Chart 1.95.0 = Ollama 0.40.14, multi-arch image (the node is arm64; TEI only ships amd64 on CPU).
+# In-cluster: http://ollama.ollama.svc:11434 — POST /api/embed {"model":"bge-m3","input":[...]}
+# (OpenAI-compatible /v1/embeddings too). Not routed through the gateway: consumers are in-cluster.
+ollama:
+  gpu:
+    enabled: false
+  models:
+    # Pulled once at start into the PVC; bge-m3 (568M, 8k context, multilingual) for RAG embeddings.
+    pull: [bge-m3]
+
+persistentVolume:
+  enabled: true
+  size: 10Gi
+  storageClass: standard
+
+service:
+  type: ClusterIP
+  port: 11434
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    memory: 6Gi
