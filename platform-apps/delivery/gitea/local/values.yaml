@@ -84,7 +84,13 @@ gitea:
     queue:
       TYPE: level
     service:
-      DISABLE_REGISTRATION: true       # accounts come from SSO or the admin
+      DISABLE_REGISTRATION: true       # no local sign-up form...
+      ALLOW_ONLY_EXTERNAL_REGISTRATION: true   # ...but an SSO identity may create its account on first login
+    oauth2_client:
+      ENABLE_AUTO_REGISTRATION: true   # first OIDC login creates the Gitea user (no confirmation form)
+      ACCOUNT_LINKING: auto            # same email -> link to the existing local account
+      USERNAME: nickname               # Gitea username = Authentik username (preferred_username)
+      UPDATE_AVATAR: true
       REQUIRE_SIGNIN_VIEW: false
     webhook:
       ALLOWED_HOST_LIST: private,*.svc,*.svc.cluster.local,local.*.internal   # Argo CD, Kargo, CI runners
