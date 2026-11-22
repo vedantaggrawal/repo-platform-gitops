@@ -1,0 +1,13 @@
+# Forward auth: Authentik's outpost must answer /outpost.goauthentik.io on the app's own host.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: opencost-outpost
+  namespace: opencost
+spec:
+  parentRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}
+  hostnames: [local.opencost.internal]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /outpost.goauthentik.io}}]
+      backendRefs: [{group: "", kind: Service, name: local-authentik-server, namespace: authentik, port: 80, weight: 1}]
