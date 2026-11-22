@@ -17,6 +17,11 @@ spec:
       remove:
         - x-tenant-id
         - x-tier
+        - x-authentik-username
+        - x-authentik-groups
+        - x-authentik-email
+        - x-authentik-uid
+        - x-authentik-jwt
         - traceparent
         - tracestate
         - baggage
