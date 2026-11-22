@@ -6,6 +6,18 @@ deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
+  # Ruler: evaluates the log rules below and sends alerts to the same Alertmanager as Mimir.
+  rulerConfig:
+    enable_api: true
+    alertmanager_url: http://local-mimir-alertmanager.monitoring.svc:8080/alertmanager
+    rule_path: /tmp/loki/rules-temp
+    storage:
+      type: local
+      local:
+        directory: /etc/loki/rules
+    ring:
+      kvstore:
+        store: inmemory
   server:
     log_format: json
   # Single-replica SingleBinary: drop ring replication from default 3.
@@ -78,6 +90,13 @@ singleBinary:
       memory: 514Mi
     limits:
       memory: 1024Mi
+  # Log-based alert rules for the ruler (in the single binary); tenant dir "fake" because auth is off.
+  extraVolumes:
+    - name: alert-rules
+      configMap: { name: loki-alert-rules }
+  extraVolumeMounts:
+    - name: alert-rules
+      mountPath: /etc/loki/rules/fake
 
 # Disable everything that doesn't apply to SingleBinary.
 write: { replicas: 0 }
@@ -148,3 +167,36 @@ monitoring:
     enabled: false
   rules:
     enabled: false
+
+# Rules the ruler loads (mounted under /etc/loki/rules/fake by singleBinary.extraVolumes).
+extraObjects:
+  - |
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: loki-alert-rules
+      namespace: monitoring
+    data:
+      platform-logs.yaml: |
+        groups:
+          - name: platform-logs
+            rules:
+              # CNPG only logs this; the failure also shows in metrics once the plugin reports it.
+              - alert: PostgresBackupFailedLog
+                expr: sum by (k8s_namespace_name) (count_over_time({k8s_container_name="postgres"} |= `"msg":"Backup failed"` [30m])) > 0
+                labels: {severity: critical, service: postgres, layer: data}
+                annotations:
+                  summary: CNPG backup failed in {{ "{{ $labels.k8s_namespace_name }}" }} (see the postgres container log)
+              # Survives metric allowlist drift: the ruler logs every failed push to Alertmanager.
+              - alert: MimirRulerAlertDeliveryFailingLog
+                expr: sum(count_over_time({k8s_namespace_name="monitoring", k8s_container_name="ruler"} |= "Error sending alert" [10m])) > 0
+                for: 10m
+                labels: {severity: critical, service: mimir, layer: observability}
+                annotations:
+                  summary: Mimir ruler cannot deliver alerts to Alertmanager (log-based)
+              - alert: CloudflaredTunnelDegradedLog
+                expr: sum(count_over_time({k8s_namespace_name="cloudflared"} |~ `(?i)(connection .*(lost|terminated)|failed to dial|unregistered tunnel|retrying connection)` [10m])) > 3
+                for: 5m
+                labels: {severity: critical, service: cloudflared, layer: networking}
+                annotations:
+                  summary: cloudflared is losing tunnel connections (public names degraded)
