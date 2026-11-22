@@ -56,7 +56,7 @@ gitea:
     - name: authentik
       provider: openidConnect
       existingSecret: gitea-oidc-client   # keys key, secret (manifests/gitea-db/local/oidc-client.yaml)
-      autoDiscoverUrl: https://authentik.local.evelab.space:30443/application/o/gitea/.well-known/openid-configuration
+      autoDiscoverUrl: https://authentik.evelab.space/application/o/gitea/.well-known/openid-configuration
       scopes: openid email profile
       groupClaimName: groups
       adminGroup: platform-admins
@@ -66,9 +66,9 @@ gitea:
       enabled: true
   config:
     server:
-      DOMAIN: gitea.local.evelab.space
-      ROOT_URL: https://gitea.local.evelab.space:30443/
-      SSH_DOMAIN: gitea.local.evelab.space
+      DOMAIN: gitea.evelab.space
+      ROOT_URL: https://gitea.evelab.space/
+      SSH_DOMAIN: gitea.evelab.space
       LANDING_PAGE: explore
     database:
       DB_TYPE: postgres

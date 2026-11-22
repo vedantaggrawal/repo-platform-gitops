@@ -8,7 +8,7 @@ grafana.ini:
   log.console:
     format: json
   server:
-    root_url: https://grafana.local.evelab.space:30443
+    root_url: https://grafana.evelab.space
   # SSO via Authentik (GitHub login is offered there). Public client + PKCE, so
   # there is no client secret. The browser goes to Authentik's external URL; the
   # back-channel token/userinfo calls use the in-cluster service, so Grafana
@@ -24,12 +24,12 @@ grafana.ini:
     client_id: grafana
     use_pkce: true
     scopes: openid profile email
-    auth_url: https://authentik.local.evelab.space:30443/application/o/authorize/
+    auth_url: https://authentik.evelab.space/application/o/authorize/
     token_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/token/
     api_url: http://local-authentik-server.authentik.svc.cluster.local/application/o/userinfo/
     # Sign-out is local, like Argo CD and Kargo: back to Grafana's own login page
     # (auto-login off there). Signing out of everything is done in Authentik.
-    signout_redirect_url: https://grafana.local.evelab.space:30443/login?disableAutoLogin=true
+    signout_redirect_url: https://grafana.evelab.space/login?disableAutoLogin=true
     login_attribute_path: preferred_username
     email_attribute_path: email
     groups_attribute_path: groups
