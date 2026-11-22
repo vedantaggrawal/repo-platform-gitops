@@ -36,6 +36,7 @@ entries:
       redirect_uris:
         - { matching_mode: strict, url: "https://local.grafana.internal:30443/login/generic_oauth" }
         - { matching_mode: strict, url: "https://grafana.local.evelab.space:30443/login/generic_oauth" }
+        - { matching_mode: strict, url: "https://grafana.evelab.space/login/generic_oauth" }
   - model: authentik_core.application
     identifiers: { slug: grafana }
     attrs: { name: Grafana, provider: !KeyOf provider-grafana }
@@ -98,6 +99,7 @@ entries:
       redirect_uris:
         - { matching_mode: strict, url: "https://local.gitea.internal:30443/user/oauth2/authentik/callback" }
         - { matching_mode: strict, url: "https://gitea.local.evelab.space:30443/user/oauth2/authentik/callback" }
+        - { matching_mode: strict, url: "https://gitea.evelab.space/user/oauth2/authentik/callback" }
   - model: authentik_core.application
     identifiers: { slug: gitea }
     attrs: { name: Gitea, provider: !KeyOf provider-gitea }
