@@ -76,7 +76,7 @@ server:
     main:
       enabled: true
       parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
-      hostnames: [local.authentik.internal, authentik.local.evelab.space]
+      hostnames: [local.authentik.internal, authentik.local.evelab.space, authentik.evelab.space]
       matches: [{path: {type: PathPrefix, value: /}}]
 
 postgresql:
