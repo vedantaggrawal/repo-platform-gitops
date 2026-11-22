@@ -1,7 +1,7 @@
 # Forward auth for UIs without their own login (OpenCost, Hubble UI): one proxy provider per app in
 # forward_single mode, served by the embedded outpost; Envoy Gateway asks it at
 # /outpost.goauthentik.io/auth/envoy (SecurityPolicy per HTTPRoute in manifests/routes/local).
-# Access: platform-admins only (policy binding on the application).
+# Access per application via policy bindings (platform-admins; viewers where read-only).
 version: 1
 metadata:
   name: platform - forward auth
@@ -44,11 +44,51 @@ entries:
     identifiers: { order: 1, target: !KeyOf app-hubble, group: !Find [authentik_core.group, [name, platform-viewer]] }
     attrs: { enabled: true }
 
-  # The embedded outpost serves both providers.
+  # Headlamp: the page itself is gated (it still asks for a cluster token; API-server OIDC comes with the rebuild).
+  - model: authentik_providers_proxy.proxyprovider
+    id: provider-headlamp
+    identifiers: { name: headlamp }
+    attrs:
+      mode: forward_single
+      external_host: https://headlamp.evelab.space
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      access_token_validity: hours=24
+  - model: authentik_core.application
+    id: app-headlamp
+    identifiers: { slug: headlamp }
+    attrs: { name: Headlamp, provider: !KeyOf provider-headlamp, meta_launch_url: "https://headlamp.evelab.space" }
+  - model: authentik_policies.policybinding
+    identifiers: { order: 0, target: !KeyOf app-headlamp, group: !Find [authentik_core.group, [name, platform-admins]] }
+
+  # ChromaDB: browsers log in; API clients keep sending Bearer JWTs from the chromadb OAuth2 provider
+  # (JWT federation: the outpost accepts tokens issued by that provider).
+  - model: authentik_providers_proxy.proxyprovider
+    id: provider-chromadb-proxy
+    identifiers: { name: chromadb-proxy }
+    attrs:
+      mode: forward_single
+      external_host: https://chromadb.evelab.space
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      access_token_validity: hours=24
+      jwt_federation_providers:
+        - !Find [authentik_providers_oauth2.oauth2provider, [name, chromadb]]
+  - model: authentik_core.application
+    id: app-chromadb-proxy
+    identifiers: { slug: chromadb-proxy }
+    attrs: { name: ChromaDB (browser), provider: !KeyOf provider-chromadb-proxy, meta_launch_url: "https://chromadb.evelab.space" }
+  - model: authentik_policies.policybinding
+    identifiers: { order: 0, target: !KeyOf app-chromadb-proxy, group: !Find [authentik_core.group, [name, platform-admins]] }
+  - model: authentik_policies.policybinding
+    identifiers: { order: 1, target: !KeyOf app-chromadb-proxy, group: !Find [authentik_core.group, [name, platform-viewer]] }
+    attrs: { enabled: true }
+
+  # The embedded outpost serves every proxy provider.
   - model: authentik_outposts.outpost
     identifiers: { name: authentik Embedded Outpost }
     attrs:
-      providers: [!KeyOf provider-opencost, !KeyOf provider-hubble]
+      providers: [!KeyOf provider-opencost, !KeyOf provider-hubble, !KeyOf provider-headlamp, !KeyOf provider-chromadb-proxy]
       # The host browsers are sent to for login; the server itself is reached in-cluster.
       config:
         authentik_host: https://authentik.evelab.space

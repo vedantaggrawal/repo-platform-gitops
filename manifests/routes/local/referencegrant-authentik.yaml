@@ -10,5 +10,9 @@ spec:
     - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: kube-system}
     - {group: gateway.envoyproxy.io, kind: SecurityPolicy, namespace: opencost}
     - {group: gateway.envoyproxy.io, kind: SecurityPolicy, namespace: kube-system}
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: headlamp}
+    - {group: gateway.envoyproxy.io, kind: SecurityPolicy, namespace: headlamp}
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: chromadb}
+    - {group: gateway.envoyproxy.io, kind: SecurityPolicy, namespace: chromadb}
   to:
     - {group: "", kind: Service, name: local-authentik-server}

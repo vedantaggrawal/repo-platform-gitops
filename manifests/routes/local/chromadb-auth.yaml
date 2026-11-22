@@ -1,4 +1,6 @@
-# JWT auth for Chroma's API behind the gateway: a Bearer token from Authentik's chromadb provider.
+# Every request to Chroma is checked with Authentik's outpost (forward auth): browsers get a login,
+# API clients send `Authorization: Bearer <JWT from the chromadb OAuth2 provider>` (JWT federation).
+# Replaces the Envoy JWT policy so one gate serves both.
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -7,19 +9,10 @@ metadata:
 spec:
   targetRefs:
     - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: chromadb}
-  jwt:
-    # Authentik's issuer is the host the token was requested from; accept the public and the
-    # canonical cluster name (any provider matching = allowed). Same JWKS for both.
-    providers:
-      - name: authentik-public
-        issuer: https://authentik.evelab.space/application/o/chromadb/
-        audiences: [chromadb]
-        remoteJWKS:
-          uri: http://local-authentik-server.authentik.svc.cluster.local/application/o/chromadb/jwks/
-          cacheDuration: 300s
-      - name: authentik-local
-        issuer: https://authentik.local.evelab.space:30443/application/o/chromadb/
-        audiences: [chromadb]
-        remoteJWKS:
-          uri: http://local-authentik-server.authentik.svc.cluster.local/application/o/chromadb/jwks/
-          cacheDuration: 300s
+  extAuth:
+    headersToExtAuth: [cookie, authorization]
+    http:
+      backendRefs:
+        - {group: "", kind: Service, name: local-authentik-server, namespace: authentik, port: 80}
+      path: /outpost.goauthentik.io/auth/envoy
+      headersToBackend: [x-authentik-username, x-authentik-groups, x-authentik-email, x-authentik-uid]

@@ -16,4 +16,4 @@ ingress:
 httpRoute:
   enabled: true
   parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
-  hostnames: [local.headlamp.internal, headlamp.local.evelab.space]
+  hostnames: [local.headlamp.internal, headlamp.local.evelab.space, headlamp.evelab.space]

@@ -1,0 +1,16 @@
+# Every request to Headlamp is checked with Authentik (forward auth, platform-admins only).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  targetRefs:
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: local-headlamp}
+  extAuth:
+    headersToExtAuth: [cookie, authorization]
+    http:
+      backendRefs:
+        - {group: "", kind: Service, name: local-authentik-server, namespace: authentik, port: 80}
+      path: /outpost.goauthentik.io/auth/envoy
+      headersToBackend: [x-authentik-username, x-authentik-groups, x-authentik-email, x-authentik-uid]
