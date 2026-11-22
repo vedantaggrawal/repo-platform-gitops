@@ -15,6 +15,7 @@ spec:
     - local.authentik.internal
     - local.chromadb.internal
     - local.demo-api.internal
+    - local.gitea.internal
     - local.grafana.internal
     - local.harbor.internal
     - local.headlamp.internal
