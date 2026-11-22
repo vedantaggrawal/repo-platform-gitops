@@ -1,0 +1,101 @@
+# L7 visibility for Hubble: every pod in these namespaces keeps allow-all ingress (rule 1, no L3/L4
+# change) and gets HTTP parsing on its HTTP port(s) (rule 2), so `hubble observe --protocol http` and the
+# hubble_http_* metrics (httpV2 in the Cilium values) show method/path/status per request. Pattern from
+# webserver-l7-visibility.yaml. Not for storage/DB ports: parsing costs CPU and those are not HTTP.
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-visibility
+  namespace: authentik
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [all]
+    - toPorts:
+        - ports:
+            - { port: "9000", protocol: TCP }
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-visibility
+  namespace: gitea
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [all]
+    - toPorts:
+        - ports:
+            - { port: "3000", protocol: TCP }
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-visibility
+  namespace: monitoring
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [all]
+    - toPorts:
+        - ports:
+            - { port: "3000", protocol: TCP }
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-visibility
+  namespace: chromadb
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [all]
+    - toPorts:
+        - ports:
+            - { port: "8000", protocol: TCP }
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-visibility
+  namespace: ollama
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [all]
+    - toPorts:
+        - ports:
+            - { port: "11434", protocol: TCP }
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-visibility
+  namespace: opencost
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities: [all]
+    - toPorts:
+        - ports:
+            - { port: "9003", protocol: TCP }
+            - { port: "9090", protocol: TCP }
+          rules:
+            http:
+              - {}
