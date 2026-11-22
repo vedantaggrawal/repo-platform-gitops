@@ -14,5 +14,7 @@ spec:
     - {group: gateway.envoyproxy.io, kind: SecurityPolicy, namespace: headlamp}
     - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: chromadb}
     - {group: gateway.envoyproxy.io, kind: SecurityPolicy, namespace: chromadb}
+    - {group: gateway.networking.k8s.io, kind: HTTPRoute, namespace: opencode}
+    - {group: gateway.envoyproxy.io, kind: SecurityPolicy, namespace: opencode}
   to:
     - {group: "", kind: Service, name: local-authentik-server}

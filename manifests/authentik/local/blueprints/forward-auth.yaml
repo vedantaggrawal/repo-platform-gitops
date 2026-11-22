@@ -84,11 +84,28 @@ entries:
     identifiers: { order: 1, target: !KeyOf app-chromadb-proxy, group: !Find [authentik_core.group, [name, platform-viewer]] }
     attrs: { enabled: true }
 
+  # OpenCode harness web UI (platform-admins): the server also has its own Basic-auth password.
+  - model: authentik_providers_proxy.proxyprovider
+    id: provider-opencode
+    identifiers: { name: opencode }
+    attrs:
+      mode: forward_single
+      external_host: https://code.evelab.space
+      authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      access_token_validity: hours=24
+  - model: authentik_core.application
+    id: app-opencode
+    identifiers: { slug: opencode }
+    attrs: { name: OpenCode, provider: !KeyOf provider-opencode, meta_launch_url: "https://code.evelab.space" }
+  - model: authentik_policies.policybinding
+    identifiers: { order: 0, target: !KeyOf app-opencode, group: !Find [authentik_core.group, [name, platform-admins]] }
+
   # The embedded outpost serves every proxy provider.
   - model: authentik_outposts.outpost
     identifiers: { name: authentik Embedded Outpost }
     attrs:
-      providers: [!KeyOf provider-opencost, !KeyOf provider-hubble, !KeyOf provider-headlamp, !KeyOf provider-chromadb-proxy]
+      providers: [!KeyOf provider-opencost, !KeyOf provider-hubble, !KeyOf provider-headlamp, !KeyOf provider-chromadb-proxy, !KeyOf provider-opencode]
       # The host browsers are sent to for login; the server itself is reached in-cluster.
       config:
         authentik_host: https://authentik.evelab.space

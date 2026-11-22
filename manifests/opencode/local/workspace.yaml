@@ -1,0 +1,11 @@
+# The harness works on a clone of the gitops repo (public); Gitea mirrors replace this once they exist.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opencode-workspace
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 20Gi
