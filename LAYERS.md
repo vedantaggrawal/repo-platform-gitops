@@ -19,7 +19,7 @@ here stay `enabled: "false"` and only hold values for reference. Waves are the t
 
 Raw-manifest apps (`manifests/<name>/<env>/`) belong to layers too: cert-issuers, secret-stores, openbao-config,
 authentik-config (security); gateway, gateway-crds, routes, cluster-dns, network-policies (networking); otel,
-grafana-dashboards, grafana-db, config-drift (observability); progressive-delivery, argocd-repos (delivery);
+grafana-dashboards, grafana-db, config-drift (observability); progressive-delivery, argocd-repos, gitea-db (delivery);
 demo-api, demo-db, tenancy (tenants); minio-init (data); priority-classes (foundation). Their templates get the
 same label in a follow-up.
 
