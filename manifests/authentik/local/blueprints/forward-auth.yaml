@@ -45,3 +45,6 @@ entries:
     identifiers: { name: authentik Embedded Outpost }
     attrs:
       providers: [!KeyOf provider-opencost, !KeyOf provider-hubble]
+      # The host browsers are sent to for login; the server itself is reached in-cluster.
+      config:
+        authentik_host: https://authentik.local.evelab.space:30443
