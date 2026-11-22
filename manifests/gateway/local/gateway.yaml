@@ -18,6 +18,11 @@ spec:
           - group: ""
             kind: Secret
             name: platform-gateway-tls
+          # Public wildcard *.local.evelab.space (Let's Encrypt via Cloudflare DNS-01); Envoy picks by SNI.
+          # Add a ref only once its Certificate is Ready: a missing Secret invalidates the whole listener.
+          - group: ""
+            kind: Secret
+            name: platform-gateway-public-tls
       allowedRoutes:
         namespaces:
           from: All
