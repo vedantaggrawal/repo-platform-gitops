@@ -33,12 +33,12 @@ data:
         }
         # Same for the public names: pods reach <app>.local.evelab.space via the host,
         # not the public A record (127.0.0.1).
-        template IN A evelab {
+        template IN A local.evelab.space {
            match ^[a-z0-9-]+\.local\.evelab\.space\.$
            answer "{{ .Name }} 30 IN A 192.168.65.254"
            fallthrough
         }
-        template IN AAAA evelab {
+        template IN AAAA local.evelab.space {
            match ^[a-z0-9-]+\.local\.evelab\.space\.$
            rcode NOERROR
            fallthrough
