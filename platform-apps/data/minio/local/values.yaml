@@ -48,7 +48,9 @@ consoleService:
 consoleIngress:
   enabled: false
 
-# Disable the metrics scrape job until Alloy is in place (phase 5).
+# Cluster metrics (/minio/v2/metrics/cluster, public) via ServiceMonitor for the OTel target allocator.
 metrics:
   serviceMonitor:
-    enabled: false
+    enabled: true
+    interval: 60s
+    includeNode: false

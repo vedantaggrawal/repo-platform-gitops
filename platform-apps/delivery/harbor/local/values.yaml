@@ -149,9 +149,10 @@ persistence:
       storageClass: standard
       size: 5Gi
 
-# Expose /metrics (core/registry/jobservice/exporter on :8001); Alloy scrapes via
-# explicit prometheus.scrape like the rest of the platform, so ServiceMonitor off.
+# Expose /metrics (core/registry/jobservice/exporter on :8001); the OTel target allocator
+# scrapes the ServiceMonitor like every other platform target.
 metrics:
   enabled: true
   serviceMonitor:
-    enabled: false
+    enabled: true
+    interval: 60s
