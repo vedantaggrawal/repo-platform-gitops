@@ -1,0 +1,15 @@
+# OpenCode server config: models from the in-cluster Ollama (discovered via /v1); no cloud providers.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencode-config
+data:
+  opencode.json: |
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "providers": {
+        "ollama": {
+          "settings": { "baseURL": "http://local-ollama.ollama.svc.cluster.local:11434/v1" }
+        }
+      }
+    }
