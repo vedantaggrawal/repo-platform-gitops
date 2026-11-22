@@ -1,0 +1,7 @@
+enabled: "true"
+chart: plugin-barman-cloud
+repoURL: https://cloudnative-pg.github.io/charts
+targetRevision: "0.9.0"
+namespace: cnpg-system
+# After the operator (-1): the plugin registers with it over mTLS (cert-manager issues the certs).
+syncWave: "0"
