@@ -36,6 +36,8 @@ spec:
           env:
             - name: OPENCODE_PASSWORD
               valueFrom: { secretKeyRef: { name: opencode-server, key: password } }
+            - name: OPENCODE_SERVER_PASSWORD   # name used by 1.19.x; OPENCODE_PASSWORD by the v2 docs
+              valueFrom: { secretKeyRef: { name: opencode-server, key: password } }
             - { name: HOME, value: /home/opencode }
           ports:
             - { name: http, containerPort: 4096 }
