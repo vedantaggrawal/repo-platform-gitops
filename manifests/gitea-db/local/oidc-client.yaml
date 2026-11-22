@@ -1,0 +1,20 @@
+# Gitea's OIDC client credentials (chart gitea.oauth[].existingSecret wants keys `key` and `secret`);
+# the secret is seeded by manifests/authentik/local/gitea-oidc.yaml.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: gitea-oidc-client
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: gitea-oidc-client
+    creationPolicy: Owner
+    template:
+      data:
+        key: gitea
+        secret: "{{ .client_secret }}"
+  dataFrom:
+    - extract: { key: platform/authentik/gitea-oidc }

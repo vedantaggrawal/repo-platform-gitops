@@ -1,0 +1,58 @@
+# Gitea's OIDC client secret: generated once, kept in OpenBao (platform/authentik/gitea-oidc),
+# delivered to Authentik as env (blueprint reads !Env) and to Gitea (manifests/gitea-db/local/oidc-client.yaml).
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: gitea-oidc-client-secret
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec: { length: 48, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: gitea-oidc-seed
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: gitea-oidc-seed
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef: { generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: gitea-oidc-client-secret } }
+      rewrite: [{ regexp: { source: password, target: client_secret } }]
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: gitea-oidc
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - { kind: ClusterSecretStore, name: openbao }
+  selector:
+    secret: { name: gitea-oidc-seed }
+  data:
+    - match: { remoteRef: { remoteKey: platform/authentik/gitea-oidc } }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: authentik-gitea-oidc
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: authentik-gitea-oidc
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/authentik/gitea-oidc }

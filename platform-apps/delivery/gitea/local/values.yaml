@@ -50,6 +50,16 @@ gitea:
     existingSecret: gitea-admin   # keys username, password (manifests/gitea-db/local/admin.yaml)
     email: gitea-admin@local.gitea.internal
     passwordMode: keepUpdated
+  # SSO: one OIDC source (chart runs `gitea admin auth add-oauth` once; keys become flags).
+  # Discovery at Authentik's public name: a trusted chain, no private CA in the pod.
+  oauth:
+    - name: authentik
+      provider: openidConnect
+      existingSecret: gitea-oidc-client   # keys key, secret (manifests/gitea-db/local/oidc-client.yaml)
+      autoDiscoverUrl: https://authentik.local.evelab.space:30443/application/o/gitea/.well-known/openid-configuration
+      scopes: openid email profile
+      groupClaimName: groups
+      adminGroup: platform-admins
   metrics:
     enabled: true
     serviceMonitor:
