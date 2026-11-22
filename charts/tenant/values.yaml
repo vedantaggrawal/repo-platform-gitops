@@ -67,7 +67,7 @@ roles:
 argocd:
   enabled: true
   namespace: argocd
-  syncWave: "-20"
+  syncWave: "-20"                 # inside the tenant release: the project exists before anything references it
   description: ""                 # default: Tenant <name>
   sourceRepos: []                 # the tenant's repos
   # Destinations: tenant-<name>-* on .cluster.server, plus these extra namespace patterns.
@@ -95,3 +95,21 @@ authentik:
     accessTokenValidity: minutes=10
     redirectUris:
       - { matching_mode: regex, url: '^http://localhost:[0-9]+/callback$' }
+
+# Layers. The platform is built bottom-up: foundation (Terraform: kind, Cilium, Argo CD), data, security,
+# networking, delivery, observability, addons, tenants. This chart renders layer "tenants" and writes into
+# two lower-layer namespaces (argocd, authentik). Every object carries eve.io/layer and eve.io/tenant so the
+# Argo CD UI and Grafana can show one layer at a time. layers.waves is the sync wave the tenants
+# ApplicationSet gives each tenant Application (wiring PR); objects inside keep their own waves.
+layers:
+  current: tenants
+  requires: [foundation, data, security]
+  waves:
+    foundation: "-20"
+    data: "-15"
+    security: "-10"
+    networking: "-5"
+    delivery: "0"
+    observability: "0"
+    addons: "5"
+    tenants: "10"

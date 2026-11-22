@@ -12,6 +12,22 @@ A tenant's whole landscape from one values file. Onboarding a tenant is adding `
 | Argo CD AppProject `tenant-<name>`: destinations `tenant-<name>-*` (+ extras), source repos, blacklist of platform-owned kinds, roles admin/dev/viewer bound to the Authentik groups | `argocd` |
 | ConfigMap `authentik-blueprint-tenant-<name>`: tenant group with `tenant_id`/`tier`, role groups, self-service admin role, API provider `eve-<name>-api` (public, PKCE, 10-minute tokens with `tenant_id`) | `authentik` |
 
+## Where it sits
+
+```
+ 6 tenants        <- this chart (one release per tenant), then the tenant's own apps
+ 5 addons         headlamp, jellyfin, seaweedfs, valkey, kafka, chromadb ...
+ 4 observability  otel, mimir, loki, tempo, grafana, opencost
+ 3 delivery       kargo, argo-rollouts, harbor
+ 2 networking     envoy-gateway, routes
+ 1 security       cert-issuers/platform CA, openbao, external-secrets, authentik, kyverno
+ 1 data           cloudnative-pg, object storage
+ 0 foundation     kind, cilium, argo cd  (Terraform)
+```
+The chart requires layers foundation, data and security (`layers.requires`) and writes into two lower-layer
+namespaces: `argocd` (AppProject) and `authentik` (blueprint). Every object carries `eve.io/layer: tenants`
+and `eve.io/tenant: <name>`, so a label filter in Argo CD or Grafana shows one layer or one tenant at a time.
+
 ## Per-tenant file
 
 ```yaml

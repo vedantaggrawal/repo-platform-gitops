@@ -8,6 +8,8 @@ kind: AppProject
 metadata:
   name: tenant-{{ $n }}
   namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "tenant.labels" . | nindent 4 }}
   annotations:
     argocd.argoproj.io/sync-wave: {{ .Values.argocd.syncWave | quote }}
 spec:

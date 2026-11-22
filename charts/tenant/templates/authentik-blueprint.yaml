@@ -7,6 +7,8 @@ kind: ConfigMap
 metadata:
   name: {{ .Values.authentik.configMapName | default (printf "authentik-blueprint-tenant-%s" $n) }}
   namespace: {{ .Values.authentik.namespace }}
+  labels:
+    {{- include "tenant.labels" . | nindent 4 }}
 data:
   tenant-{{ $n }}.yaml: |
 {{ include "tenant.blueprint" . | indent 4 }}

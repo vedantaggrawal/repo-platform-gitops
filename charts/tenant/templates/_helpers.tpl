@@ -7,3 +7,8 @@
 {{- end -}}
 {{- define "tenant.apiClientId" -}}{{ .Values.authentik.api.clientId | default (printf "eve-%s-api" .Values.name) }}{{- end -}}
 {{- define "tenant.apiDisplayName" -}}{{ .Values.authentik.api.displayName | default (printf "Eve %s API" .Values.name) }}{{- end -}}
+{{- define "tenant.labels" -}}
+eve.io/layer: {{ .Values.layers.current }}
+eve.io/tenant: {{ .Values.name }}
+app.kubernetes.io/part-of: tenant
+{{- end -}}
