@@ -33,6 +33,7 @@ spec:
     - https://open-telemetry.github.io/opentelemetry-helm-charts
     - https://openbao.github.io/openbao-helm
     - https://otwld.github.io/ollama-helm
+    - https://helm.openwebui.com
     - https://prometheus-community.github.io/helm-charts
     - https://traefik.github.io/charts
     - ghcr.io/akuity/kargo-charts
