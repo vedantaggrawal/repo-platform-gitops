@@ -5,6 +5,7 @@ kind: Password
 metadata:
   name: openbao-oidc-client-secret
   annotations:
+    argocd.argoproj.io/sync-wave: "-2"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec: { length: 48, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
 ---
@@ -13,6 +14,7 @@ kind: ExternalSecret
 metadata:
   name: openbao-oidc-seed
   annotations:
+    argocd.argoproj.io/sync-wave: "-2"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   refreshPolicy: CreatedOnce
