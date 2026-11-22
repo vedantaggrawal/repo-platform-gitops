@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}
-  hostnames: [local.harbor.internal]
+  hostnames: [local.harbor.internal, harbor.local.evelab.space]
   rules:
     - matches: [{path: {type: PathPrefix, value: /api/}}]
       backendRefs: [{group: "", kind: Service, name: local-harbor-core, port: 80, weight: 1}]

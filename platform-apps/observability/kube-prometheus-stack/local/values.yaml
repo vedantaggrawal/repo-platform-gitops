@@ -92,7 +92,9 @@ grafana:
       cert-manager.io/usages: "digital signature,key encipherment,server auth"
     hosts:
       - local.grafana.internal
+      - grafana.local.evelab.space
     tls:
       - secretName: grafana-tls
         hosts:
           - local.grafana.internal
+          - grafana.local.evelab.space

@@ -67,4 +67,4 @@ jellyfin:
 httpRoute:
   enabled: true
   parentRefs: [{group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}]
-  hostnames: [local.jellyfin.internal]
+  hostnames: [local.jellyfin.internal, jellyfin.local.evelab.space]

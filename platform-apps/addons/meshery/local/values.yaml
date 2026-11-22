@@ -19,6 +19,7 @@ ingress:
     cert-manager.io/usages: "digital signature,key encipherment,server auth"
   hosts:
     - host: local.meshery.internal
+    - host: meshery.local.evelab.space
       paths:
         - path: /
           pathType: Prefix
@@ -26,6 +27,7 @@ ingress:
     - secretName: meshery-tls
       hosts:
         - local.meshery.internal
+        - meshery.local.evelab.space
 
 rbac:
   nodes: false
