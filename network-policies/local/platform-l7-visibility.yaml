@@ -4,38 +4,8 @@
 # webserver-l7-visibility.yaml. Not for storage/DB ports: parsing costs CPU and those are not HTTP.
 # Not for Authentik: the Cilium proxy rewrites X-Forwarded-Proto to http, and Authentik then advertises
 # http:// OIDC endpoints (issuer mismatch in Argo CD, OpenBao, Gitea). Incident 2026-11-22.
----
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: l7-visibility
-  namespace: gitea
-spec:
-  endpointSelector: {}
-  ingress:
-    - fromEntities: [all]
-    - toPorts:
-        - ports:
-            - { port: "3000", protocol: TCP }
-          rules:
-            http:
-              - {}
----
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: l7-visibility
-  namespace: monitoring
-spec:
-  endpointSelector: {}
-  ingress:
-    - fromEntities: [all]
-    - toPorts:
-        - ports:
-            - { port: "3000", protocol: TCP }
-          rules:
-            http:
-              - {}
+# Same for Gitea and Grafana (OAuth callbacks, "detected URL" from X-Forwarded-Proto): only apps that never
+# build absolute URLs from forwarded headers are listed here.
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
