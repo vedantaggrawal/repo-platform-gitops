@@ -288,6 +288,36 @@ extraObjects:
                 annotations:
                   summary: Alertmanager cannot deliver notifications via {{ "{{ $labels.integration }}" }}
                   runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#delivery-failing
+              # Delivery layer: an Application that stays OutOfSync or unhealthy is a failed deploy.
+              - alert: ArgoApplicationOutOfSync
+                expr: sum by (name, namespace) (argocd_app_info{sync_status!="Synced"}) > 0
+                for: 30m
+                labels: {severity: warning, service: argocd, layer: delivery}
+                annotations:
+                  summary: Argo CD application {{ "{{ $labels.name }}" }} OutOfSync for 30m
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#argo
+              - alert: ArgoApplicationUnhealthy
+                expr: sum by (name, namespace) (argocd_app_info{health_status=~"Degraded|Missing|Unknown"}) > 0
+                for: 15m
+                labels: {severity: critical, service: argocd, layer: delivery}
+                annotations:
+                  summary: Argo CD application {{ "{{ $labels.name }}" }} is {{ "{{ $labels.health_status }}" }} for 15m
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#argo
+              # Security layer: certificates (gateway edge, internal mTLS) that cannot renew.
+              - alert: CertificateNotReady
+                expr: max by (name, namespace) (certmanager_certificate_ready_status{condition="False"}) == 1
+                for: 1h
+                labels: {severity: critical, service: cert-manager, layer: security}
+                annotations:
+                  summary: Certificate {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.name }}" }} not Ready for 1h
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#certificates
+              - alert: CertificateExpiringSoon
+                expr: min by (name, namespace) (certmanager_certificate_expiration_timestamp_seconds) - time() < 14 * 24 * 3600
+                for: 6h
+                labels: {severity: warning, service: cert-manager, layer: security}
+                annotations:
+                  summary: Certificate {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.name }}" }} expires in under 14 days
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#certificates
       slo.yaml: |
         groups:
           - name: slo-gateway-availability
