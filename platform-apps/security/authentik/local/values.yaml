@@ -18,6 +18,8 @@ global:
     # OpenBao's confidential OIDC client; blueprints/apps.yaml reads it with !Env.
     - name: AUTHENTIK_OPENBAO_OIDC_CLIENT_SECRET
       valueFrom: { secretKeyRef: { name: authentik-openbao-oidc, key: client_secret } }
+    - name: AUTHENTIK_GITEA_OIDC_CLIENT_SECRET
+      valueFrom: { secretKeyRef: { name: authentik-gitea-oidc, key: client_secret } }
 
 authentik:
   error_reporting:

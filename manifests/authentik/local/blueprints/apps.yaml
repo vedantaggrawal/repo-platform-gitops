@@ -81,6 +81,21 @@ entries:
   - model: authentik_core.application
     identifiers: { slug: openbao }
     attrs: { name: OpenBao, provider: !KeyOf provider-openbao }
+  # Gitea: confidential client; the auth source in Gitea is named `authentik` (callback path).
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-gitea
+    identifiers: { name: gitea }
+    attrs:
+      <<: *public
+      client_type: confidential
+      client_id: gitea
+      client_secret: !Env AUTHENTIK_GITEA_OIDC_CLIENT_SECRET
+      redirect_uris:
+        - { matching_mode: strict, url: "https://local.gitea.internal:30443/user/oauth2/authentik/callback" }
+        - { matching_mode: strict, url: "https://gitea.local.evelab.space:30443/user/oauth2/authentik/callback" }
+  - model: authentik_core.application
+    identifiers: { slug: gitea }
+    attrs: { name: Gitea, provider: !KeyOf provider-gitea }
   # Chroma's HTTP API behind the gateway: JWT only (SecurityPolicy in manifests/routes/local).
   # Clients get a token with the same CLI/PKCE flow as eve-demo-api and send it as Bearer.
   - model: authentik_providers_oauth2.oauth2provider
