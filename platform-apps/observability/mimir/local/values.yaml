@@ -288,36 +288,86 @@ extraObjects:
                 annotations:
                   summary: Alertmanager cannot deliver notifications via {{ "{{ $labels.integration }}" }}
                   runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#delivery-failing
-              # Delivery layer: an Application that stays OutOfSync or unhealthy is a failed deploy.
-              - alert: ArgoApplicationOutOfSync
-                expr: sum by (name, namespace) (argocd_app_info{sync_status!="Synced"}) > 0
-                for: 30m
-                labels: {severity: warning, service: argocd, layer: delivery}
+          - name: platform-baseline-critical
+            rules:
+              - alert: ScrapeTargetAbsent   # SD lost the target; TargetDown cannot fire
+                expr: absent(up{job="kube-state-metrics"} == 1) or absent(up{job="node-exporter"} == 1) or absent(up{job="cilium-agent"} == 1)
+                for: 10m
+                labels: {severity: critical, service: otel-collector, layer: telemetry}
+                annotations: {summary: A core scrape target (kube-state-metrics / node-exporter / cilium-agent) is absent for 10m}
+              - alert: TargetDown
+                expr: up == 0
+                for: 10m
+                labels: {severity: critical, service: scrape, layer: telemetry}
+                annotations: {summary: 'Scrape target {{ "{{ $labels.job }}" }}/{{ "{{ $labels.instance }}" }} down for 10m'}
+              - alert: NodeConditionPressure
+                expr: kube_node_status_condition{condition=~"DiskPressure|MemoryPressure|PIDPressure",status="true"} == 1
+                for: 5m
+                labels: {severity: critical, service: node, layer: platform}
+                annotations: {summary: 'Node {{ "{{ $labels.node }}" }} reports {{ "{{ $labels.condition }}" }}'}
+              - alert: MimirRingUnhealthy   # generalises MimirIngesterUnhealthyInRing to all rings
+                expr: max by (name) (cortex_ring_members{state="Unhealthy",name!="ingester"}) > 0
+                for: 5m
+                labels: {severity: critical, service: mimir, layer: observability}
+                annotations: {summary: 'Mimir ring {{ "{{ $labels.name }}" }} has an Unhealthy member for 5m'}
+              # Self-monitoring of the alert pipeline: these are the metrics that were dropped today.
+              - alert: MimirRulerNotifyFailing
+                expr: sum(rate(cortex_prometheus_notifications_errors_total[10m])) / sum(rate(cortex_prometheus_notifications_sent_total[10m])) > 0.1
+                for: 10m
+                labels: {severity: critical, service: mimir, layer: observability}
                 annotations:
-                  summary: Argo CD application {{ "{{ $labels.name }}" }} OutOfSync for 30m
-                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#argo
-              - alert: ArgoApplicationUnhealthy
-                expr: sum by (name, namespace) (argocd_app_info{health_status=~"Degraded|Missing|Unknown"}) > 0
+                  summary: Mimir ruler cannot deliver alerts to Alertmanager (>10% notification errors)
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#delivery-failing
+              - alert: AlertmanagerConfigInvalid
+                expr: max(cortex_alertmanager_config_last_reload_successful) == 0
+                for: 5m
+                labels: {severity: critical, service: alertmanager, layer: observability}
+                annotations:
+                  summary: Alertmanager has no valid configuration loaded (fallback failed or a bad per-tenant config)
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#delivery-failing
+              # Data layer: a database whose latest backup attempt failed, or that has no backup at all.
+              - alert: PostgresBackupFailed
+                expr: max by (namespace, cluster) (cnpg_collector_last_failed_backup_timestamp) > max by (namespace, cluster) (cnpg_collector_last_available_backup_timestamp)
                 for: 15m
-                labels: {severity: critical, service: argocd, layer: delivery}
+                labels: {severity: critical, service: postgres, layer: data}
                 annotations:
-                  summary: Argo CD application {{ "{{ $labels.name }}" }} is {{ "{{ $labels.health_status }}" }} for 15m
-                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#argo
-              # Security layer: certificates (gateway edge, internal mTLS) that cannot renew.
-              - alert: CertificateNotReady
-                expr: max by (name, namespace) (certmanager_certificate_ready_status{condition="False"}) == 1
+                  summary: CNPG backup failed for {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.cluster }}" }} (last failure newer than last success)
+              - alert: PostgresNoBackup
+                expr: max by (namespace, cluster) (cnpg_collector_last_available_backup_timestamp) == 0 or (time() - max by (namespace, cluster) (cnpg_collector_last_available_backup_timestamp)) > 36 * 3600
                 for: 1h
-                labels: {severity: critical, service: cert-manager, layer: security}
+                labels: {severity: warning, service: postgres, layer: data}
                 annotations:
-                  summary: Certificate {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.name }}" }} not Ready for 1h
-                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#certificates
-              - alert: CertificateExpiringSoon
-                expr: min by (name, namespace) (certmanager_certificate_expiration_timestamp_seconds) - time() < 14 * 24 * 3600
-                for: 6h
-                labels: {severity: warning, service: cert-manager, layer: security}
-                annotations:
-                  summary: Certificate {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.name }}" }} expires in under 14 days
-                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#certificates
+                  summary: No successful CNPG backup in 36h for {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.cluster }}" }}
+          - name: platform-baseline-warning
+            rules:
+              - alert: PodRestartingOften   # stand-in for KubePodCrashLooping until waiting_reason is allowlisted
+                expr: sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total[1h])) >= 3
+                labels: {severity: warning, service: kubernetes, layer: workload}
+                annotations: {summary: '{{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}/{{ "{{ $labels.container }}" }} restarted >=3 times in 1h'}
+              - alert: KubeJobFailed
+                expr: kube_job_status_failed > 0
+                for: 1h
+                labels: {severity: warning, service: kubernetes, layer: workload}
+                annotations: {summary: 'Job {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.job_name }}" }} has failed pods'}
+              - alert: NodeOOMKill   # kernel-level; ContainerOOMKilled only sees cgroup kills
+                expr: increase(node_vmstat_oom_kill[1h]) > 0
+                labels: {severity: warning, service: node, layer: platform}
+                annotations: {summary: 'Kernel OOM kill on {{ "{{ $labels.instance }}" }} in the last 1h'}
+              - alert: HubbleDropsRising   # baseline today 0.003/s STALE_OR_UNROUTABLE_IP; ICMPv6 noise excluded
+                expr: sum by (reason, protocol) (rate(hubble_drop_total{reason!="UNSUPPORTED_L3_PROTOCOL"}[10m])) > 1
+                for: 15m
+                labels: {severity: warning, service: cilium, layer: network}
+                annotations: {summary: 'Hubble dropping >1 pkt/s, reason {{ "{{ $labels.reason }}" }} ({{ "{{ $labels.protocol }}" }})'}
+              - alert: LokiCompactionStale   # retention stops, /var fills (today: 508s)
+                expr: time() - loki_boltdb_shipper_compact_tables_operation_last_successful_run_timestamp_seconds > 3 * 3600
+                for: 30m
+                labels: {severity: warning, service: loki, layer: observability}
+                annotations: {summary: Loki compactor has not completed a run for 3h}
+              - alert: MimirQueryAvailabilityBurnSlow   # write side has burn alerts, query side only a recording rule
+                expr: (1 - slo:mimir_query_availability:ratio_rate6h) > 6 * 0.001 and (1 - slo:mimir_query_availability:ratio_rate30m) > 6 * 0.001
+                for: 15m
+                labels: {severity: warning, service: mimir, layer: observability, slo: query-availability}
+                annotations: {summary: Mimir query 99.9% availability budget burning at 6x (6h and 30m)}
       slo.yaml: |
         groups:
           - name: slo-gateway-availability
