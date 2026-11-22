@@ -38,6 +38,7 @@ spec:
     - docker.io/envoyproxy
     - https://redhat-cop.github.io/vault-config-operator
     - https://amikos-tech.github.io/chromadb-chart/
+    - https://opencost.github.io/opencost-helm-chart
   destinations:
     - server: {{ .Values.cluster }}
       namespace: '*'
