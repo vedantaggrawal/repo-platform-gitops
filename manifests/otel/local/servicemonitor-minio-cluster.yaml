@@ -1,0 +1,18 @@
+# MinIO cluster-level metrics (health, drives offline, usable capacity) used by MinioClusterUnhealthy.
+# The chart's own ServiceMonitor (includeNode) scrapes only the per-node endpoint.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: minio-cluster
+  namespace: opentelemetry-operator
+spec:
+  namespaceSelector:
+    matchNames: [monitoring-storage]
+  selector:
+    matchLabels:
+      app: minio
+      release: local-minio
+  endpoints:
+    - port: http
+      path: /minio/v2/metrics/cluster
+      interval: 60s
