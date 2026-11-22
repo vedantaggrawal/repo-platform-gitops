@@ -4,6 +4,12 @@ metadata:
   name: {{ .Values.env }}-platform-onboarding
   namespace: argocd
 spec:
+  # Delete protection (incident 2026-11-22: one reconcile with mis-generated names deleted all 21
+  # Applications and, through their finalizers, their resources). With this set the controller
+  # adds no resources-finalizer to generated Applications: a wrong generation removes Application
+  # objects only, resources stay and the next generation adopts them in place.
+  syncPolicy:
+    preserveResourcesOnDeletion: true
   generators:
     - git:
         repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
