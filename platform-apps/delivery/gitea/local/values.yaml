@@ -1,0 +1,91 @@
+# Gitea — official chart 12.7.0 (Gitea 1.27.0). The platform's in-cluster git: PRs, reviews, webhooks,
+# issues as the shared work queue, push-mirror to GitHub (configured in-app). https://gitea.com/gitea/helm-gitea
+# State: repositories on the PVC below, everything else in the CNPG cluster gitea-db (manifests/gitea-db).
+# Credentials come from Secrets that CNPG (gitea-db-app) and ESO (gitea-admin) own; nothing here.
+# UI: https://local.gitea.internal:30443 (HTTPRoute in manifests/routes/local). SSO follows (Authentik).
+
+replicaCount: 1
+strategy:
+  type: Recreate   # one RWO volume
+
+image:
+  rootless: true
+
+# Bundled databases and caches off: Postgres is CNPG, cache/session/queue are in-process for one replica.
+postgresql-ha:
+  enabled: false
+postgresql:
+  enabled: false
+valkey-cluster:
+  enabled: false
+valkey:
+  enabled: false
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: standard
+  # The chart annotates the claim helm.sh/resource-policy: keep; Argo honours it.
+
+service:
+  http:
+    type: ClusterIP
+    port: 3000
+  ssh:
+    type: ClusterIP
+    port: 22
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+gitea:
+  admin:
+    existingSecret: gitea-admin   # keys username, password (manifests/gitea-db/local/admin.yaml)
+    email: gitea-admin@local.gitea.internal
+    passwordMode: keepUpdated
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  config:
+    server:
+      DOMAIN: local.gitea.internal
+      ROOT_URL: https://local.gitea.internal:30443/
+      SSH_DOMAIN: local.gitea.internal
+      LANDING_PAGE: explore
+    database:
+      DB_TYPE: postgres
+      HOST: gitea-db-rw.gitea.svc.cluster.local:5432
+      NAME: gitea
+      USER: gitea
+      SSL_MODE: require
+      # PASSWD comes from the gitea-db-app Secret (additionalConfigFromEnvs below).
+    cache:
+      ADAPTER: memory
+    session:
+      PROVIDER: db
+    queue:
+      TYPE: level
+    service:
+      DISABLE_REGISTRATION: true       # accounts come from SSO or the admin
+      REQUIRE_SIGNIN_VIEW: false
+    webhook:
+      ALLOWED_HOST_LIST: private,*.svc,*.svc.cluster.local,local.*.internal   # Argo CD, Kargo, CI runners
+    actions:
+      ENABLED: true                    # runner is a later app
+    log:
+      LEVEL: Info
+      MODE: console
+  additionalConfigFromEnvs:
+    - name: GITEA__database__PASSWD
+      valueFrom:
+        secretKeyRef:
+          name: gitea-db-app
+          key: password
