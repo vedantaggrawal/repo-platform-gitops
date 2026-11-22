@@ -1,6 +1,16 @@
 ---
 paths:
-  - "platform-apps/{grafana,loki,mimir,tempo,minio,opentelemetry-operator,prometheus-operator-crds,kube-state-metrics,metrics-server,alloy,kube-prometheus-stack}/**"
+  - "platform-apps/observability/grafana/**"
+  - "platform-apps/observability/loki/**"
+  - "platform-apps/observability/mimir/**"
+  - "platform-apps/observability/tempo/**"
+  - "platform-apps/data/minio/**"
+  - "platform-apps/observability/opentelemetry-operator/**"
+  - "platform-apps/foundation/prometheus-operator-crds/**"
+  - "platform-apps/observability/kube-state-metrics/**"
+  - "platform-apps/foundation/metrics-server/**"
+  - "platform-apps/observability/alloy/**"
+  - "platform-apps/observability/kube-prometheus-stack/**"
   - "manifests/{otel,config-drift}/**"
 ---
 # Observability

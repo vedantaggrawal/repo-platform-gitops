@@ -2,7 +2,7 @@
 # KubernetesAuthEngineRole, SecretEngineMount, PKISecretEngine*, PasswordPolicy, RandomSecret, ...
 # OpenBao speaks the Vault API, so the operator works unchanged. It runs in the openbao namespace next
 # to the ServiceAccount `bao-config`, which OpenBao's self-init binds to the `bao-config` policy and
-# Kubernetes auth role (platform-apps/openbao/local/values.yaml). Each CR names that role in its
+# Kubernetes auth role (platform-apps/security/openbao/local/values.yaml). Each CR names that role in its
 # `authentication` block, so the operator never holds a long-lived token.
 env:
   - name: VAULT_ADDR

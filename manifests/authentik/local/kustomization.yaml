@@ -12,7 +12,7 @@ configMapGenerator:
     options:
       disableNameSuffixHash: true   # the chart mounts it by this exact name
   # Logo and favicon, mounted on the server at /web/dist/custom and served at
-  # /static/dist/custom/<file> (see platform-apps/authentik/local/values.yaml).
+  # /static/dist/custom/<file> (see platform-apps/security/authentik/local/values.yaml).
   - name: authentik-branding
     files: [branding/logo.svg, branding/favicon.svg]
     options:

@@ -18,7 +18,7 @@ spec:
         # app-gateway-crds.yaml owns both.
         skipCrds: true
         valueFiles:
-          - $values/platform-apps/envoy-gateway/{{ .Values.env }}/values.yaml
+          - $values/platform-apps/networking/envoy-gateway/{{ .Values.env }}/values.yaml
     - repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
       targetRevision: HEAD
       ref: values
