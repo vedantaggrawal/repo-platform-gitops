@@ -1,0 +1,49 @@
+# Open WebUI — the AI chat interface. Chart 18.4.0 = Open WebUI 0.13.4 (arm64). Models from the in-cluster
+# Ollama; RAG embeddings via Ollama bge-m3 into the platform ChromaDB; sign-in via Authentik (OIDC).
+# First OIDC login becomes the admin. Secret open-webui-oidc comes from manifests/secret-stores (OpenBao).
+ollama:
+  enabled: false
+ollamaUrls:
+  - http://local-ollama.ollama.svc.cluster.local:11434
+pipelines:
+  enabled: false
+websocket:
+  enabled: false   # needs Redis; single replica does not
+ingress:
+  enabled: false   # HTTPRoute in manifests/routes/local/open-webui.yaml
+
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: standard
+
+sso:
+  enabled: true
+  enableSignup: true
+  mergeAccountsByEmail: true
+  oidc:
+    enabled: true
+    clientId: open-webui
+    clientExistingSecret: open-webui-oidc
+    clientExistingSecretKey: client_secret
+    providerUrl: https://authentik.evelab.space/application/o/open-webui/.well-known/openid-configuration
+    providerName: Authentik
+    scopes: openid email profile
+
+extraEnvVars:
+  - { name: WEBUI_URL, value: https://chat.evelab.space }
+  - { name: DEFAULT_MODELS, value: llama3.2:3b }
+  - { name: VECTOR_DB, value: chroma }
+  - { name: CHROMA_HTTP_HOST, value: local-chromadb.chromadb.svc.cluster.local }
+  - { name: CHROMA_HTTP_PORT, value: "8000" }
+  - { name: RAG_EMBEDDING_ENGINE, value: ollama }
+  - { name: RAG_EMBEDDING_MODEL, value: bge-m3 }
+  - { name: RAG_OLLAMA_BASE_URL, value: http://local-ollama.ollama.svc.cluster.local:11434 }
+  - { name: ENABLE_OPENAI_API, value: "false" }
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 2Gi

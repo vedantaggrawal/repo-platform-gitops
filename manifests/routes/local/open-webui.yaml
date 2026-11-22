@@ -1,0 +1,12 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: open-webui
+  namespace: open-webui
+spec:
+  parentRefs:
+    - {group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}
+  hostnames: [chat.local.evelab.space, chat.evelab.space]
+  rules:
+    - matches: [{path: {type: PathPrefix, value: /}}]
+      backendRefs: [{group: "", kind: Service, name: local-open-webui, port: 80, weight: 1}]

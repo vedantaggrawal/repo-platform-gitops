@@ -1,0 +1,6 @@
+enabled: "true"
+chart: open-webui
+repoURL: https://helm.openwebui.com
+targetRevision: "18.4.0"
+namespace: open-webui
+syncWave: "1"
