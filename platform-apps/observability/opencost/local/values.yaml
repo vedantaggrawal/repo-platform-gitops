@@ -1,0 +1,41 @@
+# OpenCost — cost allocation per namespace/label from the metrics already in Mimir.
+# https://github.com/opencost/opencost-helm-chart (chart 2.5.34 = OpenCost 1.121.4)
+# Meter for pay-per-use: allocation by the eve.io/tenant and eve.io/layer namespace labels.
+# UI at https://local.opencost.internal:30443 (HTTPRoute in manifests/routes/local), API on :9003.
+
+opencost:
+  exporter:
+    # Default pricing until a real price sheet exists; on-prem kind has no cloud billing.
+    defaultClusterId: kind-local-01
+    extraEnv:
+      # Group costs by the platform's tenant and layer labels (namespace labels are inherited).
+      EMIT_NAMESPACE_ANNOTATIONS_METRIC: "true"
+      EMIT_KSM_V1_METRICS: "false"
+      EMIT_KSM_V1_METRICS_ONLY: "false"
+    resources:
+      requests: {cpu: 50m, memory: 128Mi}
+      limits: {memory: 512Mi}
+  metrics:
+    serviceMonitor:
+      enabled: true
+  prometheus:
+    internal:
+      enabled: false
+    external:
+      enabled: true
+      # Mimir query frontend; multitenancy is off, so no X-Scope-OrgID.
+      url: http://local-mimir-query-frontend.monitoring.svc.cluster.local:8080/prometheus
+  ui:
+    enabled: true
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {memory: 128Mi}
+    ingress:
+      enabled: false
+
+# kube-state-metrics and node-exporter already run in monitoring; OpenCost reads them through Mimir.
+networkPolicies:
+  enabled: false
+
+service:
+  type: ClusterIP
