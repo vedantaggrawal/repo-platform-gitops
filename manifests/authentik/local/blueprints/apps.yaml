@@ -39,7 +39,7 @@ entries:
         - { matching_mode: strict, url: "https://grafana.evelab.space/login/generic_oauth" }
   - model: authentik_core.application
     identifiers: { slug: grafana }
-    attrs: { name: Grafana, provider: !KeyOf provider-grafana }
+    attrs: { name: Grafana, provider: !KeyOf provider-grafana, meta_launch_url: "https://grafana.evelab.space" }
 
   - model: authentik_providers_oauth2.oauth2provider
     id: provider-argocd
@@ -55,7 +55,7 @@ entries:
         - { matching_mode: strict, url: "http://localhost:8085/auth/callback" }   # argocd login --sso
   - model: authentik_core.application
     identifiers: { slug: argocd }
-    attrs: { name: Argo CD, provider: !KeyOf provider-argocd }
+    attrs: { name: Argo CD, provider: !KeyOf provider-argocd, meta_launch_url: "https://argocd.local.evelab.space:30443" }
 
   - model: authentik_providers_oauth2.oauth2provider
     id: provider-kargo
@@ -70,7 +70,7 @@ entries:
         - { matching_mode: regex, url: '^http://localhost:[0-9]+/auth/callback$' }
   - model: authentik_core.application
     identifiers: { slug: kargo }
-    attrs: { name: Kargo, provider: !KeyOf provider-kargo }
+    attrs: { name: Kargo, provider: !KeyOf provider-kargo, meta_launch_url: "https://kargo.local.evelab.space:30443" }
   # OpenBao: confidential client (the OIDC auth method needs a secret); UI and CLI callbacks.
   - model: authentik_providers_oauth2.oauth2provider
     id: provider-openbao
@@ -86,7 +86,7 @@ entries:
         - { matching_mode: strict, url: "http://localhost:8250/oidc/callback" }   # vault login -method=oidc
   - model: authentik_core.application
     identifiers: { slug: openbao }
-    attrs: { name: OpenBao, provider: !KeyOf provider-openbao }
+    attrs: { name: OpenBao, provider: !KeyOf provider-openbao, meta_launch_url: "https://openbao.local.evelab.space:30443" }
   # Gitea: confidential client; the auth source in Gitea is named `authentik` (callback path).
   - model: authentik_providers_oauth2.oauth2provider
     id: provider-gitea
@@ -102,7 +102,7 @@ entries:
         - { matching_mode: strict, url: "https://gitea.evelab.space/user/oauth2/authentik/callback" }
   - model: authentik_core.application
     identifiers: { slug: gitea }
-    attrs: { name: Gitea, provider: !KeyOf provider-gitea }
+    attrs: { name: Gitea, provider: !KeyOf provider-gitea, meta_launch_url: "https://gitea.evelab.space" }
   # Chroma's HTTP API behind the gateway: JWT only (SecurityPolicy in manifests/routes/local).
   # Clients get a token with the same CLI/PKCE flow as eve-demo-api and send it as Bearer.
   - model: authentik_providers_oauth2.oauth2provider
@@ -116,4 +116,4 @@ entries:
         - { matching_mode: regex, url: '^http://localhost:[0-9]+/callback$' }
   - model: authentik_core.application
     identifiers: { slug: chromadb }
-    attrs: { name: Chroma, provider: !KeyOf provider-chromadb }
+    attrs: { name: Chroma, provider: !KeyOf provider-chromadb, meta_launch_url: "https://chromadb.local.evelab.space:30443" }

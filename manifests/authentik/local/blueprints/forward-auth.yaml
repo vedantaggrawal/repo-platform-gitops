@@ -18,7 +18,7 @@ entries:
   - model: authentik_core.application
     id: app-opencost
     identifiers: { slug: opencost }
-    attrs: { name: OpenCost, provider: !KeyOf provider-opencost }
+    attrs: { name: OpenCost, provider: !KeyOf provider-opencost, meta_launch_url: "https://opencost.local.evelab.space:30443" }
   - model: authentik_policies.policybinding
     identifiers: { order: 0, target: !KeyOf app-opencost, group: !Find [authentik_core.group, [name, platform-admins]] }
     attrs: { enabled: true }
@@ -35,7 +35,7 @@ entries:
   - model: authentik_core.application
     id: app-hubble
     identifiers: { slug: hubble }
-    attrs: { name: Hubble UI, provider: !KeyOf provider-hubble }
+    attrs: { name: Hubble UI, provider: !KeyOf provider-hubble, meta_launch_url: "https://hubble.local.evelab.space:30443" }
   - model: authentik_policies.policybinding
     identifiers: { order: 0, target: !KeyOf app-hubble, group: !Find [authentik_core.group, [name, platform-admins]] }
     attrs: { enabled: true }
