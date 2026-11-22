@@ -8,9 +8,17 @@ spec:
   targetRefs:
     - {group: gateway.networking.k8s.io, kind: HTTPRoute, name: chromadb}
   jwt:
+    # Authentik's issuer is the host the token was requested from; accept the public and the
+    # canonical cluster name (any provider matching = allowed). Same JWKS for both.
     providers:
-      - name: authentik
-        issuer: https://local.authentik.internal:30443/application/o/chromadb/
+      - name: authentik-public
+        issuer: https://authentik.evelab.space/application/o/chromadb/
+        audiences: [chromadb]
+        remoteJWKS:
+          uri: http://local-authentik-server.authentik.svc.cluster.local/application/o/chromadb/jwks/
+          cacheDuration: 300s
+      - name: authentik-local
+        issuer: https://authentik.local.evelab.space:30443/application/o/chromadb/
         audiences: [chromadb]
         remoteJWKS:
           uri: http://local-authentik-server.authentik.svc.cluster.local/application/o/chromadb/jwks/
