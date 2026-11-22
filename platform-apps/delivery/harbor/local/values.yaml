@@ -35,7 +35,7 @@
 # `docker login` against it needs the host in Docker's insecure-registries (or
 # the cert trusted), since the cert is self-signed.
 
-externalURL: https://local.harbor.internal:30443
+externalURL: https://harbor.local.evelab.space:30443
 
 expose:
   # No Ingress: the HTTPRoute in manifests/routes/local/harbor.yaml fronts
