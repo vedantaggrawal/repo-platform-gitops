@@ -1,0 +1,11 @@
+# tenants/demo/tenant.yaml: the tenant that exists today, expressed as one file.
+name: demo
+tier: free
+workloads: [app]
+argocd:
+  sourceRepos:
+    - https://github.com/vedantaggrawal/repo-app-gitops.git
+    - https://github.com/vedantaggrawal/repo-helm-chart.git
+    # Kargo-managed stage apps (appset-kargo-demo.yaml)
+    - https://github.com/vedantaggrawal/kargo-demo
+  extraDestinationNamespaces: ['kargo-demo-*']

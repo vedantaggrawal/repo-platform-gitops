@@ -1,0 +1,13 @@
+{{- if .Values.authentik.enabled }}
+{{- $n := include "tenant.name" . }}
+# The tenant's Authentik blueprint as a ConfigMap. The Authentik chart mounts it (blueprints.configMaps)
+# and the worker applies it when the content changes.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.authentik.configMapName | default (printf "authentik-blueprint-tenant-%s" $n) }}
+  namespace: {{ .Values.authentik.namespace }}
+data:
+  tenant-{{ $n }}.yaml: |
+{{ include "tenant.blueprint" . | indent 4 }}
+{{- end }}

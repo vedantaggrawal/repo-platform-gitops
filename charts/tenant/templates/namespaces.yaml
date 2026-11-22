@@ -1,0 +1,84 @@
+{{- $tier := include "tenant.tier" . | fromYaml }}
+{{- range $w := .Values.workloads }}
+{{- $ns := include "tenant.ns" (dict "root" $ "workload" $w) }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  labels:
+    eve.io/tenant: {{ $.Values.name }}
+    {{- toYaml $.Values.namespaceLabels | nindent 4 }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ $.Values.tier }}-tier
+  namespace: {{ $ns }}
+spec:
+  hard:
+    {{- toYaml $tier.quota | nindent 4 }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: defaults
+  namespace: {{ $ns }}
+spec:
+  limits:
+    - type: Container
+      {{- toYaml $tier.limitRange | nindent 6 }}
+{{- range $roleName, $r := $.Values.roles }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $r.clusterRole }}
+  namespace: {{ $ns }}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: {{ $r.clusterRole }}}
+subjects:
+  - {apiGroup: rbac.authorization.k8s.io, kind: Group, name: "{{ $.Values.kubernetes.groupPrefix }}tenant-{{ $.Values.name }}-{{ $r.kubernetesGroup }}"}
+{{- end }}
+---
+# Default-deny; shipped with the namespace so it is never open.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-baseline
+  namespace: {{ $ns }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+    {{- range $n := $.Values.network.ingressFromNamespaces }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $n }}
+    {{- end }}
+  egress:
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $.Values.network.dns.namespace }}
+          podSelector:
+            matchLabels:
+              {{- toYaml $.Values.network.dns.podLabels | nindent 14 }}
+      ports:
+        {{- range $p := $.Values.network.dns.ports }}
+        - {protocol: {{ $p.protocol }}, port: {{ $p.port }}}
+        {{- end }}
+{{- end }}
