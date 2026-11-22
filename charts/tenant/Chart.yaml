@@ -1,0 +1,12 @@
+apiVersion: v2
+name: tenant
+description: >-
+  One tenant's landscape on the platform, rendered from a tenant.yaml-shaped values file: namespaces with
+  quota, limits, network policy and RoleBindings per tier; the Argo CD AppProject with admin/dev/viewer
+  roles; the Authentik blueprint (tenant group, role groups, self-service admin role, API provider).
+  Onboarding a tenant is one values file. Nothing tenant-specific lives anywhere else.
+type: application
+version: 0.1.0
+appVersion: "1"
+kubeVersion: ">=1.25.0-0"
+keywords: [tenant, multi-tenancy, argocd, authentik, networkpolicy]

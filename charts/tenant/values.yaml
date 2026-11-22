@@ -1,0 +1,115 @@
+# tenant: a tenant's landscape from one values file. The per-tenant file (tenants/<name>/tenant.yaml,
+# see examples/) sets name, tier, workloads and repos; everything below is the platform's default.
+
+# Required per tenant.
+name: ""            # short, lowercase; namespaces are tenant-<name>-<workload>, groups tenant-<name>-<role>
+tier: free          # key into .tiers
+workloads: [app]    # one namespace per entry: tenant-<name>-<workload>
+
+cluster:
+  server: https://kubernetes.default.svc
+
+# Tiers: quota and limits per namespace. The ResourceQuota is named <tier>-tier.
+tiers:
+  free:
+    quota: {cpu: "2", memory: 4Gi, pods: "20"}
+    limitRange:
+      defaultRequest: {cpu: 50m, memory: 64Mi}
+      default: {cpu: 250m, memory: 256Mi}
+      max: {cpu: "1", memory: 1Gi}
+
+# Namespace labels besides eve.io/tenant. Pod Security restricted by default.
+namespaceLabels:
+  pod-security.kubernetes.io/enforce: restricted
+  pod-security.kubernetes.io/audit: restricted
+  pod-security.kubernetes.io/warn: restricted
+
+# Network: default-deny plus a baseline that allows same-namespace traffic, ingress from the
+# gateway namespaces and egress to cluster DNS.
+network:
+  ingressFromNamespaces: [envoy-gateway-system]
+  dns:
+    namespace: kube-system
+    podLabels: {k8s-app: kube-dns}
+    ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+
+# Roles. Kubernetes RoleBindings bind Group "<groupPrefix>tenant-<name>-<kubernetesGroup>" to the
+# shared ClusterRole; Argo CD project roles bind "tenant-<name>-<argocdGroup>" (the Authentik group).
+# NOTE: today's developer role uses two different group suffixes (kubernetes: developer, argocd/authentik:
+# dev). Kept as is so the render matches the live objects; align in the wiring PR.
+kubernetes:
+  groupPrefix: "oidc:"
+roles:
+  admin:
+    clusterRole: tenant-admin
+    kubernetesGroup: admin
+    argocdGroup: admin
+    argocdRole: admin
+    argocdPolicies:
+      - "applications, *"
+  developer:
+    clusterRole: tenant-developer
+    kubernetesGroup: developer
+    argocdGroup: dev
+    argocdRole: dev
+    argocdPolicies:
+      - "applications, get"
+      - "applications, sync"
+      - "logs, get"
+  viewer:
+    clusterRole: tenant-viewer
+    kubernetesGroup: viewer
+    argocdGroup: viewer
+    argocdRole: viewer
+    argocdPolicies:
+      - "applications, get"
+
+argocd:
+  enabled: true
+  namespace: argocd
+  syncWave: "-20"                 # inside the tenant release: the project exists before anything references it
+  description: ""                 # default: Tenant <name>
+  sourceRepos: []                 # the tenant's repos
+  # Destinations: tenant-<name>-* on .cluster.server, plus these extra namespace patterns.
+  extraDestinationNamespaces: []
+  # Kinds the tenant may never manage; quota, limits, policy and RBAC stay with the platform.
+  namespaceResourceBlacklist:
+    - { group: '', kind: ResourceQuota }
+    - { group: '', kind: LimitRange }
+    - { group: networking.k8s.io, kind: NetworkPolicy }
+    - { group: cilium.io, kind: CiliumNetworkPolicy }
+    - { group: rbac.authorization.k8s.io, kind: Role }
+    - { group: rbac.authorization.k8s.io, kind: RoleBinding }
+
+authentik:
+  enabled: true
+  namespace: authentik
+  # ConfigMap holding the blueprint; the Authentik chart mounts it via blueprints.configMaps.
+  configMapName: ""               # default: authentik-blueprint-tenant-<name>
+  baseUrl: https://local.authentik.internal:30443
+  # Tenant-facing API provider (public client, PKCE). Token: sub, aud, tenant_id, tier.
+  api:
+    enabled: true
+    clientId: ""                  # default: eve-<name>-api
+    displayName: ""               # default: Eve <name> API
+    accessTokenValidity: minutes=10
+    redirectUris:
+      - { matching_mode: regex, url: '^http://localhost:[0-9]+/callback$' }
+
+# Layers. The platform is built bottom-up: foundation (Terraform: kind, Cilium, Argo CD), data, security,
+# networking, delivery, observability, addons, tenants. This chart renders layer "tenants" and writes into
+# two lower-layer namespaces (argocd, authentik). Every object carries eve.io/layer and eve.io/tenant so the
+# Argo CD UI and Grafana can show one layer at a time. layers.waves is the sync wave the tenants
+# ApplicationSet gives each tenant Application (wiring PR); objects inside keep their own waves.
+layers:
+  current: tenants
+  requires: [foundation, data, security]
+  waves:
+    foundation: "-20"
+    data: "-15"
+    security: "-10"
+    networking: "-5"
+    delivery: "0"
+    observability: "0"
+    addons: "5"
+    tenants: "10"

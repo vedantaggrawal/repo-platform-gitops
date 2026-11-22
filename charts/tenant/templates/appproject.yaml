@@ -1,0 +1,41 @@
+{{- if .Values.argocd.enabled }}
+{{- $n := include "tenant.name" . }}
+# Tenant "{{ $n }}": namespaced resources only, in its own namespaces. Quota,
+# limits and network policy stay with the platform. Roles bind to the
+# Authentik groups tenant-{{ $n }}-{admin,dev,viewer} (OIDC `groups` claim).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: tenant-{{ $n }}
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "tenant.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.argocd.syncWave | quote }}
+spec:
+  description: {{ .Values.argocd.description | default (printf "Tenant %s" $n) }}
+  sourceRepos:
+    {{- toYaml .Values.argocd.sourceRepos | nindent 4 }}
+  destinations:
+    - server: {{ .Values.cluster.server }}
+      namespace: 'tenant-{{ $n }}-*'
+    {{- range $p := .Values.argocd.extraDestinationNamespaces }}
+    - server: {{ $.Values.cluster.server }}
+      namespace: {{ $p | quote }}
+    {{- end }}
+  clusterResourceWhitelist: []
+  namespaceResourceBlacklist:
+    {{- range $b := .Values.argocd.namespaceResourceBlacklist }}
+    - { group: {{ $b.group | quote }}, kind: {{ $b.kind }} }
+    {{- end }}
+  roles:
+    {{- range $k := (list "admin" "developer" "viewer") }}
+    {{- $r := index $.Values.roles $k }}
+    - name: {{ $r.argocdRole }}
+      policies:
+        {{- range $p := $r.argocdPolicies }}
+        - p, proj:tenant-{{ $n }}:{{ $r.argocdRole }}, {{ $p }}, tenant-{{ $n }}/*, allow
+        {{- end }}
+      groups: [tenant-{{ $n }}-{{ $r.argocdGroup }}]
+    {{- end }}
+{{- end }}
