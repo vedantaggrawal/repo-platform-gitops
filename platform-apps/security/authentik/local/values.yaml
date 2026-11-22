@@ -60,8 +60,10 @@ server:
       enabled: true
       interval: 60s
   resources:
-    requests: { cpu: 100m, memory: 512Mi }
-    limits: { memory: 1Gi }
+    # 1Gi was OOMKilled 6x on 2026-11-22 (embedded outpost + 4 proxy providers + flows); every kill is
+    # a 5xx on all SSO. Headroom first, right-size from the memory dashboard later.
+    requests: { cpu: 200m, memory: 768Mi }
+    limits: { memory: 2Gi }
   # Logo/favicon (ConfigMap authentik-branding, manifests/authentik/local/branding/),
   # served at /static/dist/custom/<file>. Optional: the server starts without it.
   volumes:
