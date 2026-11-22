@@ -4,7 +4,7 @@
 #   github-authentication. Both flows require the allowlist (all policies must pass).
 # - Accounts are keyed by GitHub's numeric user id (immutable; logins can be
 #   renamed and re-registered). Look one up: https://api.github.com/users/<login>
-# - ALLOWED: may log in. ROLES: platform groups (platform-admins = admin in every app and
+# - INVITED/OPEN: who may log in. ROLES: platform groups (platform-admins = admin in every app and
 #   in Authentik); re-synced on every login, so removing an id here takes effect
 #   at that account's next login.
 # The GitHub source itself (with its credentials) is in secrets.yaml.
@@ -17,9 +17,13 @@ entries:
     identifiers: { name: github-allowlist }
     attrs:
       expression: |
-        ALLOWED = [14919641]  # vedantaggrawal
+        # Who may enter. OPEN = True lets any GitHub account create an Authentik user (they land
+        # in platform-viewer only: Grafana Viewer, Gitea user, nothing else). OPEN = False keeps
+        # the invite list: add a GitHub login, open a PR, the person can sign in once it merges.
+        OPEN = False
+        INVITED = {"vedantaggrawal"}
         info = request.context.get("oauth_userinfo") or {}
-        return info.get("id") in ALLOWED
+        return OPEN or (info.get("login") or "").lower() in {l.lower() for l in INVITED}
 
   - model: authentik_sources_oauth.oauthsourcepropertymapping
     id: github-groups
@@ -31,7 +35,8 @@ entries:
         ROLES = {
             14919641: ["platform-admins"],  # vedantaggrawal
         }
-        return {"groups": ROLES.get(info.get("id"), [])}
+        # Everyone else who got through the allowlist is a platform-viewer.
+        return {"groups": ROLES.get(info.get("id"), ["platform-viewer"])}
 
   # First login: create the user, no prompts (username, name, email from GitHub).
   - model: authentik_flows.flow
