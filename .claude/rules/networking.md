@@ -32,3 +32,5 @@ paths:
 - **No inbound ports, no public IP, Cloudflare proxy off for `*.local`.** Exposure is opt-in per route, never per DNS.
 - **The cloudflared pods are the only tunnel connectors.** Never `cloudflared service install` on a laptop with the
   tunnel token: every connector gets a share of all public requests, and one off-cluster returns edge 502s.
+- **L7 visibility never covers the IdP.** Cilium's proxy rewrites `X-Forwarded-Proto`; Authentik would advertise http:// OIDC
+  endpoints and issuer-validating clients break. Opt namespaces into `network-policies/platform-l7-visibility.yaml` one by one.
