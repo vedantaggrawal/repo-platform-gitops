@@ -95,6 +95,7 @@ spec:
   allowedRedirectURIs:
     - https://local.openbao.internal:30443/ui/vault/auth/oidc/oidc/callback
     - https://openbao.local.evelab.space:30443/ui/vault/auth/oidc/oidc/callback
+    - https://openbao.evelab.space/ui/vault/auth/oidc/oidc/callback
     - http://localhost:8250/oidc/callback
   tokenPolicies: [platform-admin]
   tokenTTL: 1h
