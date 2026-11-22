@@ -65,6 +65,13 @@ spec:
         automated:
           prune: {{ .Values.prune }}
           selfHeal: true
+        # The namespace Argo creates carries the app's layer and the platform tenant, so
+        # kube_namespace_labels joins and OpenCost allocation work per layer and tenant.
+        # Shared namespaces (monitoring, openbao, kube-system) hold apps of one layer each.
+        managedNamespaceMetadata:
+          labels:
+            eve.io/layer: '{{ "{{path[1]}}" }}'
+            eve.io/tenant: platform
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
