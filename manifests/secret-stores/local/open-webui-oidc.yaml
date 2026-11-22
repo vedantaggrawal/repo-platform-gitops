@@ -1,0 +1,26 @@
+# Open WebUI's namespace (declared here so the OIDC client secret can land before the chart app) and the
+# consumer of the secret seeded by manifests/authentik/local/open-webui-oidc.yaml.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-webui
+  labels:
+    eve.io/layer: addons
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: open-webui-oidc
+  namespace: open-webui
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: open-webui-oidc
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/authentik/open-webui-oidc }

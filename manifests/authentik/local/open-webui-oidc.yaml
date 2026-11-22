@@ -1,0 +1,58 @@
+# Open WebUI's OIDC client secret: generated once, kept in OpenBao (platform/authentik/open-webui-oidc),
+# delivered to Authentik as env (blueprint reads !Env) and to Open WebUI (manifests/secret-stores/local/open-webui-oidc.yaml).
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: open-webui-oidc-client-secret
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec: { length: 48, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: open-webui-oidc-seed
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: open-webui-oidc-seed
+    creationPolicy: Owner
+  dataFrom:
+    - sourceRef: { generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: open-webui-oidc-client-secret } }
+      rewrite: [{ regexp: { source: password, target: client_secret } }]
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: open-webui-oidc
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - { kind: ClusterSecretStore, name: openbao }
+  selector:
+    secret: { name: open-webui-oidc-seed }
+  data:
+    - match: { remoteRef: { remoteKey: platform/authentik/open-webui-oidc } }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: authentik-open-webui-oidc
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: authentik-open-webui-oidc
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/authentik/open-webui-oidc }

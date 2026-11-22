@@ -7,6 +7,7 @@ resources:
   - secrets.yaml
   - openbao-oidc.yaml
   - gitea-oidc.yaml
+  - open-webui-oidc.yaml
 # Blueprints: plain files, mounted by the chart (blueprints.configMaps) and
 # applied by Authentik's worker when a file is added or its content changes.
 configMapGenerator:
