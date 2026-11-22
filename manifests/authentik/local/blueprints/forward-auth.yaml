@@ -11,7 +11,7 @@ entries:
     identifiers: { name: opencost }
     attrs:
       mode: forward_single
-      external_host: https://local.opencost.internal:30443
+      external_host: https://opencost.local.evelab.space:30443
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
       access_token_validity: hours=24
@@ -28,7 +28,7 @@ entries:
     identifiers: { name: hubble }
     attrs:
       mode: forward_single
-      external_host: https://local.hubble.internal:30443
+      external_host: https://hubble.local.evelab.space:30443
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
       access_token_validity: hours=24

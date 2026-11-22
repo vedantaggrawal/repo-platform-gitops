@@ -86,7 +86,7 @@ authentik:
   namespace: authentik
   # ConfigMap holding the blueprint; the Authentik chart mounts it via blueprints.configMaps.
   configMapName: ""               # default: authentik-blueprint-tenant-<name>
-  baseUrl: https://local.authentik.internal:30443
+  baseUrl: https://authentik.local.evelab.space:30443
   # Tenant-facing API provider (public client, PKCE). Token: sub, aud, tenant_id, tier.
   api:
     enabled: true

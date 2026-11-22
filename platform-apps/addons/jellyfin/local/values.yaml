@@ -57,7 +57,7 @@ resources:
 jellyfin:
   env:
     - name: JELLYFIN_PublishedServerUrl
-      value: https://local.jellyfin.internal:10443
+      value: https://jellyfin.local.evelab.space:10443
     - name: JELLYFIN_CACHE_DIR
       value: /cache
     - name: TZ
