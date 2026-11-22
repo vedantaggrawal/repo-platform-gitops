@@ -1,8 +1,13 @@
 ---
 paths:
-  - "platform-apps/authentik/**"
+  - "platform-apps/security/authentik/**"
   - "manifests/authentik/**"
-  - "platform-apps/{grafana,kargo,harbor,minio,headlamp,openbao}/**"
+  - "platform-apps/observability/grafana/**"
+  - "platform-apps/delivery/kargo/**"
+  - "platform-apps/delivery/harbor/**"
+  - "platform-apps/data/minio/**"
+  - "platform-apps/addons/headlamp/**"
+  - "platform-apps/security/openbao/**"
 ---
 # Identity and SSO
 

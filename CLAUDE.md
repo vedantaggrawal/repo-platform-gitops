@@ -7,10 +7,10 @@ The project's current opinions (what we do and why) live in `.claude/rules/`. To
 ## Layout (put config only where it belongs)
 - `bootstrap/<env>.yaml`: root app per env; it renders `argocd-apps/`.
 - `argocd-apps/`: Helm chart for the app-of-apps.
-  - `appset-platform.yaml` turns every `platform-apps/<app>/<env>/` into an app.
+  - `appset-platform.yaml` turns every `platform-apps/<layer>/<app>/<env>/` into an app.
   - `app-*.yaml` are the raw-manifest apps, rendered only for `rawManifestEnvs`.
   - `appset-apps.yaml` deploys app workloads from the separate app-gitops repo.
-- `platform-apps/<app>/<env>/`: one upstream Helm chart per app.
+- `platform-apps/<layer>/<app>/<env>/`: one upstream Helm chart per app, filed under its layer (see `LAYERS.md`); the layer becomes the Application label `eve.io/layer`.
   - `config.yaml`: chart, repoURL, targetRevision, namespace, syncWave, enabled.
   - `values.yaml`: chart values.
   - `grafana/<env>/dashboards/`: dashboards owned by Grafana Git Sync (UI edits arrive as PRs).

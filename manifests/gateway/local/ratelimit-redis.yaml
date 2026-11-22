@@ -1,5 +1,5 @@
 # Counter store for Envoy Gateway global rate limiting (wired in
-# platform-apps/envoy-gateway/local/values.yaml). Single replica, no persistence:
+# platform-apps/networking/envoy-gateway/local/values.yaml). Single replica, no persistence:
 # counters are ephemeral, losing them only resets the current windows.
 apiVersion: apps/v1
 kind: Deployment

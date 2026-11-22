@@ -1,7 +1,7 @@
 ---
 paths:
-  - "platform-apps/*/*/config.yaml"
-  - "platform-apps/kargo/**"
+  - "platform-apps/*/*/*/config.yaml"
+  - "platform-apps/delivery/kargo/**"
 ---
 # Delivery and versions
 

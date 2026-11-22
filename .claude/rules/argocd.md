@@ -3,7 +3,7 @@ paths:
   - "argocd-apps/**"
   - "bootstrap/**"
   - "manifests/**"
-  - "platform-apps/*/*/config.yaml"
+  - "platform-apps/*/*/*/config.yaml"
 ---
 # Argo CD
 
