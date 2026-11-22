@@ -20,7 +20,7 @@ entries:
         # Who may enter. OPEN = True lets any GitHub account create an Authentik user (they land
         # in platform-viewer only: Grafana Viewer, Gitea user, nothing else). OPEN = False keeps
         # the invite list: add a GitHub login, open a PR, the person can sign in once it merges.
-        OPEN = False
+        OPEN = True   # user decision 2026-11-22 ("open to any"): anyone with a GitHub account, as platform-viewer
         INVITED = {"vedantaggrawal"}
         info = request.context.get("oauth_userinfo") or {}
         return OPEN or (info.get("login") or "").lower() in {l.lower() for l in INVITED}
