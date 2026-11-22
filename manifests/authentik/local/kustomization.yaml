@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: authentik
 resources:
   - database.yaml
+  - backup.yaml
   - secrets.yaml
   - openbao-oidc.yaml
   - gitea-oidc.yaml

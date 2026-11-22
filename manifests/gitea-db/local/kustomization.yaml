@@ -4,5 +4,6 @@ namespace: gitea
 resources:
   - namespace.yaml
   - cluster.yaml
+  - backup.yaml
   - admin.yaml
   - oidc-client.yaml
