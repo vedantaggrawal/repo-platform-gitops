@@ -28,6 +28,9 @@ mimir:
       backend: local
       local:
         directory: /etc/mimir-rules
+    ruler:
+      # Reload rule files from the ConfigMap within a minute of a merge (default 10m).
+      poll_interval: 1m
     alertmanager_storage:
       backend: s3
       s3:
