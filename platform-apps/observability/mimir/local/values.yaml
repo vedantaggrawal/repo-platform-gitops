@@ -338,6 +338,25 @@ extraObjects:
                 labels: {severity: warning, service: postgres, layer: data}
                 annotations:
                   summary: No successful CNPG backup in 36h for {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.cluster }}" }}
+              # Edge and storage services that were never scraped before.
+              - alert: CloudflaredConnectionsLow
+                expr: sum(cloudflared_tunnel_ha_connections) < 2
+                for: 5m
+                labels: {severity: critical, service: cloudflared, layer: networking}
+                annotations:
+                  summary: Cloudflare Tunnel has fewer than 2 edge connections (public names at risk)
+              - alert: MinioClusterUnhealthy
+                expr: min(minio_cluster_health_status) == 0 or sum(minio_cluster_drive_offline_total) > 0
+                for: 5m
+                labels: {severity: critical, service: minio, layer: data}
+                annotations:
+                  summary: MinIO reports an unhealthy cluster or an offline drive (Loki/Mimir/Tempo/backups depend on it)
+              - alert: HarborDown
+                expr: min(harbor_up) == 0 or min(harbor_health) == 0
+                for: 10m
+                labels: {severity: critical, service: harbor, layer: delivery}
+                annotations:
+                  summary: Harbor core or a component is unhealthy (image pulls fail)
           - name: platform-baseline-warning
             rules:
               - alert: PodRestartingOften   # stand-in for KubePodCrashLooping until waiting_reason is allowlisted
