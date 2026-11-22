@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}
-  hostnames: [local.argocd.internal, argocd.local.evelab.space]
+  hostnames: [local.argocd.internal, argocd.local.evelab.space, argocd.evelab.space]
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
       backendRefs: [{group: "", kind: Service, name: argo-cd-argocd-server, port: 80, weight: 1}]

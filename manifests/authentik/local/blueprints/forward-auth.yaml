@@ -11,14 +11,14 @@ entries:
     identifiers: { name: opencost }
     attrs:
       mode: forward_single
-      external_host: https://opencost.local.evelab.space:30443
+      external_host: https://opencost.evelab.space
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
       access_token_validity: hours=24
   - model: authentik_core.application
     id: app-opencost
     identifiers: { slug: opencost }
-    attrs: { name: OpenCost, provider: !KeyOf provider-opencost, meta_launch_url: "https://opencost.local.evelab.space:30443" }
+    attrs: { name: OpenCost, provider: !KeyOf provider-opencost, meta_launch_url: "https://opencost.evelab.space" }
   - model: authentik_policies.policybinding
     identifiers: { order: 0, target: !KeyOf app-opencost, group: !Find [authentik_core.group, [name, platform-admins]] }
   - model: authentik_policies.policybinding
@@ -30,14 +30,14 @@ entries:
     identifiers: { name: hubble }
     attrs:
       mode: forward_single
-      external_host: https://hubble.local.evelab.space:30443
+      external_host: https://hubble.evelab.space
       authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
       access_token_validity: hours=24
   - model: authentik_core.application
     id: app-hubble
     identifiers: { slug: hubble }
-    attrs: { name: Hubble UI, provider: !KeyOf provider-hubble, meta_launch_url: "https://hubble.local.evelab.space:30443" }
+    attrs: { name: Hubble UI, provider: !KeyOf provider-hubble, meta_launch_url: "https://hubble.evelab.space" }
   - model: authentik_policies.policybinding
     identifiers: { order: 0, target: !KeyOf app-hubble, group: !Find [authentik_core.group, [name, platform-admins]] }
   - model: authentik_policies.policybinding

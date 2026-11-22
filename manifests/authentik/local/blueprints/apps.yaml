@@ -52,10 +52,12 @@ entries:
         - { matching_mode: strict, url: "https://local.argocd.internal:30443/pkce/verify" }   # UI login with PKCE (Argo CD 2.10)
         - { matching_mode: strict, url: "https://argocd.local.evelab.space:30443/auth/callback" }
         - { matching_mode: strict, url: "https://argocd.local.evelab.space:30443/pkce/verify" }
+        - { matching_mode: strict, url: "https://argocd.evelab.space/auth/callback" }
+        - { matching_mode: strict, url: "https://argocd.evelab.space/pkce/verify" }
         - { matching_mode: strict, url: "http://localhost:8085/auth/callback" }   # argocd login --sso
   - model: authentik_core.application
     identifiers: { slug: argocd }
-    attrs: { name: Argo CD, provider: !KeyOf provider-argocd, meta_launch_url: "https://argocd.local.evelab.space:30443" }
+    attrs: { name: Argo CD, provider: !KeyOf provider-argocd, meta_launch_url: "https://argocd.evelab.space" }
 
   - model: authentik_providers_oauth2.oauth2provider
     id: provider-kargo
@@ -83,10 +85,11 @@ entries:
       redirect_uris:
         - { matching_mode: strict, url: "https://local.openbao.internal:30443/ui/vault/auth/oidc/oidc/callback" }
         - { matching_mode: strict, url: "https://openbao.local.evelab.space:30443/ui/vault/auth/oidc/oidc/callback" }
+        - { matching_mode: strict, url: "https://openbao.evelab.space/ui/vault/auth/oidc/oidc/callback" }
         - { matching_mode: strict, url: "http://localhost:8250/oidc/callback" }   # vault login -method=oidc
   - model: authentik_core.application
     identifiers: { slug: openbao }
-    attrs: { name: OpenBao, provider: !KeyOf provider-openbao, meta_launch_url: "https://openbao.local.evelab.space:30443" }
+    attrs: { name: OpenBao, provider: !KeyOf provider-openbao, meta_launch_url: "https://openbao.evelab.space" }
   # Gitea: confidential client; the auth source in Gitea is named `authentik` (callback path).
   - model: authentik_providers_oauth2.oauth2provider
     id: provider-gitea
