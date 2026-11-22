@@ -39,6 +39,7 @@ spec:
     - https://redhat-cop.github.io/vault-config-operator
     - https://amikos-tech.github.io/chromadb-chart/
     - https://opencost.github.io/opencost-helm-chart
+    - https://dl.gitea.com/charts/
   destinations:
     - server: {{ .Values.cluster }}
       namespace: '*'
