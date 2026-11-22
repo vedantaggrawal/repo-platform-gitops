@@ -64,7 +64,7 @@ spec:
     serviceAccount:
       name: bao-config
   path: oidc
-  OIDCDiscoveryURL: https://authentik.local.evelab.space:30443/application/o/openbao/
+  OIDCDiscoveryURL: https://authentik.evelab.space/application/o/openbao/
   OIDCClientID: openbao
   OIDCCredentials:
     secret: { name: openbao-oidc-client }
