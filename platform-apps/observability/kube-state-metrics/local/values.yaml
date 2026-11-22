@@ -22,3 +22,10 @@ prometheus:
       # Keep KSM's own namespace/pod labels (the object's) instead of renaming
       # them to exported_* and stamping the scrape target's (monitoring).
       honorLabels: true
+
+# Platform categories on kube_namespace_labels / kube_pod_labels (KSM exports label metrics only for an
+# allowlist). eve.io/tenant and eve.io/layer are the join keys for per-tenant and per-layer metrics
+# (OpenCost allocation, Mimir eve_* rules); the pod app label gives per-app joins.
+metricLabelsAllowlist:
+  - namespaces=[eve.io/tenant,eve.io/layer]
+  - pods=[app.kubernetes.io/name]
