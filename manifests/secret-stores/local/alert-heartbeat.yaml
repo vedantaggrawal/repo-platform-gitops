@@ -1,0 +1,17 @@
+# Dead man's switch ping URL (OpenBao platform/alerting/heartbeat, key url) for Alertmanager's
+# heartbeat receiver. Absent until the human creates the check; the pod mount is optional.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: alert-heartbeat
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 5m
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: alert-heartbeat
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/alerting/heartbeat }

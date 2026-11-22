@@ -88,15 +88,30 @@ alertmanager:
       secret:
         secretName: alert-slack
         optional: true
+    # Dead man's switch: Watchdog pings an external check (healthchecks.io); silence there = this
+    # pipeline is down. Secret alert-heartbeat from OpenBao platform/alerting/heartbeat (key url).
+    - name: alert-heartbeat
+      secret:
+        secretName: alert-heartbeat
+        optional: true
   extraVolumeMounts:
     - name: alert-slack
       mountPath: /etc/alertmanager-secrets/slack
+      readOnly: true
+    - name: alert-heartbeat
+      mountPath: /etc/alertmanager-secrets/heartbeat
       readOnly: true
   fallbackConfig: |
     route:
       receiver: "null"
       group_by: [alertname, namespace, service]
       routes:
+        # Always-firing Watchdog -> heartbeat only (never Slack).
+        - matchers: [alertname="Watchdog"]
+          receiver: heartbeat
+          group_wait: 0s
+          group_interval: 1m
+          repeat_interval: 2m
         - matchers: [severity="critical"]
           receiver: slack
           repeat_interval: 1h
@@ -107,6 +122,10 @@ alertmanager:
           receiver: "null"
     receivers:
       - name: "null"
+      - name: heartbeat
+        webhook_configs:
+          - url_file: /etc/alertmanager-secrets/heartbeat/url
+            send_resolved: false
       - name: slack
         slack_configs:
           - api_url_file: /etc/alertmanager-secrets/slack/webhook_url
@@ -242,6 +261,33 @@ extraObjects:
       name: mimir-rules
       namespace: monitoring
     data:
+      platform-alerting.yaml: |
+        groups:
+          - name: platform-alerting
+            rules:
+              # Always firing. Routed to the heartbeat receiver only; its absence trips the dead man's switch.
+              - alert: Watchdog
+                expr: vector(1)
+                labels: {severity: none, service: alertmanager, layer: observability}
+                annotations:
+                  summary: Alerting pipeline heartbeat (always firing)
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#watchdog
+              # Test switch: set to 1 in a PR to prove delivery end to end, then set back to 0.
+              - record: eve_alert_pipeline_test_switch
+                expr: vector(0)
+              - alert: AlertPipelineTest
+                expr: eve_alert_pipeline_test_switch > 0
+                labels: {severity: warning, service: alertmanager, layer: observability}
+                annotations:
+                  summary: Synthetic test alert, delivery check (switch eve_alert_pipeline_test_switch is 1)
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#test
+              - alert: AlertmanagerNotificationsFailing
+                expr: sum by (integration) (rate(cortex_alertmanager_notifications_failed_total[10m])) > 0
+                for: 10m
+                labels: {severity: critical, service: alertmanager, layer: observability}
+                annotations:
+                  summary: Alertmanager cannot deliver notifications via {{ $labels.integration }}
+                  runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#delivery-failing
       slo.yaml: |
         groups:
           - name: slo-gateway-availability
