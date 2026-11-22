@@ -1,0 +1,9 @@
+# Barman Cloud plugin (CNPG-I): WAL archiving and base backups of every CNPG cluster to object storage.
+# CloudNativePG deprecated the in-tree barmanObjectStore in 1.26 and removes it in 1.32; this is the
+# supported path. Each database namespace declares an ObjectStore + ScheduledBackup (manifests/<db>).
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
