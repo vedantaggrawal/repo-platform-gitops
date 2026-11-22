@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}
-  hostnames: [local.chromadb.internal]
+  hostnames: [local.chromadb.internal, chromadb.local.evelab.space]
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
       backendRefs: [{group: "", kind: Service, name: local-chromadb, port: 8000, weight: 1}]

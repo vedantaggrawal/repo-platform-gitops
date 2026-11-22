@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}
-  hostnames: [local.opencost.internal]
+  hostnames: [local.opencost.internal, opencost.local.evelab.space]
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
       backendRefs: [{group: "", kind: Service, name: local-opencost, port: 9090, weight: 1}]

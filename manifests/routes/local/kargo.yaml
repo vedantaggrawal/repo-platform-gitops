@@ -6,7 +6,7 @@ metadata:
 spec:
   parentRefs:
     - {group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https}
-  hostnames: [local.kargo.internal]
+  hostnames: [local.kargo.internal, kargo.local.evelab.space]
   rules:
     - matches: [{path: {type: PathPrefix, value: /}}]
       backendRefs: [{group: "", kind: Service, name: kargo-api, port: 80, weight: 1}]

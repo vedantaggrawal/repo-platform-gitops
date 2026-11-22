@@ -31,6 +31,18 @@ data:
            rcode NOERROR
            fallthrough
         }
+        # Same for the public names: pods reach <app>.local.evelab.space via the host,
+        # not the public A record (127.0.0.1).
+        template IN A evelab {
+           match ^[a-z0-9-]+\.local\.evelab\.space\.$
+           answer "{{ .Name }} 30 IN A 192.168.65.254"
+           fallthrough
+        }
+        template IN AAAA evelab {
+           match ^[a-z0-9-]+\.local\.evelab\.space\.$
+           rcode NOERROR
+           fallthrough
+        }
         kubernetes cluster.local in-addr.arpa ip6.arpa {
            pods insecure
            fallthrough in-addr.arpa ip6.arpa
