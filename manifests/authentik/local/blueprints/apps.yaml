@@ -35,6 +35,7 @@ entries:
       client_id: grafana
       redirect_uris:
         - { matching_mode: strict, url: "https://local.grafana.internal:30443/login/generic_oauth" }
+        - { matching_mode: strict, url: "https://grafana.local.evelab.space:30443/login/generic_oauth" }
   - model: authentik_core.application
     identifiers: { slug: grafana }
     attrs: { name: Grafana, provider: !KeyOf provider-grafana }
