@@ -85,7 +85,7 @@ alertmanager:
   # Mimir reads fallback_config_file only at startup: bump this when the rendered config
   # (manifests/secret-stores/local/alert-slack.yaml) changes, so the pod rolls.
   podAnnotations:
-    eve.io/fallback-config-rev: "3"
+    eve.io/fallback-config-rev: "4"
   # Replaces the kube-prom-stack-bundled Alertmanager. Tenant config would live
   # in S3 (mimir-alertmanager bucket); with none (multitenancy off, tenant
   # "anonymous") the fallbackConfig below applies, so routing is declarative.
