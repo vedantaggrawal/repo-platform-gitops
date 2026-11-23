@@ -7,3 +7,4 @@ resources:
   - backup.yaml
   - admin.yaml
   - oidc-client.yaml
+  - alert-intake.yaml

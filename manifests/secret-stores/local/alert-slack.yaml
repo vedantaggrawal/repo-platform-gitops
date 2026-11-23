@@ -26,6 +26,11 @@ spec:
             routes:
               - matchers: [alertname="Watchdog"]
                 receiver: "null"
+              # Every critical/warning group also becomes a Gitea issue (alert-intake), then Slack below.
+              - matchers: [severity=~"critical|warning"]
+                receiver: gitea
+                continue: true
+                repeat_interval: 12h
               - matchers: [severity="critical"]
                 receiver: slack
                 repeat_interval: 1h
@@ -34,6 +39,10 @@ spec:
                 repeat_interval: 4h
           receivers:
             - name: "null"
+            - name: gitea
+              webhook_configs:
+                - url: http://alert-intake.gitea.svc.cluster.local:8080/
+                  send_resolved: true
             - name: slack
               slack_configs:
                 - api_url: "{{ .webhook_url }}"
