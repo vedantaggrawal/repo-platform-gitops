@@ -31,6 +31,10 @@ mimir:
     ruler:
       # Reload rule files from the ConfigMap within a minute of a merge (default 10m).
       poll_interval: 1m
+    alertmanager:
+      # Rendered by ESO with the Slack URL inline (Mimir rejects api_url_file); see
+      # manifests/secret-stores/local/alert-slack.yaml. The chart's fallbackConfig below is unused.
+      fallback_config_file: /etc/alertmanager-secrets/slack/alertmanager.yaml
     alertmanager_storage:
       backend: s3
       s3:
