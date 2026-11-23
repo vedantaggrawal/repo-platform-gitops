@@ -56,7 +56,7 @@ spec:
                     {{ with .Annotations.description }}{{ . }}
                     {{ end }}• *where:* {{ with .Labels.layer }}layer={{ . }} {{ end }}{{ with .Labels.service }}service={{ . }} {{ end }}{{ with .Labels.namespace }}ns={{ . }} {{ end }}{{ with .Labels.pod }}pod={{ . }} {{ end }}{{ with .Labels.container }}container={{ . }} {{ end }}{{ with .Labels.instance }}instance={{ . }} {{ end }}{{ with .Labels.job }}job={{ . }}{{ end }}
                     • *since:* {{ .StartsAt.Format "2006-01-02 15:04 UTC" }}{{ if eq .Status "resolved" }} → resolved {{ .EndsAt.Format "15:04 UTC" }}{{ end }}
-                    • *labels:* {{ range .Labels.SortedPairs }}{{ if not (or (eq .Name "alertname") (eq .Name "severity")) }}`+"`"+`{{ .Name }}={{ .Value }}`+"`"+` {{ end }}{{ end }}
+                    • *labels:* {{ range .Labels.SortedPairs }}{{ if not (or (eq .Name "alertname") (eq .Name "severity")) }}{{ .Name }}={{ .Value }} {{ end }}{{ end }}
                     {{ with .Annotations.runbook_url }}• *runbook:* {{ . }}
                     {{ end }}
                     {{ end }}` }}
