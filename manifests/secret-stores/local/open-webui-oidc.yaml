@@ -6,6 +6,7 @@ metadata:
   name: open-webui
   labels:
     eve.io/layer: addons
+    eve.io/tenant: platform   # same labels the platform ApplicationSet sets; avoids drift between the two apps
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
 ---
