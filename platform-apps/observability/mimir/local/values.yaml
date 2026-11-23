@@ -285,7 +285,7 @@ extraObjects:
                   runbook_url: https://github.com/vedantaggrawal/repo-platform-gitops/blob/main/docs/runbooks/alerting.md#watchdog
               # Test switch: set to 1 in a PR to prove delivery end to end, then set back to 0.
               - record: eve_alert_pipeline_test_switch
-                expr: vector(1)   # ON: end-to-end delivery test (turn back to 0 after the issue opens)
+                expr: vector(0)
               - alert: AlertPipelineTest
                 expr: eve_alert_pipeline_test_switch > 0
                 labels: {severity: warning, service: alertmanager, layer: observability}
