@@ -38,5 +38,18 @@ spec:
               slack_configs:
                 - api_url: "{{ .webhook_url }}"
                   send_resolved: true
+                  # Alertmanager templates are passed through ESO's renderer as raw strings (backticks).
+                  color: '{{ `{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}danger{{ else }}warning{{ end }}{{ else }}good{{ end }}` }}'
+                  title: '{{ `[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }}){{ with .CommonLabels.namespace }} in {{ . }}{{ end }}` }}'
+                  title_link: https://grafana.evelab.space/alerting/list
+                  text: |-
+                    {{ `{{ range .Alerts }}*{{ .Labels.alertname }}*{{ with .Annotations.summary }}: {{ . }}{{ end }}
+                    {{ with .Annotations.description }}{{ . }}
+                    {{ end }}• *where:* {{ with .Labels.layer }}layer={{ . }} {{ end }}{{ with .Labels.service }}service={{ . }} {{ end }}{{ with .Labels.namespace }}ns={{ . }} {{ end }}{{ with .Labels.pod }}pod={{ . }} {{ end }}{{ with .Labels.container }}container={{ . }} {{ end }}{{ with .Labels.instance }}instance={{ . }} {{ end }}{{ with .Labels.job }}job={{ . }}{{ end }}
+                    • *since:* {{ .StartsAt.Format "2006-01-02 15:04 UTC" }}{{ if eq .Status "resolved" }} → resolved {{ .EndsAt.Format "15:04 UTC" }}{{ end }}
+                    • *labels:* {{ range .Labels.SortedPairs }}{{ if not (or (eq .Name "alertname") (eq .Name "severity")) }}`+"`"+`{{ .Name }}={{ .Value }}`+"`"+` {{ end }}{{ end }}
+                    {{ with .Annotations.runbook_url }}• *runbook:* {{ . }}
+                    {{ end }}
+                    {{ end }}` }}
   dataFrom:
     - extract: { key: platform/alerting/slack }
