@@ -368,6 +368,36 @@ extraObjects:
                 labels: {severity: critical, service: harbor, layer: delivery}
                 annotations:
                   summary: Harbor core or a component is unhealthy (image pulls fail)
+          - name: platform-usage
+            rules:
+              - alert: NodeCpuHigh
+                expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.85
+                for: 15m
+                labels: {severity: warning, service: node, layer: foundation}
+                annotations:
+                  summary: Node {{ "{{ $labels.instance }}" }} CPU busy above 85% for 15m
+                  description: CPU in use is {{ "{{ $value | humanizePercentage }}" }}. Find the top consumer with sum by (namespace, pod) (rate(container_cpu_usage_seconds_total[5m])); throttling and slow requests follow.
+              - alert: NodeMemoryHigh
+                expr: 1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes > 0.90
+                for: 10m
+                labels: {severity: critical, service: node, layer: foundation}
+                annotations:
+                  summary: Node {{ "{{ $labels.instance }}" }} memory above 90% for 10m
+                  description: Memory in use is {{ "{{ $value | humanizePercentage }}" }}. The kernel OOM killer or kubelet evictions are next; check container_memory_working_set_bytes by pod.
+              - alert: PersistentVolumeFillingUp
+                expr: max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.85
+                for: 15m
+                labels: {severity: warning, service: storage, layer: data}
+                annotations:
+                  summary: PVC {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.persistentvolumeclaim }}" }} is {{ "{{ $value | humanizePercentage }}" }} full
+                  description: Above 85% for 15m. Grow the PVC (storage class standard allows expansion) or clean data; at 100% the app stops writing.
+              - alert: ContainerMemoryNearLimit
+                expr: max by (namespace, pod, container) (container_memory_working_set_bytes{container!=""} / on (namespace, pod, container) kube_pod_container_resource_limits{resource="memory"}) > 0.90
+                for: 15m
+                labels: {severity: warning, service: workload, layer: foundation}
+                annotations:
+                  summary: Container {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}/{{ "{{ $labels.container }}" }} at {{ "{{ $value | humanizePercentage }}" }} of its memory limit
+                  description: Above 90% for 15m; an OOMKill is likely. Raise the limit in the app's values or find the leak.
           - name: platform-baseline-warning
             rules:
               - alert: PodRestartingOften   # stand-in for KubePodCrashLooping until waiting_reason is allowlisted
