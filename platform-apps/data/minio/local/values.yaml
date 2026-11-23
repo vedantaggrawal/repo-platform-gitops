@@ -51,6 +51,6 @@ consoleIngress:
 # Cluster metrics (/minio/v2/metrics/cluster, public) via ServiceMonitor for the OTel target allocator.
 metrics:
   serviceMonitor:
-    enabled: true
-    interval: 60s
-    includeNode: true   # the chart renders the ServiceMonitor only with this on (cluster + node endpoints)
+    # Off: the chart's monitor also selects the console Service (no metrics -> TargetDown).
+    # Cluster metrics come from manifests/otel/local/servicemonitor-minio-cluster.yaml.
+    enabled: false
