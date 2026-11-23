@@ -1,0 +1,124 @@
+# Alert intake: Alertmanager webhook -> Gitea issues (repo gitea-admin/eve-alerts, created on first use).
+# One issue per alert group (dedupe key in the title), a comment on every re-notification, closed when the
+# group resolves. Standard-library Python on the stock image: no build, no dependencies. Later the same
+# payload feeds the in-cluster agent (OpenCode). Credentials: the Gitea local admin (Secret gitea-admin).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alert-intake
+data:
+  intake.py: |
+    import base64, hashlib, json, os, urllib.request, urllib.error
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    GITEA = os.environ.get("GITEA_URL", "http://local-gitea-http.gitea.svc:3000")
+    USER, PASS = os.environ["GITEA_USERNAME"], os.environ["GITEA_PASSWORD"]
+    REPO = os.environ.get("ALERT_REPO", "eve-alerts")
+    AUTH = "Basic " + base64.b64encode(f"{USER}:{PASS}".encode()).decode()
+
+    def api(method, path, body=None):
+        req = urllib.request.Request(GITEA + "/api/v1" + path, method=method,
+                                     data=json.dumps(body).encode() if body is not None else None,
+                                     headers={"Authorization": AUTH, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return json.loads(r.read() or b"null")
+        except urllib.error.HTTPError as e:
+            if e.code == 404: return None
+            raise
+
+    def ensure_repo():
+        if api("GET", f"/repos/{USER}/{REPO}") is None:
+            api("POST", "/user/repos", {"name": REPO, "private": True, "description": "Platform alerts (opened by Alertmanager via alert-intake)"})
+
+    def render(p):
+        lines = []
+        for a in p.get("alerts", []):
+            l, an = a.get("labels", {}), a.get("annotations", {})
+            lines.append(f"### {a.get('status','').upper()} {l.get('alertname','')} ({l.get('severity','')})")
+            if an.get("summary"): lines.append(an["summary"])
+            if an.get("description"): lines.append(an["description"])
+            lines.append(f"- since: {a.get('startsAt','')}" + (f" · resolved: {a.get('endsAt')}" if a.get("status") == "resolved" else ""))
+            lines.append("- labels: " + " ".join(f"`{k}={v}`" for k, v in sorted(l.items())))
+            if an.get("runbook_url"): lines.append(f"- runbook: {an['runbook_url']}")
+            lines.append("")
+        lines.append("<details><summary>raw payload</summary>\n\n```json\n" + json.dumps(p, indent=2)[:20000] + "\n```\n</details>")
+        return "\n".join(lines)
+
+    def handle(p):
+        ensure_repo()
+        key = hashlib.sha1(p.get("groupKey", "").encode()).hexdigest()[:8]
+        c = p.get("commonLabels", {})
+        title = f"{c.get('alertname','alert')} ({c.get('severity','')})" + (f" in {c['namespace']}" if c.get("namespace") else "") + f" [{key}]"
+        found = api("GET", f"/repos/{USER}/{REPO}/issues?state=open&type=issues&limit=50") or []
+        issue = next((i for i in found if f"[{key}]" in i["title"]), None)
+        body = render(p)
+        if p.get("status") == "firing":
+            if issue: api("POST", f"/repos/{USER}/{REPO}/issues/{issue['number']}/comments", {"body": "Still firing.\n\n" + body})
+            else: api("POST", f"/repos/{USER}/{REPO}/issues", {"title": title, "body": body})
+        elif issue:
+            api("POST", f"/repos/{USER}/{REPO}/issues/{issue['number']}/comments", {"body": "Resolved.\n\n" + body})
+            api("PATCH", f"/repos/{USER}/{REPO}/issues/{issue['number']}", {"state": "closed"})
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            try:
+                handle(json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0)))))
+                self.send_response(200)
+            except Exception as e:
+                print("error:", repr(e), flush=True); self.send_response(500)
+            self.end_headers()
+        def do_GET(self):
+            self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
+        def log_message(self, *a): pass
+
+    ThreadingHTTPServer(("0.0.0.0", 8080), H).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-intake
+  labels: { app.kubernetes.io/name: alert-intake }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: alert-intake }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: alert-intake }
+      annotations:
+        eve.io/code-rev: "1"   # bump when intake.py changes (ConfigMap edits do not restart the pod)
+    spec:
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: intake
+          image: python:3.13-alpine
+          command: [python, -u, /app/intake.py]
+          env:
+            - name: GITEA_USERNAME
+              valueFrom: { secretKeyRef: { name: gitea-admin, key: username } }
+            - name: GITEA_PASSWORD
+              valueFrom: { secretKeyRef: { name: gitea-admin, key: password } }
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - { name: code, mountPath: /app }
+      volumes:
+        - name: code
+          configMap: { name: alert-intake }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-intake
+spec:
+  selector: { app.kubernetes.io/name: alert-intake }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
