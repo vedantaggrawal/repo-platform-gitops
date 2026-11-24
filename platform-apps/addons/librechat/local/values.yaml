@@ -1,0 +1,71 @@
+# LibreChat — chat with agents and MCP tools. Chart 3.2.1 = LibreChat v0.8.9 (arm64 image).
+# Sign-in only through Authentik (GitHub source); no local accounts. Each user brings their own
+# Anthropic/OpenAI key; the in-cluster Ollama models are available to everyone.
+# MongoDB and the app secrets come from manifests/librechat (the bundled Bitnami MongoDB is amd64-only).
+# Reached at https://librechat.evelab.space (public, via the tunnel) and https://librechat.local.evelab.space:30443.
+fullnameOverride: librechat
+
+global:
+  librechat:
+    existingSecretName: librechat-credentials-env   # CREDS_*, JWT_*, MEILI_MASTER_KEY, MONGO_URI, OPENID_SESSION_SECRET
+    env:
+      - name: OPENID_CLIENT_SECRET
+        valueFrom: { secretKeyRef: { name: librechat-oidc, key: client_secret } }
+
+librechat:
+  injectBundledCredentials:
+    mongodb: false
+    redis: false
+  configEnv:
+    DOMAIN_CLIENT: https://librechat.evelab.space
+    DOMAIN_SERVER: https://librechat.evelab.space
+    ALLOW_EMAIL_LOGIN: "false"
+    ALLOW_REGISTRATION: "false"
+    ALLOW_SOCIAL_LOGIN: "true"
+    ALLOW_SOCIAL_REGISTRATION: "true"
+    OPENID_ISSUER: https://authentik.evelab.space/application/o/librechat/
+    OPENID_CLIENT_ID: librechat
+    OPENID_SCOPE: openid profile email
+    OPENID_CALLBACK_URL: /oauth/openid/callback
+    OPENID_BUTTON_LABEL: Sign in with GitHub
+    OPENID_AUTO_REDIRECT: "true"
+    ANTHROPIC_API_KEY: user_provided
+    OPENAI_API_KEY: user_provided
+  configYamlContent: |
+    version: 1.3.0
+    cache: true
+    registration:
+      socialLogins: ["openid"]
+    endpoints:
+      custom:
+        - name: "Local (Ollama)"
+          apiKey: "ollama"
+          baseURL: "http://local-ollama.ollama.svc.cluster.local:11434/v1"
+          models:
+            default: ["llama3.2:3b", "qwen2.5-coder:3b"]
+            fetch: true
+          titleConvo: true
+          titleModel: "current_model"
+          modelDisplayLabel: "Local"
+  imageVolume:
+    enabled: true
+    size: 5G
+    accessModes: ReadWriteOnce
+
+resources:
+  requests: { cpu: 100m, memory: 512Mi }
+  limits: { memory: 2Gi }
+
+mongodb:
+  enabled: false
+redis:
+  enabled: false
+meilisearch:
+  enabled: true
+  persistence:
+    enabled: true
+  auth:
+    existingMasterKeySecret: librechat-credentials-env
+
+ingress:
+  enabled: false   # HTTPRoute in manifests/routes/local/librechat.yaml

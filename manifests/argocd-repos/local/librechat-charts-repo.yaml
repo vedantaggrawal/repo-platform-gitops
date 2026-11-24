@@ -1,0 +1,13 @@
+# LibreChat OCI Helm registry (public, no credentials); enableOCI as for kargo-charts-repo.yaml.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: librechat-charts-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: librechat-charts
+  type: helm
+  url: ghcr.io/librechat-ai/librechat-chart
+  enableOCI: "true"

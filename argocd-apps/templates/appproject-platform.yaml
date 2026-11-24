@@ -38,6 +38,7 @@ spec:
     - https://prometheus-community.github.io/helm-charts
     - https://traefik.github.io/charts
     - ghcr.io/akuity/kargo-charts
+    - ghcr.io/librechat-ai/librechat-chart
     - docker.io/envoyproxy
     - https://redhat-cop.github.io/vault-config-operator
     - https://amikos-tech.github.io/chromadb-chart/
