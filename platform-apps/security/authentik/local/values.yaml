@@ -24,6 +24,8 @@ global:
       valueFrom: { secretKeyRef: { name: authentik-open-webui-oidc, key: client_secret } }
     - name: AUTHENTIK_JUPYTERHUB_OIDC_CLIENT_SECRET
       valueFrom: { secretKeyRef: { name: authentik-jupyterhub-oidc, key: client_secret } }
+    - name: AUTHENTIK_LIBRECHAT_OIDC_CLIENT_SECRET
+      valueFrom: { secretKeyRef: { name: authentik-librechat-oidc, key: client_secret } }
 
 authentik:
   error_reporting:
