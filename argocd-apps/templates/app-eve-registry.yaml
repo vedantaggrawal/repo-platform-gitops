@@ -1,0 +1,33 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-eve-registry
+  namespace: argocd
+  labels:
+    eve.io/layer: addons
+  annotations:
+    # eve registry (manifests/eve-registry): images built from users repos, pulled by nodes at localhost:5000.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/eve-registry/{{ .Values.env }}
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: eve-registry
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
