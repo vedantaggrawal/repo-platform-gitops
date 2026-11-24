@@ -87,7 +87,9 @@ spec:
             - name: GRAFANA_SERVICE_ACCOUNT_TOKEN
               valueFrom: { secretKeyRef: { name: mcp-grafana-token, key: token } }
           ports: [{ name: http, containerPort: 8000 }]
-          readinessProbe: { tcpSocket: { port: http }, periodSeconds: 10 }   # /healthz enforces the Host allowlist
+          readinessProbe:   # /healthz enforces the Host allowlist; keep httpGet (changing the handler breaks server-side diff)
+            httpGet: { path: /healthz, port: http, httpHeaders: [{ name: Host, value: "localhost:8000" }] }
+            periodSeconds: 10
           securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
           resources: { requests: { cpu: 10m, memory: 64Mi }, limits: { memory: 256Mi } }
 ---
