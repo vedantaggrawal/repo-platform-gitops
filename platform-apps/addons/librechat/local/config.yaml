@@ -1,0 +1,6 @@
+enabled: "true"
+chart: librechat
+repoURL: ghcr.io/librechat-ai/librechat-chart
+targetRevision: "3.2.1"
+namespace: librechat
+syncWave: "1"
