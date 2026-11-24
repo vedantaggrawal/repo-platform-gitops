@@ -23,4 +23,10 @@ resources:
     cpu: 500m
     memory: 2Gi
   limits:
-    memory: 6Gi
+    memory: 8Gi   # 16k context on a 3B model plus embeddings
+
+# OpenCode sends its tool definitions in every request: at Ollama's default 2k context they were cut off
+# and the model printed tool calls as text. One request at a time keeps memory predictable on CPU.
+extraEnv:
+  - { name: OLLAMA_CONTEXT_LENGTH, value: "16384" }
+  - { name: OLLAMA_NUM_PARALLEL, value: "1" }

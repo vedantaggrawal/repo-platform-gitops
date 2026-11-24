@@ -32,10 +32,13 @@ data:
             req = urllib.request.Request(OPENCODE + path, data=json.dumps(body).encode(), method="POST",
                                          headers={"Authorization": OC_AUTH, "Content-Type": "application/json"})
             with urllib.request.urlopen(req, timeout=20) as r: return json.loads(r.read() or b"{}")
-        s = oc("/api/session", {})
-        sid = s.get("id") or (s.get("data") or {}).get("id")
-        text = BRIEF + f"\n\nGitea issue: {USER}/{REPO}#{issue_no} ({title})\n\n" + json.dumps(payload, indent=2)[:15000]
-        oc(f"/api/session/{sid}/prompt", {"prompt": {"text": text}})
+        # Legacy session API: in OpenCode 1.19.6 /api/session/{id}/prompt stores the message without running
+        # the agent; /session/{id}/prompt_async runs it and returns at once.
+        s = oc("/session", {"title": f"alert: {title}"[:80]})
+        sid = s["id"]
+        text = BRIEF + f"\n\nGitea issue: {USER}/{REPO}#{issue_no} ({title})\n\n" + json.dumps(payload, indent=2)[:12000]
+        oc(f"/session/{sid}/prompt_async", {"model": {"providerID": "ollama", "modelID": os.environ.get("AGENT_MODEL", "qwen2.5-coder:3b")},
+                                            "parts": [{"type": "text", "text": text}]})
         return sid
     AUTH = "Basic " + base64.b64encode(f"{USER}:{PASS}".encode()).decode()
 
@@ -117,7 +120,7 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: alert-intake }
       annotations:
-        eve.io/code-rev: "2"   # bump when intake.py changes (ConfigMap edits do not restart the pod)
+        eve.io/code-rev: "3"   # bump when intake.py changes (ConfigMap edits do not restart the pod)
     spec:
       automountServiceAccountToken: false
       securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
