@@ -80,13 +80,14 @@ spec:
       containers:
         - name: server
           image: grafana/mcp-grafana:2.3.0
-          args: [-t, streamable-http, --address, "0.0.0.0:8000", --disable-write]
+          args: [-t, streamable-http, --address, "0.0.0.0:8000", --disable-write, --usage-stats, disabled,
+                 --allowed-hosts, "mcp-grafana.opencode.svc.cluster.local:8000,mcp-grafana.opencode.svc:8000,mcp-grafana:8000,localhost:8000"]
           env:
             - { name: GRAFANA_URL, value: http://local-grafana.monitoring.svc.cluster.local }
             - name: GRAFANA_SERVICE_ACCOUNT_TOKEN
               valueFrom: { secretKeyRef: { name: mcp-grafana-token, key: token } }
           ports: [{ name: http, containerPort: 8000 }]
-          readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 10 }
+          readinessProbe: { tcpSocket: { port: http }, periodSeconds: 10 }   # /healthz enforces the Host allowlist
           securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
           resources: { requests: { cpu: 10m, memory: 64Mi }, limits: { memory: 256Mi } }
 ---
@@ -116,6 +117,7 @@ spec:
       containers:
         - name: server
           image: docker.gitea.com/gitea-mcp-server:1.13.0
+          command: [/app/gitea-mcp]   # the image has no entrypoint, only a default cmd
           args: [-t, http, --port, "8080", -r]
           env:
             - { name: GITEA_HOST, value: http://local-gitea-http.gitea.svc.cluster.local:3000 }
@@ -135,3 +137,17 @@ metadata:
 spec:
   selector: { app.kubernetes.io/name: mcp-gitea }
   ports: [{ name: http, port: 8080, targetPort: http }]
+---
+# Only the OpenCode server may call the MCP servers (they have no caller authentication of their own).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-from-opencode-only
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app.kubernetes.io/name, operator: In, values: [mcp-kubernetes, mcp-grafana, mcp-gitea] }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: opencode } }
