@@ -1,5 +1,7 @@
-# OpenCode server config: models from the in-cluster Ollama (discovered via /v1); read-only tools as MCP
-# servers (mcp.yaml). Swap the model to a hosted one later with a provider block here (option C).
+# OpenCode server config in the syntax of the running version (1.19.6 docs: providers, config, mcp-servers).
+# Only the in-cluster Ollama is enabled; the built-in hosted provider is disabled (and egress.yaml blocks it at the
+# network). Read-only tools are MCP servers (mcp.yaml). Option C later: add a hosted provider here and allow its
+# FQDN in egress.yaml.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,16 +10,48 @@ data:
   opencode.json: |
     {
       "$schema": "https://opencode.ai/config.json",
-      "providers": {
+      "enabled_providers": [
+        "ollama"
+      ],
+      "disabled_providers": [
+        "opencode"
+      ],
+      "model": "ollama/qwen2.5-coder:3b",
+      "small_model": "ollama/llama3.2:3b",
+      "share": "disabled",
+      "autoupdate": false,
+      "provider": {
         "ollama": {
-          "settings": { "baseURL": "http://local-ollama.ollama.svc.cluster.local:11434/v1" }
+          "npm": "@ai-sdk/openai-compatible",
+          "name": "Ollama (in-cluster)",
+          "options": {
+            "baseURL": "http://local-ollama.ollama.svc.cluster.local:11434/v1"
+          },
+          "models": {
+            "qwen2.5-coder:3b": {
+              "name": "Qwen2.5 Coder 3B"
+            },
+            "llama3.2:3b": {
+              "name": "Llama 3.2 3B"
+            }
+          }
         }
       },
       "mcp": {
-        "servers": {
-          "kubernetes": { "type": "remote", "url": "http://mcp-kubernetes.opencode.svc.cluster.local:8080/mcp" },
-          "grafana":    { "type": "remote", "url": "http://mcp-grafana.opencode.svc.cluster.local:8000/mcp" },
-          "gitea":      { "type": "remote", "url": "http://mcp-gitea.opencode.svc.cluster.local:8080/mcp" }
+        "kubernetes": {
+          "type": "remote",
+          "url": "http://mcp-kubernetes.opencode.svc.cluster.local:8080/mcp",
+          "enabled": true
+        },
+        "grafana": {
+          "type": "remote",
+          "url": "http://mcp-grafana.opencode.svc.cluster.local:8000/mcp",
+          "enabled": true
+        },
+        "gitea": {
+          "type": "remote",
+          "url": "http://mcp-gitea.opencode.svc.cluster.local:8080/mcp",
+          "enabled": true
         }
       }
     }
