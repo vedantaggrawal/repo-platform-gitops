@@ -79,7 +79,7 @@ spec:
       securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: server
-          image: grafana/mcp-grafana:v2.3.0
+          image: grafana/mcp-grafana:2.3.0
           args: [-t, streamable-http, --address, "0.0.0.0:8000", --disable-write]
           env:
             - { name: GRAFANA_URL, value: http://local-grafana.monitoring.svc.cluster.local }
@@ -115,7 +115,7 @@ spec:
       securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: server
-          image: docker.gitea.com/gitea-mcp-server:v1.13.0
+          image: docker.gitea.com/gitea-mcp-server:1.13.0
           args: [-t, http, --port, "8080", -r]
           env:
             - { name: GITEA_HOST, value: http://local-gitea-http.gitea.svc.cluster.local:3000 }
