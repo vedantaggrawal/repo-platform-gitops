@@ -14,6 +14,29 @@ data:
     GITEA = os.environ.get("GITEA_URL", "http://local-gitea-http.gitea.svc:3000")
     USER, PASS = os.environ["GITEA_USERNAME"], os.environ["GITEA_PASSWORD"]
     REPO = os.environ.get("ALERT_REPO", "eve-alerts")
+    OPENCODE = os.environ.get("OPENCODE_URL", "http://opencode.opencode.svc.cluster.local:4096")
+    OC_AUTH = "Basic " + base64.b64encode(f"opencode:{os.environ.get('OPENCODE_PASSWORD','')}".encode()).decode()
+
+    BRIEF = """You are eve's on-call agent. An alert just fired; a Gitea issue was opened for it.
+    Triage it with your read-only tools (kubernetes, grafana, gitea) and the repository in your workspace:
+    1. Restate the alert in one sentence: what is wrong, where.
+    2. Gather evidence: the affected objects, recent events, the metric or log lines behind the alert.
+    3. Give the most likely cause and how sure you are, then the fix as a concrete change in this gitops
+       repository (file and field). Never change the cluster directly.
+    4. Say what would confirm the fix.
+    Keep it under 25 lines. The alert payload follows."""
+
+    def start_agent(issue_no, title, payload):
+        if not os.environ.get("OPENCODE_PASSWORD"): return None
+        def oc(path, body):
+            req = urllib.request.Request(OPENCODE + path, data=json.dumps(body).encode(), method="POST",
+                                         headers={"Authorization": OC_AUTH, "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as r: return json.loads(r.read() or b"{}")
+        s = oc("/api/session", {})
+        sid = s.get("id") or (s.get("data") or {}).get("id")
+        text = BRIEF + f"\n\nGitea issue: {USER}/{REPO}#{issue_no} ({title})\n\n" + json.dumps(payload, indent=2)[:15000]
+        oc(f"/api/session/{sid}/prompt", {"prompt": {"text": text}})
+        return sid
     AUTH = "Basic " + base64.b64encode(f"{USER}:{PASS}".encode()).decode()
 
     def api(method, path, body=None):
@@ -55,7 +78,14 @@ data:
         body = render(p)
         if p.get("status") == "firing":
             if issue: api("POST", f"/repos/{USER}/{REPO}/issues/{issue['number']}/comments", {"body": "Still firing.\n\n" + body})
-            else: api("POST", f"/repos/{USER}/{REPO}/issues", {"title": title, "body": body})
+            else:
+                created = api("POST", f"/repos/{USER}/{REPO}/issues", {"title": title, "body": body})
+                try:
+                    sid = start_agent(created["number"], title, p)
+                    if sid: api("POST", f"/repos/{USER}/{REPO}/issues/{created['number']}/comments",
+                                {"body": f"Agent triage started: OpenCode session `{sid}` (https://code.evelab.space). Its findings land here."})
+                except Exception as e:
+                    print("agent error:", repr(e), flush=True)
         elif issue:
             api("POST", f"/repos/{USER}/{REPO}/issues/{issue['number']}/comments", {"body": "Resolved.\n\n" + body})
             api("PATCH", f"/repos/{USER}/{REPO}/issues/{issue['number']}", {"state": "closed"})
@@ -87,7 +117,7 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: alert-intake }
       annotations:
-        eve.io/code-rev: "1"   # bump when intake.py changes (ConfigMap edits do not restart the pod)
+        eve.io/code-rev: "2"   # bump when intake.py changes (ConfigMap edits do not restart the pod)
     spec:
       automountServiceAccountToken: false
       securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
@@ -100,6 +130,8 @@ spec:
               valueFrom: { secretKeyRef: { name: gitea-admin, key: username } }
             - name: GITEA_PASSWORD
               valueFrom: { secretKeyRef: { name: gitea-admin, key: password } }
+            - name: OPENCODE_PASSWORD
+              valueFrom: { secretKeyRef: { name: opencode-server, key: password, optional: true } }
           ports:
             - { name: http, containerPort: 8080 }
           readinessProbe:
@@ -122,3 +154,19 @@ spec:
   selector: { app.kubernetes.io/name: alert-intake }
   ports:
     - { name: http, port: 8080, targetPort: http }
+---
+# The OpenCode server password (seeded in manifests/opencode) for the intake's agent hand-off.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: opencode-server
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: opencode-server
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/opencode/server }
