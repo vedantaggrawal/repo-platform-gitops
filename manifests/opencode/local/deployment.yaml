@@ -15,7 +15,7 @@ spec:
     metadata:
       labels: { app.kubernetes.io/name: opencode }
       annotations:
-        eve.io/config-rev: "2"   # bump when config.yaml changes (subPath mounts do not refresh)
+        eve.io/config-rev: "3"   # bump when config.yaml changes (subPath mounts do not refresh)
     spec:
       automountServiceAccountToken: false
       initContainers:
