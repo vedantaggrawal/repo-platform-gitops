@@ -1,0 +1,105 @@
+# Optional sandboxes: the console starts one OpenCode pod per user + repository in eve-sandboxes
+# (eve-console/lib/sandbox.ts). The pod runs LLM-driven commands, so it is boxed in:
+# restricted Pod Security, a quota, no ServiceAccount token, ingress only from the console, and egress
+# only to DNS, GitHub, npm and the model API. Pods die after 2h (activeDeadlineSeconds set by the console).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eve-sandboxes
+  labels:
+    eve.io/layer: addons
+    eve.io/tenant: platform
+    pod-security.kubernetes.io/enforce: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: sandboxes
+  namespace: eve-sandboxes
+spec:
+  hard: { pods: "6", requests.cpu: "3", requests.memory: 6Gi, limits.memory: 12Gi }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eve-console
+  namespace: eve-console
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eve-console-sandboxes
+  namespace: eve-sandboxes
+rules:
+  - apiGroups: [""]
+    resources: [pods, services, secrets]
+    verbs: [get, list, create, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eve-console-sandboxes
+  namespace: eve-sandboxes
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: eve-console-sandboxes }
+subjects:
+  - { kind: ServiceAccount, name: eve-console, namespace: eve-console }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-from-console-only
+  namespace: eve-sandboxes
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: eve-console } }
+      ports:
+        - { port: 4096, protocol: TCP }
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: egress-internet-allowlist
+  namespace: eve-sandboxes
+spec:
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports: [{ port: "53", protocol: ANY }]
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toFQDNs:
+        - matchName: github.com
+        - matchName: api.github.com
+        - matchName: codeload.github.com
+        - matchName: objects.githubusercontent.com
+        - matchName: registry.npmjs.org
+        - matchName: api.anthropic.com
+      toPorts:
+        - ports: [{ port: "443", protocol: TCP }]
+---
+# Platform model key for sandboxes (optional): OpenBao platform/eve-console/model {anthropic_api_key}.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: sandbox-model
+  namespace: eve-sandboxes
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 15m
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: sandbox-model
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/eve-console/model }
