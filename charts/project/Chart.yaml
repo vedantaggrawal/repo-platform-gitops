@@ -1,0 +1,5 @@
+apiVersion: v2
+name: project
+description: One app built by eve from a user's repository (Deployment, Service, HTTPRoute, NetworkPolicy).
+type: application
+version: 0.1.0

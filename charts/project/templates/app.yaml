@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels: { app.kubernetes.io/name: {{ .Release.Name }} }
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels: { app.kubernetes.io/name: {{ .Release.Name }} }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: {{ .Release.Name }} }
+    spec:
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: app
+          image: {{ required "image" .Values.image }}
+          env:
+            - { name: PORT, value: {{ .Values.port | quote }} }
+          ports:
+            - { name: http, containerPort: {{ .Values.port }} }
+          readinessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 5
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector: { app.kubernetes.io/name: {{ .Release.Name }} }
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  parentRefs:
+    - { group: gateway.networking.k8s.io, kind: Gateway, name: platform, namespace: envoy-gateway-system, sectionName: https }
+  hostnames: [{{ required "host" .Values.host | quote }}]
+  rules:
+    - matches: [{ path: { type: PathPrefix, value: / } }]
+      backendRefs: [{ group: "", kind: Service, name: {{ .Release.Name }}, port: 80, weight: 1 }]
+---
+# Only the gateway may reach the app; outbound traffic is open (apps call external APIs).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-ingress
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: {{ .Release.Name }} } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: envoy-gateway-system } }

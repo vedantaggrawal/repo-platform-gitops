@@ -1,0 +1,24 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+# Apps eve builds from users' repositories (appset-eve-projects.yaml). They only render the platform's
+# charts/project, only into t-<owner> namespaces, and can create no cluster-scoped object except their
+# namespace. Users never write Applications: isolation is the namespace, quota and network policy.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: tenants
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
+spec:
+  description: Apps built by eve from users' repositories
+  sourceRepos: [https://github.com/vedantaggrawal/repo-platform-gitops.git]
+  destinations:
+    - { server: {{ .Values.cluster }}, namespace: "t-*" }
+  clusterResourceWhitelist:
+    - { group: "", kind: Namespace }
+  namespaceResourceWhitelist:
+    - { group: apps, kind: Deployment }
+    - { group: "", kind: Service }
+    - { group: gateway.networking.k8s.io, kind: HTTPRoute }
+    - { group: networking.k8s.io, kind: NetworkPolicy }
+{{- end }}

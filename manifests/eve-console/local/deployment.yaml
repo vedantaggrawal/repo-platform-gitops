@@ -23,6 +23,7 @@ spec:
           envFrom:
             - secretRef: { name: eve-console-session }
             - secretRef: { name: eve-console-github, optional: true }   # until the GitHub App exists
+            - secretRef: { name: eve-console-argocd-plugin, optional: true }   # ARGOCD_PLUGIN_TOKEN (deploy-rails.yaml)
           ports:
             - { name: http, containerPort: 3000 }
           readinessProbe:
