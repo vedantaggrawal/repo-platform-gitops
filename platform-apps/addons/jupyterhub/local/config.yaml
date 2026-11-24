@@ -1,0 +1,6 @@
+enabled: "true"
+chart: jupyterhub
+repoURL: https://hub.jupyter.org/helm-chart/
+targetRevision: "4.4.5"
+namespace: jupyterhub
+syncWave: "1"
