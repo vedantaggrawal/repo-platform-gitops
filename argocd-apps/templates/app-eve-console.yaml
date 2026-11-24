@@ -1,0 +1,33 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-eve-console
+  namespace: argocd
+  labels:
+    eve.io/layer: addons
+  annotations:
+    # eve console (manifests/eve-console): GitHub sign-in and repository list. Not server-side apply (ESO objects).
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/eve-console/{{ .Values.env }}
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: eve-console
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}
