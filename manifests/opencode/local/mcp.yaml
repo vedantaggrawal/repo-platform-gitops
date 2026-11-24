@@ -1,0 +1,137 @@
+# Read-only tools for the in-cluster agent (OpenCode), as MCP servers on the cluster network.
+# Writes never go through these: cluster changes happen only by pull request.
+#   kubernetes : ServiceAccount bound to the built-in `view` ClusterRole (no Secrets), server read_only
+#   grafana    : Grafana service account eve-agent (Viewer) token, server --disable-write
+#   gitea      : token with read scopes only, server -r
+# Tokens come from Terraform (repo-platform terraform-kind/agent.tf) as Secrets in this namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-kubernetes
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opencode-mcp-kubernetes-view
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: view }
+subjects:
+  - { kind: ServiceAccount, name: mcp-kubernetes, namespace: opencode }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-kubernetes
+data:
+  config.toml: |
+    port = "8080"
+    read_only = true
+    toolsets = ["core"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-kubernetes
+  labels: { app.kubernetes.io/name: mcp-kubernetes }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: mcp-kubernetes }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: mcp-kubernetes }
+    spec:
+      serviceAccountName: mcp-kubernetes
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: server
+          image: quay.io/containers/kubernetes_mcp_server:v0.1.3
+          args: [--config, /etc/kubernetes-mcp-server/config.toml]
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe: { tcpSocket: { port: http }, periodSeconds: 10 }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          resources: { requests: { cpu: 10m, memory: 64Mi }, limits: { memory: 256Mi } }
+          volumeMounts: [{ name: config, mountPath: /etc/kubernetes-mcp-server }]
+      volumes: [{ name: config, configMap: { name: mcp-kubernetes } }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-kubernetes
+spec:
+  selector: { app.kubernetes.io/name: mcp-kubernetes }
+  ports: [{ name: http, port: 8080, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-grafana
+  labels: { app.kubernetes.io/name: mcp-grafana }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: mcp-grafana }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: mcp-grafana }
+    spec:
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: server
+          image: grafana/mcp-grafana:v2.3.0
+          args: [-t, streamable-http, --address, "0.0.0.0:8000", --disable-write]
+          env:
+            - { name: GRAFANA_URL, value: http://local-grafana.monitoring.svc.cluster.local }
+            - name: GRAFANA_SERVICE_ACCOUNT_TOKEN
+              valueFrom: { secretKeyRef: { name: mcp-grafana-token, key: token } }
+          ports: [{ name: http, containerPort: 8000 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 10 }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          resources: { requests: { cpu: 10m, memory: 64Mi }, limits: { memory: 256Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-grafana
+spec:
+  selector: { app.kubernetes.io/name: mcp-grafana }
+  ports: [{ name: http, port: 8000, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-gitea
+  labels: { app.kubernetes.io/name: mcp-gitea }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: mcp-gitea }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: mcp-gitea }
+    spec:
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 65534, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: server
+          image: docker.gitea.com/gitea-mcp-server:v1.13.0
+          args: [-t, http, --port, "8080", -r]
+          env:
+            - { name: GITEA_HOST, value: http://local-gitea-http.gitea.svc.cluster.local:3000 }
+            - name: GITEA_ACCESS_TOKEN
+              valueFrom: { secretKeyRef: { name: mcp-gitea-token, key: token } }
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 10 }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 128Mi } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-gitea
+spec:
+  selector: { app.kubernetes.io/name: mcp-gitea }
+  ports: [{ name: http, port: 8080, targetPort: http }]
