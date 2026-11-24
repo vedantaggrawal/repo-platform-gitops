@@ -1,0 +1,113 @@
+# Read-only slice of the GitHub REST API for a LibreChat agent Action.
+# Agent builder → Actions → paste this file → Authentication: OAuth
+#   Client ID / Secret: the eve GitHub OAuth app
+#   Authorization URL: https://github.com/login/oauth/authorize
+#   Token URL:         https://github.com/login/oauth/access_token
+#   Scope:             repo read:org
+# GitHub OAuth app callback: https://librechat.evelab.space/api/actions/ (sub-paths are accepted).
+openapi: 3.0.3
+info:
+  title: GitHub (read-only)
+  version: "2022-11-28"
+  description: The signed-in user's repositories, their organisations' repositories, files, commits, issues and pull requests.
+servers:
+  - url: https://api.github.com
+paths:
+  /user:
+    get:
+      operationId: getMe
+      summary: The signed-in GitHub user.
+      responses: { "200": { description: OK } }
+  /user/orgs:
+    get:
+      operationId: listMyOrgs
+      summary: Organisations (teams) the user belongs to.
+      parameters:
+        - { name: per_page, in: query, schema: { type: integer, default: 100 } }
+      responses: { "200": { description: OK } }
+  /user/repos:
+    get:
+      operationId: listMyRepos
+      summary: Repositories the user can access (own, collaborator, and organisation member).
+      parameters:
+        - { name: affiliation, in: query, schema: { type: string, default: "owner,collaborator,organization_member" } }
+        - { name: sort, in: query, schema: { type: string, enum: [created, updated, pushed, full_name], default: pushed } }
+        - { name: per_page, in: query, schema: { type: integer, default: 50 } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses: { "200": { description: OK } }
+  /orgs/{org}/repos:
+    get:
+      operationId: listOrgRepos
+      summary: Repositories of one organisation.
+      parameters:
+        - { name: org, in: path, required: true, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [created, updated, pushed, full_name], default: pushed } }
+        - { name: per_page, in: query, schema: { type: integer, default: 50 } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+      responses: { "200": { description: OK } }
+  /repos/{owner}/{repo}:
+    get:
+      operationId: getRepo
+      summary: Repository details (default branch, language, visibility).
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+      responses: { "200": { description: OK } }
+  /repos/{owner}/{repo}/contents/{path}:
+    get:
+      operationId: getContents
+      summary: A file (base64 content) or a directory listing. Use path "" for the root.
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: path, in: path, required: true, schema: { type: string } }
+        - { name: ref, in: query, schema: { type: string } }
+      responses: { "200": { description: OK } }
+  /repos/{owner}/{repo}/branches:
+    get:
+      operationId: listBranches
+      summary: Branches of a repository.
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: per_page, in: query, schema: { type: integer, default: 50 } }
+      responses: { "200": { description: OK } }
+  /repos/{owner}/{repo}/commits:
+    get:
+      operationId: listCommits
+      summary: Recent commits, optionally on a branch or path.
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: sha, in: query, schema: { type: string } }
+        - { name: path, in: query, schema: { type: string } }
+        - { name: per_page, in: query, schema: { type: integer, default: 20 } }
+      responses: { "200": { description: OK } }
+  /repos/{owner}/{repo}/issues:
+    get:
+      operationId: listIssues
+      summary: Issues and pull requests of a repository.
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string, enum: [open, closed, all], default: open } }
+        - { name: per_page, in: query, schema: { type: integer, default: 30 } }
+      responses: { "200": { description: OK } }
+  /repos/{owner}/{repo}/pulls:
+    get:
+      operationId: listPulls
+      summary: Pull requests of a repository.
+      parameters:
+        - { name: owner, in: path, required: true, schema: { type: string } }
+        - { name: repo, in: path, required: true, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string, enum: [open, closed, all], default: open } }
+        - { name: per_page, in: query, schema: { type: integer, default: 30 } }
+      responses: { "200": { description: OK } }
+  /search/code:
+    get:
+      operationId: searchCode
+      summary: Search code across repositories the user can access (e.g. q="addClass repo:acme/web").
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: per_page, in: query, schema: { type: integer, default: 20 } }
+      responses: { "200": { description: OK } }
