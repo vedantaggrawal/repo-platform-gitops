@@ -11,6 +11,8 @@ spec:
   template:
     metadata:
       labels: { app.kubernetes.io/name: eve-console }
+      annotations:
+        eve.io/secret-rev: "1"   # bump to reload env from Secrets (read at start)
     spec:
       serviceAccountName: eve-console   # manages sandbox pods (manifests/eve-console/local/sandboxes.yaml)
       securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }   # image user "node" is non-numeric
