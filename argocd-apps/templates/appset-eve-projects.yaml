@@ -1,0 +1,42 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+# One Application per project built in the eve console. The console is the generator (plugin):
+# it returns {slug, owner, namespace, image, host} for every project with a successful build.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: eve-projects
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - plugin:
+        configMapRef: { name: eve-projects-plugin }
+        requeueAfterSeconds: 20
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  template:
+    metadata:
+      name: 'p-{{ "{{" }}.slug{{ "}}" }}'
+      labels: { eve.io/layer: tenants, eve.io/project: '{{ "{{" }}.slug{{ "}}" }}' }
+    spec:
+      project: tenants
+      source:
+        repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+        targetRevision: HEAD
+        path: charts/project
+        helm:
+          valuesObject:
+            image: '{{ "{{" }}.image{{ "}}" }}'
+            host: '{{ "{{" }}.host{{ "}}" }}'
+      destination:
+        server: {{ .Values.cluster }}
+        namespace: '{{ "{{" }}.namespace{{ "}}" }}'
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true]
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: restricted
+            eve.io/tenant: '{{ "{{" }}.owner{{ "}}" }}'
+{{- end }}

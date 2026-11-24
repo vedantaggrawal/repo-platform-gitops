@@ -1,0 +1,183 @@
+# Deploy rails for eve projects (eve-console/lib/projects.ts):
+# - eve-projects: one ConfigMap per imported repository (the console's only state).
+# - eve-builds: buildpacks build Jobs (no Dockerfile needed) that push to the eve registry.
+# - the token Argo CD's plugin generator uses to ask the console which projects to deploy
+#   (argocd-apps/templates/appset-eve-projects.yaml).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eve-projects
+  labels: { eve.io/layer: addons, eve.io/tenant: platform }
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eve-builds
+  labels: { eve.io/layer: addons, eve.io/tenant: platform, pod-security.kubernetes.io/enforce: restricted }
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: builds
+  namespace: eve-builds
+spec:
+  hard: { pods: "4", requests.cpu: "2", requests.memory: 4Gi, limits.memory: 12Gi }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eve-console-projects
+  namespace: eve-projects
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get, list, create, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eve-console-projects
+  namespace: eve-projects
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: eve-console-projects }
+subjects:
+  - { kind: ServiceAccount, name: eve-console, namespace: eve-console }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eve-console-builds
+  namespace: eve-builds
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list, create, patch, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, create, patch, delete]
+  - apiGroups: [""]
+    resources: [pods, pods/log]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eve-console-builds
+  namespace: eve-builds
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: eve-console-builds }
+subjects:
+  - { kind: ServiceAccount, name: eve-console, namespace: eve-console }
+---
+# Read deploy status of the generated Applications (p-<slug>).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eve-console-applications
+  namespace: argocd
+rules:
+  - apiGroups: [argoproj.io]
+    resources: [applications]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eve-console-applications
+  namespace: argocd
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: eve-console-applications }
+subjects:
+  - { kind: ServiceAccount, name: eve-console, namespace: eve-console }
+---
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: argocd-plugin-token
+  namespace: eve-console
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec: { length: 48, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: argocd-plugin-seed
+  namespace: eve-console
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshPolicy: CreatedOnce
+  target: { name: argocd-plugin-seed, creationPolicy: Owner }
+  dataFrom:
+    - sourceRef: { generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: argocd-plugin-token } }
+      rewrite: [{ regexp: { source: password, target: token } }]
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: argocd-plugin-token
+  namespace: eve-console
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - { kind: ClusterSecretStore, name: openbao }
+  selector:
+    secret: { name: argocd-plugin-seed }
+  data:
+    - match: { remoteRef: { remoteKey: platform/eve-console/argocd-plugin } }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: eve-console-argocd-plugin
+  namespace: eve-console
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: eve-console-argocd-plugin
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data: { ARGOCD_PLUGIN_TOKEN: '{{ .token }}' }
+  dataFrom:
+    - extract: { key: platform/eve-console/argocd-plugin }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: eve-projects-plugin
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: eve-projects-plugin
+    creationPolicy: Owner
+    template:
+      metadata:
+        labels: { app.kubernetes.io/part-of: argocd }   # Argo CD only reads labelled secrets for $secret:key refs
+  dataFrom:
+    - extract: { key: platform/eve-console/argocd-plugin }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eve-projects-plugin
+  namespace: argocd
+data:
+  token: "$eve-projects-plugin:token"
+  baseUrl: "http://eve-console.eve-console.svc.cluster.local/api/argocd"
+  requestTimeout: "20"

@@ -1,0 +1,8 @@
+# Set per project by the eve-projects ApplicationSet (argocd-apps/templates/appset-eve-projects.yaml).
+image: ""          # localhost:5000/eve/<slug>:<sha> (eve registry)
+host: ""           # <slug>.evelab.space
+port: 8080         # buildpack web processes listen on $PORT
+replicas: 1
+resources:
+  requests: { cpu: 25m, memory: 128Mi }
+  limits: { memory: 512Mi }
