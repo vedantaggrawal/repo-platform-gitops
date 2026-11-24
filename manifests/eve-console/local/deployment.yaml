@@ -13,7 +13,7 @@ spec:
       labels: { app.kubernetes.io/name: eve-console }
     spec:
       serviceAccountName: eve-console   # manages sandbox pods (manifests/eve-console/local/sandboxes.yaml)
-      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }   # image user "node" is non-numeric
       containers:
         - name: console
           image: ghcr.io/vedantaggrawal/eve-console:sha-b7ede10fbd311727f2b6a03e2a33b0ced258b57b
