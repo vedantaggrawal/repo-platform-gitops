@@ -1,0 +1,27 @@
+# JupyterHub's namespace (declared here so the OIDC client secret can land before the chart app) and the
+# consumer of the secret seeded by manifests/authentik/local/jupyterhub-oidc.yaml.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jupyterhub
+  labels:
+    eve.io/layer: addons
+    eve.io/tenant: platform   # same labels the platform ApplicationSet sets; avoids drift between the two apps
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: jupyterhub-oidc
+  namespace: jupyterhub
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: jupyterhub-oidc
+    creationPolicy: Owner
+  dataFrom:
+    - extract: { key: platform/authentik/jupyterhub-oidc }
