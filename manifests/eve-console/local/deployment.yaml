@@ -16,13 +16,13 @@ spec:
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: console
-          image: ghcr.io/vedantaggrawal/eve-console:IMAGE_TAG
+          image: ghcr.io/vedantaggrawal/eve-console:sha-b7ede10fbd311727f2b6a03e2a33b0ced258b57b
           env:
             - { name: PUBLIC_URL, value: "https://app.evelab.space" }
             - { name: NODE_EXTRA_CA_CERTS, value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }   # Kubernetes API
           envFrom:
             - secretRef: { name: eve-console-session }
-            - secretRef: { name: eve-console-github }
+            - secretRef: { name: eve-console-github, optional: true }   # until the GitHub App exists
           ports:
             - { name: http, containerPort: 3000 }
           readinessProbe:
@@ -32,6 +32,12 @@ spec:
             requests: { cpu: 20m, memory: 96Mi }
             limits: { memory: 256Mi }
           securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: false, capabilities: { drop: [ALL] } }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eve-console
+  namespace: eve-console
 ---
 apiVersion: v1
 kind: Service
