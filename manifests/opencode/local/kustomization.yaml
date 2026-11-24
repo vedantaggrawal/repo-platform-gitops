@@ -8,3 +8,4 @@ resources:
   - workspace.yaml
   - deployment.yaml
   - mcp.yaml
+  - egress.yaml
