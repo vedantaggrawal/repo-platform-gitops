@@ -47,6 +47,12 @@ librechat:
           titleConvo: true
           titleModel: "current_model"
           modelDisplayLabel: "Local"
+    # Agents call the GitHub REST API directly (Actions from an OpenAPI spec, docs/librechat/github-api.yaml);
+    # each user authorises with their own GitHub account (OAuth), so the agent sees exactly their repos
+    # and their organisations' repos. Only api.github.com is reachable from Actions.
+    actions:
+      allowedDomains:
+        - "api.github.com"
   imageVolume:
     enabled: true
     size: 5G
