@@ -1,4 +1,4 @@
-# eve console (github.com/vedantaggrawal/eve-console): GitHub sign-in and repository list. Stateless.
+# eve console (github.com/evelab-space/eve-console): GitHub sign-in and repository list. Stateless.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,7 +18,7 @@ spec:
       securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }   # image user "node" is non-numeric
       containers:
         - name: console
-          image: ghcr.io/vedantaggrawal/eve-console:sha-b7ede10fbd311727f2b6a03e2a33b0ced258b57b
+          image: ghcr.io/evelab-space/eve-console:sha-610ea9ec221faa28b0fa2c2d51bebf7a6e7b7747
           env:
             - { name: PUBLIC_URL, value: "https://app.evelab.space" }
             - { name: NODE_EXTRA_CA_CERTS, value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }   # Kubernetes API
