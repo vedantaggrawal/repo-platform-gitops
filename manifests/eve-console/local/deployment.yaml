@@ -20,10 +20,11 @@ spec:
       securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }   # image user "node" is non-numeric
       containers:
         - name: console
-          image: ghcr.io/evelab-space/eve-console:sha-cacc67358b5cb79ef49b23a0e60afa935f2debeb
+          image: ghcr.io/evelab-space/eve-console:sha-d4d404311ba8cd0d87a4582b2b7ccdde14971246
           env:
             - { name: PUBLIC_URL, value: "https://app.evelab.space" }
             - { name: NODE_EXTRA_CA_CERTS, value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }   # Kubernetes API
+            - { name: FARO_URL, value: "https://faro.evelab.space/" }   # browser telemetry (manifests/otel/local/collector-faro.yaml)
             - { name: OTEL_SERVICE_NAME, value: eve-console }
             - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: grpc }   # the agent endpoint in the Instrumentation is :4317 (gRPC)
             - { name: OTEL_RESOURCE_ATTRIBUTES, value: "service.namespace=eve,deployment.environment=local" }
