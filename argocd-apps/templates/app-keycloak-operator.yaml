@@ -1,0 +1,29 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-keycloak-operator
+  namespace: argocd
+  labels:
+    eve.io/layer: security
+  annotations:
+    # Official Keycloak Operator (CRDs Keycloak, KeycloakRealmImport, KeycloakOIDCClient) straight from
+    # keycloak-k8s-resources at the release tag; installs into namespace keycloak.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/keycloak/keycloak-k8s-resources.git
+    targetRevision: "26.8.2"
+    path: kubernetes
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: keycloak
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true   # CRDs exceed the client-side annotation size limit
+{{- end }}
