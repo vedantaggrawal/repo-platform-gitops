@@ -8,7 +8,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  instances: 1
+  instances: 0   # temporary: clears the crash-looping pod stuck on the old StatefulSet revision
   update:
     # Explicit: bump revision to force a recreate (not rolling) update. Needed when the pod is stuck
     # crash-looping, because a StatefulSet does not roll past a broken pod by itself.
