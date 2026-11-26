@@ -13,6 +13,8 @@ spec:
       labels: { app.kubernetes.io/name: eve-console }
       annotations:
         eve.io/secret-rev: "1"   # bump to reload env from Secrets (read at start)
+        # Zero-code OpenTelemetry: the operator injects the Node.js agent (HTTP server/client, fetch, Next.js spans)
+        instrumentation.opentelemetry.io/inject-nodejs: opentelemetry-operator/default
     spec:
       serviceAccountName: eve-console   # manages sandbox pods (manifests/eve-console/local/sandboxes.yaml)
       securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }   # image user "node" is non-numeric
@@ -22,6 +24,9 @@ spec:
           env:
             - { name: PUBLIC_URL, value: "https://app.evelab.space" }
             - { name: NODE_EXTRA_CA_CERTS, value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }   # Kubernetes API
+            - { name: OTEL_SERVICE_NAME, value: eve-console }
+            - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: grpc }   # the agent endpoint in the Instrumentation is :4317 (gRPC)
+            - { name: OTEL_RESOURCE_ATTRIBUTES, value: "service.namespace=eve,deployment.environment=local" }
           envFrom:
             - secretRef: { name: eve-console-session }
             - secretRef: { name: eve-console-github, optional: true }   # until the GitHub App exists
