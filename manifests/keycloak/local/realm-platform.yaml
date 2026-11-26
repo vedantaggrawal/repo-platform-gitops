@@ -1,0 +1,69 @@
+# Realm `platform`: eve users. Sign-in is "Continue with GitHub" through the eve GitHub App, and Keycloak
+# stores the user's GitHub token so the console can fetch it (GET /realms/platform/broker/github/token)
+# instead of asking for a second GitHub login. Imported once by the operator (KeycloakRealmImport does
+# not update an existing realm); later changes go through KeycloakOIDCClient or the admin API.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: keycloak-github-idp
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: keycloak-github-idp
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        client_id: '{{ .client_id }}'
+        client_secret: '{{ .client_secret }}'
+  dataFrom:
+    - extract: { key: platform/eve-console/github-app }
+---
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakRealmImport
+metadata:
+  name: platform
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  keycloakCRName: keycloak
+  placeholders:
+    GITHUB_CLIENT_ID: { secret: { name: keycloak-github-idp, key: client_id } }
+    GITHUB_CLIENT_SECRET: { secret: { name: keycloak-github-idp, key: client_secret } }
+  realm:
+    realm: platform
+    displayName: eve
+    enabled: true
+    registrationAllowed: false      # accounts come only from GitHub
+    loginWithEmailAllowed: false
+    sslRequired: external
+    identityProviders:
+      - alias: github
+        providerId: github
+        displayName: GitHub
+        enabled: true
+        trustEmail: true
+        storeToken: true             # keep the user's GitHub token ...
+        addReadTokenRoleOnCreate: true   # ... and let the user's own session read it (broker/read-token)
+        firstBrokerLoginFlowAlias: first broker login
+        config:
+          clientId: ${GITHUB_CLIENT_ID}
+          clientSecret: ${GITHUB_CLIENT_SECRET}
+          syncMode: FORCE
+          guiOrder: "1"
+    clients:
+      - clientId: eve-console
+        name: eve console
+        protocol: openid-connect
+        publicClient: false
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        redirectUris: ["https://app.evelab.space/*", "https://app.local.evelab.space:30443/*"]
+        webOrigins: ["https://app.evelab.space"]
+        attributes:
+          post.logout.redirect.uris: "https://app.evelab.space/*"
