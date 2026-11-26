@@ -9,6 +9,11 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   instances: 1
+  update:
+    # Explicit: bump revision to force a recreate (not rolling) update. Needed when the pod is stuck
+    # crash-looping, because a StatefulSet does not roll past a broken pod by itself.
+    strategy: Explicit
+    revision: "2"
   image: quay.io/keycloak/keycloak:26.8.2
   startOptimized: false   # stock image is not pre-built; the operator adds --optimized for custom images otherwise
   additionalOptions:
