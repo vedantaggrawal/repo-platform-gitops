@@ -10,6 +10,10 @@ metadata:
 spec:
   instances: 1
   image: quay.io/keycloak/keycloak:26.8.2
+  startOptimized: false   # stock image is not pre-built; the operator adds --optimized for custom images otherwise
+  additionalOptions:
+    - { name: metrics-enabled, value: "true" }
+    - { name: health-enabled, value: "true" }
   db:
     vendor: postgres
     host: keycloak-db-rw
