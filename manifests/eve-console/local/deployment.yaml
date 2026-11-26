@@ -1,4 +1,5 @@
-# eve console (github.com/evelab-space/eve-console): GitHub sign-in and repository list. Stateless.
+# eve console (github.com/evelab-space/eve-console). Stateless. The image line is written by the Kargo
+# pipeline (manifests/eve-pipeline): every new image on main is promoted, rolled out and verified.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -41,19 +42,3 @@ spec:
             requests: { cpu: 20m, memory: 96Mi }
             limits: { memory: 256Mi }
           securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: false, capabilities: { drop: [ALL] } }
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: eve-console
-  namespace: eve-console
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: eve-console
-  namespace: eve-console
-spec:
-  selector: { app.kubernetes.io/name: eve-console }
-  ports:
-    - { name: http, port: 80, targetPort: http }

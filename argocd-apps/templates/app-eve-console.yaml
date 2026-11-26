@@ -7,6 +7,7 @@ metadata:
   labels:
     eve.io/layer: addons
   annotations:
+    kargo.akuity.io/authorized-stage: eve-console-pipeline:local   # Kargo may sync this app after promoting
     # eve console (manifests/eve-console): GitHub sign-in and repository list. Not server-side apply (ESO objects).
     argocd.argoproj.io/sync-wave: "1"
 spec:

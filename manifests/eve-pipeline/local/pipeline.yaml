@@ -1,0 +1,155 @@
+# Delivery pipeline for the eve console (Kargo). Every new image built on main
+# (ghcr.io/evelab-space/eve-console:sha-<commit>, by the repo's GitHub Actions) is:
+#   1. discovered by the Warehouse,
+#   2. auto-promoted to Stage `local`: the image line in manifests/eve-console/local/deployment.yaml is
+#      updated and committed to this repo (as the eve GitHub App), then Argo CD syncs local-eve-console,
+#   3. verified for 3 minutes: the console reports the promoted version on /api/health and its 5xx
+#      ratio in Mimir stays under 5%. A failed verification shows on the Stage and alerts.
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Project
+metadata:
+  name: eve-console-pipeline
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: ProjectConfig
+metadata:
+  name: eve-console-pipeline
+  namespace: eve-console-pipeline
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  promotionPolicies:
+    - stageSelector: { name: local }
+      autoPromotionEnabled: true
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Warehouse
+metadata:
+  name: console
+  namespace: eve-console-pipeline
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  interval: 2m
+  freightCreationPolicy: Automatic
+  subscriptions:
+    - image:
+        repoURL: ghcr.io/evelab-space/eve-console
+        imageSelectionStrategy: NewestBuild
+        allowTags: ^sha-[0-9a-f]{40}$
+        discoveryLimit: 10
+---
+apiVersion: kargo.akuity.io/v1alpha1
+kind: Stage
+metadata:
+  name: local
+  namespace: eve-console-pipeline
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  requestedFreight:
+    - origin: { kind: Warehouse, name: console }
+      sources: { direct: true }
+  promotionTemplate:
+    spec:
+      vars:
+        - { name: gitopsRepo, value: https://github.com/vedantaggrawal/repo-platform-gitops.git }
+        - { name: image, value: ghcr.io/evelab-space/eve-console }
+      steps:
+        - uses: git-clone
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            checkout:
+              - { branch: main, path: ./src }
+        - uses: yaml-update
+          config:
+            path: ./src/manifests/eve-console/local/deployment.yaml
+            updates:
+              - key: spec.template.spec.containers.0.image
+                value: ${{ vars.image }}:${{ imageFrom(vars.image).Tag }}
+        - uses: git-commit
+          as: commit
+          config:
+            path: ./src
+            message: "chore(eve-console): deploy ${{ imageFrom(vars.image).Tag }}"
+        - uses: git-push
+          config:
+            path: ./src
+        - uses: argocd-update
+          config:
+            apps:
+              - name: local-eve-console
+                sources:
+                  - repoURL: ${{ vars.gitopsRepo }}
+                    desiredRevision: ${{ outputs.commit.commit }}
+  verification:
+    analysisTemplates:
+      - name: console-healthy
+    args:
+      - name: version
+        value: ${{ imageFrom("ghcr.io/evelab-space/eve-console").Tag }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: console-healthy
+  namespace: eve-console-pipeline
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  args:
+    - name: version   # sha-<commit>
+  metrics:
+    # The promoted build is the one serving (APP_VERSION is baked into the image at build time).
+    - name: serving-promoted-version
+      count: 3
+      interval: 60s
+      failureLimit: 1
+      successCondition: '"sha-" + result == "{{args.version}}"'
+      provider:
+        web:
+          url: http://eve-console.eve-console.svc.cluster.local/api/health
+          jsonPath: "{$.version}"
+          timeoutSeconds: 10
+    # Server errors stay under 5% of requests since the rollout.
+    - name: server-error-ratio
+      count: 3
+      interval: 60s
+      failureLimit: 1
+      successCondition: result[0] < 0.05
+      provider:
+        prometheus:
+          address: http://local-mimir-nginx.monitoring.svc.cluster.local/prometheus
+          headers:
+            - { key: X-Scope-OrgID, value: anonymous }
+          query: |
+            (sum(rate(http_server_duration_milliseconds_count{service_name="eve-console",http_status_code=~"5.."}[3m])) or vector(0))
+            /
+            clamp_min(sum(rate(http_server_duration_milliseconds_count{service_name="eve-console"}[3m])) or vector(0), 0.001)
+---
+# Git credentials for the promotion commits: the eve GitHub App (installed on repo-platform-gitops with
+# Contents read & write). OpenBao platform/github-app {app_id, installation_id, private_key}.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: gitops-repo-creds
+  namespace: eve-console-pipeline
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 15m
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target:
+    name: gitops-repo-creds
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      metadata:
+        labels: { kargo.akuity.io/cred-type: git }
+      data:
+        repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+        githubAppID: '{{ .app_id }}'
+        githubAppInstallationID: '{{ .installation_id }}'
+        githubAppPrivateKey: '{{ .private_key }}'
+  dataFrom:
+    - extract: { key: platform/github-app }
