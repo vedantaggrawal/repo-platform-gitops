@@ -1,0 +1,29 @@
+# Keycloak — identity for eve users (GitHub as identity provider, upstream token stored for the console)
+# and, later, a realm per tenant for their apps' users. Behind the platform gateway (TLS terminated there).
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  instances: 1
+  image: quay.io/keycloak/keycloak:26.8.2
+  db:
+    vendor: postgres
+    host: keycloak-db-rw
+    database: keycloak
+    usernameSecret: { name: keycloak-db-app, key: username }
+    passwordSecret: { name: keycloak-db-app, key: password }
+  http:
+    httpEnabled: true
+  hostname:
+    hostname: https://keycloak.evelab.space
+  proxy:
+    headers: xforwarded
+  ingress:
+    enabled: false   # HTTPRoute in manifests/routes/local/keycloak.yaml
+  resources:
+    requests: { cpu: 200m, memory: 768Mi }
+    limits: { memory: 1536Mi }
