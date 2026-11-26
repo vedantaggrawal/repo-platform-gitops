@@ -1,0 +1,48 @@
+# otel-faro — receives browser telemetry from the Grafana Faro web SDK (page views, JS errors,
+# Web Vitals, user actions, frontend traces) at https://faro.evelab.space (public, browsers post here).
+# Logs -> Loki, traces -> otel-cluster (tail sampling -> Tempo), same as the node agents.
+# Only the eve console's origins may post (CORS); small memory limit since the endpoint is public.
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-faro
+spec:
+  mode: deployment
+  replicas: 1
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.158.0
+  ports:
+    - { name: faro, port: 8081, protocol: TCP }
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  config:
+    receivers:
+      faro:
+        endpoint: 0.0.0.0:8081
+        max_request_body_size: 1048576
+        cors:
+          allowed_origins: ["https://app.evelab.space", "https://app.local.evelab.space:30443"]
+    processors:
+      memory_limiter: { check_interval: 1s, limit_percentage: 80, spike_limit_percentage: 25 }
+      resource:
+        attributes:
+          - { key: service.namespace, value: eve, action: upsert }
+          - { key: telemetry.source, value: browser, action: upsert }
+      batch: {}
+    exporters:
+      otlphttp/loki:
+        endpoint: http://local-loki-gateway.monitoring.svc.cluster.local/otlp
+        headers: { X-Scope-OrgID: anonymous }
+      otlp/cluster:
+        endpoint: otel-cluster-collector.opentelemetry-operator.svc.cluster.local:4317
+        tls: { insecure: true }
+    service:
+      pipelines:
+        logs:
+          receivers: [faro]
+          processors: [memory_limiter, resource, batch]
+          exporters: [otlphttp/loki]
+        traces:
+          receivers: [faro]
+          processors: [memory_limiter, resource, batch]
+          exporters: [otlp/cluster]
