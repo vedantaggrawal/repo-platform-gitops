@@ -26,6 +26,9 @@ spec:
             - { name: PUBLIC_URL, value: "https://app.evelab.space" }
             - { name: NODE_EXTRA_CA_CERTS, value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt }   # Kubernetes API
             - { name: FARO_URL, value: "https://faro.evelab.space/" }   # browser telemetry (manifests/otel/local/collector-faro.yaml)
+            - { name: KEYCLOAK_URL, value: "https://keycloak.evelab.space" }
+            - { name: KEYCLOAK_REALM, value: platform }
+            - { name: KEYCLOAK_CLIENT_ID, value: eve-console }
             - { name: OTEL_SERVICE_NAME, value: eve-console }
             - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: grpc }   # the agent endpoint in the Instrumentation is :4317 (gRPC)
             - { name: OTEL_RESOURCE_ATTRIBUTES, value: "service.namespace=eve,deployment.environment=local" }
@@ -33,6 +36,7 @@ spec:
             - secretRef: { name: eve-console-session }
             - secretRef: { name: eve-console-github, optional: true }   # until the GitHub App exists
             - secretRef: { name: eve-console-argocd-plugin, optional: true }   # ARGOCD_PLUGIN_TOKEN (deploy-rails.yaml)
+            - secretRef: { name: eve-console-keycloak, optional: true }   # KEYCLOAK_CLIENT_SECRET: sign-in through Keycloak
           ports:
             - { name: http, containerPort: 3000 }
           readinessProbe:
