@@ -2,7 +2,8 @@
 # (ghcr.io/evelab-space/eve-console:sha-<commit>, by the repo's GitHub Actions) is:
 #   1. discovered by the Warehouse,
 #   2. auto-promoted to Stage `local`: the image line in manifests/eve-console/local/deployment.yaml is
-#      updated and committed to this repo (as the eve GitHub App), then Argo CD syncs local-eve-console,
+#      updated through a pull request opened and merged by the eve GitHub App, then Argo CD syncs
+#      local-eve-console to the merge commit,
 #   3. verified for 3 minutes: the console reports the promoted version on /api/health and its 5xx
 #      ratio in Mimir stays under 5%. A failed verification shows on the Stage and alerts.
 apiVersion: kargo.akuity.io/v1alpha1
@@ -72,16 +73,35 @@ spec:
           config:
             path: ./src
             message: "chore(eve-console): deploy ${{ imageFrom(vars.image).Tag }}"
+        # main is protected (changes only through pull requests): push a branch, open a PR, merge it as
+        # the eve GitHub App, then sync Argo CD to the merge commit.
         - uses: git-push
+          as: push
           config:
             path: ./src
+            generateTargetBranch: true
+        - uses: git-open-pr
+          as: open-pr
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            sourceBranch: ${{ outputs.push.branch }}
+            targetBranch: main
+            title: "chore(eve-console): deploy ${{ imageFrom(vars.image).Tag }}"
+            description: "Automated promotion by Kargo (project eve-console-pipeline, stage local)."
+        - uses: git-merge-pr
+          as: merge
+          config:
+            repoURL: ${{ vars.gitopsRepo }}
+            prNumber: ${{ outputs['open-pr'].pr.id }}
+            mergeMethod: squash
+            wait: true
         - uses: argocd-update
           config:
             apps:
               - name: local-eve-console
                 sources:
                   - repoURL: ${{ vars.gitopsRepo }}
-                    desiredRevision: ${{ outputs.commit.commit }}
+                    desiredRevision: ${{ outputs.merge.commit }}
   verification:
     analysisTemplates:
       - name: console-healthy
