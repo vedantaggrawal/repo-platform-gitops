@@ -1,0 +1,80 @@
+# The eve console's OIDC client in realm `platform`, managed by the operator (KeycloakOIDCClient), with
+# its secret generated once and kept in OpenBao (platform/eve-console/oidc). The console reads the same
+# secret (manifests/eve-console/local/secrets.yaml).
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: eve-console-oidc
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec: { length: 48, digits: 8, symbols: 0, noUpper: false, allowRepeat: true }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: eve-console-oidc-seed
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshPolicy: CreatedOnce
+  target: { name: eve-console-oidc-seed, creationPolicy: Owner }
+  dataFrom:
+    - sourceRef: { generatorRef: { apiVersion: generators.external-secrets.io/v1alpha1, kind: Password, name: eve-console-oidc } }
+      rewrite: [{ regexp: { source: password, target: client_secret } }]
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: eve-console-oidc
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - { kind: ClusterSecretStore, name: openbao }
+  selector:
+    secret: { name: eve-console-oidc-seed }
+  data:
+    - match: { remoteRef: { remoteKey: platform/eve-console/oidc } }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: eve-console-oidc
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
+  target: { name: eve-console-oidc, creationPolicy: Owner }
+  dataFrom:
+    - extract: { key: platform/eve-console/oidc }
+---
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: KeycloakOIDCClient
+metadata:
+  name: eve-console
+  namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  keycloakCRName: keycloak
+  realm: platform
+  client:
+    displayName: eve console
+    enabled: true
+    appUrl: https://app.evelab.space
+    loginFlows: [STANDARD]
+    redirectUris: ["https://app.evelab.space/api/auth/callback", "https://app.local.evelab.space:30443/api/auth/callback"]
+    webOrigins: ["https://app.evelab.space"]
+    auth:
+      method: client-secret
+      secretRef: { name: eve-console-oidc, key: client_secret }
