@@ -16,6 +16,8 @@ spec:
     revision: "2"
   image: quay.io/keycloak/keycloak:26.8.2
   startOptimized: false   # stock image is not pre-built; the operator adds --optimized for custom images otherwise
+  features:
+    enabled: ["client-admin-api:v2"]   # lets the operator manage clients (KeycloakOIDCClient)
   additionalOptions:
     - { name: metrics-enabled, value: "true" }
     - { name: health-enabled, value: "true" }
