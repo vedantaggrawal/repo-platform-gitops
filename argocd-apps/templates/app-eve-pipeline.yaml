@@ -1,0 +1,33 @@
+{{- if has .Values.env .Values.rawManifestEnvs }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.env }}-eve-pipeline
+  namespace: argocd
+  labels:
+    eve.io/layer: delivery
+  annotations:
+    # Delivery pipeline for the eve console (manifests/eve-pipeline): Kargo project, warehouse, stage, verification.
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/vedantaggrawal/repo-platform-gitops.git
+    targetRevision: HEAD
+    path: manifests/eve-pipeline/{{ .Values.env }}
+  destination:
+    server: {{ .Values.cluster }}
+    namespace: eve-console-pipeline
+  syncPolicy:
+    automated:
+      prune: {{ .Values.prune }}
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+{{- end }}

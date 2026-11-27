@@ -1,0 +1,17 @@
+# ServiceAccount and Service for the console (the Deployment is alone in deployment.yaml so the
+# delivery pipeline can update its image with a single-document yaml-update).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eve-console
+  namespace: eve-console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eve-console
+  namespace: eve-console
+spec:
+  selector: { app.kubernetes.io/name: eve-console }
+  ports:
+    - { name: http, port: 80, targetPort: http }
