@@ -36,7 +36,7 @@ spec:
     - image:
         repoURL: ghcr.io/evelab-space/eve-console
         imageSelectionStrategy: NewestBuild
-        allowTags: ^sha-[0-9a-f]{40}$
+        allowTagsRegexes: ["^sha-[0-9a-f]{40}$"]
         discoveryLimit: 10
 ---
 apiVersion: kargo.akuity.io/v1alpha1
