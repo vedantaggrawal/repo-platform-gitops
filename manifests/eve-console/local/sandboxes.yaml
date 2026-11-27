@@ -80,20 +80,6 @@ spec:
         - matchName: api.anthropic.com
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]
----
-# Platform model key for sandboxes (optional): OpenBao platform/eve-console/model {anthropic_api_key}.
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: sandbox-model
-  namespace: eve-sandboxes
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-spec:
-  refreshInterval: 15m
-  secretStoreRef: { kind: ClusterSecretStore, name: openbao }
-  target:
-    name: sandbox-model
-    creationPolicy: Owner
-  dataFrom:
-    - extract: { key: platform/eve-console/model }
+# Platform model key for sandboxes: not deployed until a key exists in OpenBao
+# (platform/eve-console/model {anthropic_api_key}); an ExternalSecret with no source degrades the app and
+# blocks pipeline verification. Sandbox pods read Secret sandbox-model as optional.
