@@ -54,7 +54,12 @@ metadata:
 spec:
   refreshInterval: 1h
   secretStoreRef: { kind: ClusterSecretStore, name: openbao }
-  target: { name: eve-console-oidc, creationPolicy: Owner }
+  target:
+    name: eve-console-oidc
+    creationPolicy: Owner
+    template:
+      metadata:
+        labels: { operator.keycloak.org/kind: KeycloakOIDCClient }   # the operator only reads labelled Secrets
   dataFrom:
     - extract: { key: platform/eve-console/oidc }
 ---
