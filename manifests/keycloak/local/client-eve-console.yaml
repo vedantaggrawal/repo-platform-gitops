@@ -70,6 +70,7 @@ spec:
   realm: platform
   client:
     displayName: eve console
+    description: Sign-in for app.evelab.space (GitHub through Keycloak)
     enabled: true
     appUrl: https://app.evelab.space
     loginFlows: [STANDARD]
